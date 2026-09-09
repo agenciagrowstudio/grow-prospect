@@ -1,0 +1,541 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Search,
+  Menu,
+  Minus,
+  Square,
+  X,
+  LayoutDashboard,
+  MapPin,
+  Database,
+  Target,
+  Columns3,
+  MessageCircle,
+  BarChart3,
+  Plus,
+  Settings
+} from 'lucide-react';
+import Overview from './components/Overview';
+import MapScraperView from './components/MapScraperView';
+import LeadsManager from './components/LeadsManager';
+import LeadScoring from './components/LeadScoring';
+import Dashboard from './components/Dashboard';
+import LogoGrow from './components/LogoGrow';
+
+// Versao exibida no rodape do menu. Acompanha o package.json.
+const APP_VERSION = '1.1.6';
+import KanbanBoard from './components/KanbanBoard';
+import WhatsAppPanel from './components/WhatsAppPanel';
+import NewExtractionModal from './components/NewExtractionModal';
+import OnboardingTour from './components/OnboardingTour';
+import { NotificationProvider, useNotifications } from './components/NotificationCenter';
+import UpdateBanner from './components/UpdateBanner';
+import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
+
+function organizeStoredLeads() {
+  const raw = readLocalArray('sigma_leads');
+  const organized = normalizeLeadCollection(raw);
+  try {
+    if (organized.some((lead, index) => (
+      lead?.category !== raw[index]?.category
+      || lead?.address !== raw[index]?.address
+    ))) {
+      localStorage.setItem('sigma_leads', JSON.stringify(organized));
+    }
+  } catch {}
+  return organized;
+}
+
+class ErrorBoundaryLite extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error(`[UI ERROR] ${this.props.label || 'view'}:`, error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 30, color: 'var(--fg)', overflow: 'auto' }}>
+          <h3 style={{ color: 'var(--danger)', marginTop: 0 }}>
+            Erro ao carregar componente ({this.props.label || 'Tela'})
+          </h3>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: 'var(--surface-warm)', padding: 16, borderRadius: 8 }}>
+            {String(this.state.error?.stack || this.state.error)}
+          </pre>
+          <button type="button" className="btn btn-primary" onClick={() => this.setState({ error: null })}>
+            Recarregar Tela
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
+  const [q, setQ] = useState('');
+  const inputRef = useRef(null);
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 30);
+      setQ('');
+    }
+  }, [open]);
+  useEffect(() => {
+    const h = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); onClose?.( !open ); }
+      if (e.key === 'Escape' && open) onClose?.(false);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [open, onClose]);
+  if (!open) return null;
+  const items = [
+    { id: 'scraper', label: 'Ir para Scraper Maps', desc: 'Mapa + feed de leads', icon: MapPin, action: () => { onNavigate('scraper'); onClose(false); } },
+    { id: 'overview', label: 'Ir para Visão Geral', desc: 'Centro de comando', icon: LayoutDashboard, action: () => { onNavigate('overview'); onClose(false); } },
+    { id: 'base', label: 'Ir para Base de Leads', desc: 'Filtrar, organizar e exportar', icon: Database, action: () => { onNavigate('base'); onClose(false); } },
+    { id: 'scoring', label: 'Ir para Lead Scoring', desc: 'Quem ligar primeiro', icon: Target, action: () => { onNavigate('scoring'); onClose(false); } },
+    { id: 'kanban', label: 'Ir para Kanban', desc: 'Funil comercial de todos os leads', icon: Columns3, action: () => { onNavigate('kanban'); onClose(false); } },
+    { id: 'whatsapp', label: 'Ir para WhatsApp', desc: 'Chats e campanhas', icon: MessageCircle, action: () => { onNavigate('whatsapp'); onClose(false); } },
+    { id: 'dashboard', label: 'Ir para Dashboard', desc: 'Métricas e categorias', icon: BarChart3, action: () => { onNavigate('dashboard'); onClose(false); } },
+    { id: 'new', label: 'Nova Extração…', desc: 'Criar busca no Google Maps', icon: Plus, action: () => { onClose(false); onNewExtraction(); } },
+  ];
+  const filtered = q.trim() ? items.filter(i => (`${i.label} ${i.desc}`.toLowerCase().includes(q.toLowerCase()))) : items;
+  return (
+    <div className="overlay on" id="cmdkOv" data-od-id="cmdk" onClick={() => onClose(false)}>
+      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Busca global" onClick={e=>e.stopPropagation()}>
+        <div className="cmdk-row">
+          <Search size={16} aria-hidden="true" />
+          <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar leads, campanhas, ações…" />
+          <span className="tag-lote">ESC</span>
+        </div>
+        <div className="cmdk-list">
+          {filtered.length===0 ? <div className="empty"><b>Nenhum resultado</b><span>Tente outro termo.</span></div> : filtered.map(it=> {
+            const Icone = it.icon;
+            return (
+            <button key={it.id} className="cmdk-item" onClick={it.action}>
+              <span className="cmdk-ic"><Icone size={16} /></span>
+              <span style={{ minWidth:0 }}><b style={{ display:'block', fontSize:13 }}>{it.label}</b><span style={{ display:'block', fontSize:12, color:'var(--muted)' }}>{it.desc}</span></span>
+            </button>
+            );
+          })}
+        </div>
+        <div className="cmdk-row" style={{ fontSize:11, color:'var(--muted)', gap:12 }}>
+          <span><b>↵</b> selecionar</span><span><b>↑↓</b> navegar</span><span><b>⌘K</b> abrir/fechar</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppInner() {
+  const [activeTab, setActiveTab] = useState(() => {
+    try { const h = location.hash.slice(1); if(['overview','scraper','base','scoring','kanban','whatsapp','dashboard','settings'].includes(h)) return h; } catch{}
+    return 'overview';
+  });
+  const [isNewExtractionOpen, setIsNewExtractionOpen] = useState(false);
+  const [isCmdOpen, setIsCmdOpen] = useState(false);
+  const [isSidebarLocked, setIsSidebarLocked] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [waStatus, setWaStatus] = useState('disconnected');
+  const [waPhone, setWaPhone] = useState('');
+
+  // O perfil do header mostra a conta de WhatsApp em operacao, que e o unico
+  // "quem sou eu" real deste app: nao existe conta de usuario.
+  useEffect(() => {
+    let vivo = true;
+    const carregar = async () => {
+      try {
+        const res = await window.whatsappAPI?.listConnections?.();
+        const lista = res?.connections || [];
+        const ativa = lista.find((c) => c.active && c.connected) || lista.find((c) => c.connected);
+        if (vivo) setWaPhone(ativa?.phoneNumber || '');
+      } catch { /* fora do Electron nao ha API */ }
+    };
+    carregar();
+    const t = setInterval(carregar, 15000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [waStatus]);
+  const [leadsCount, setLeadsCount] = useState(() => dedupeLeads(organizeStoredLeads()).length);
+  const [scoringCount, setScoringCount] = useState(0);
+  const [activeExtraction, setActiveExtraction] = useState(null);
+
+  const { addNotification } = useNotifications();
+  const mapScraperRef = useRef(null);
+
+  // Persist hash + shortcuts ⌘1-5
+  useEffect(()=>{ try{ history.replaceState(null,'','#'+activeTab); }catch{} }, [activeTab]);
+  useEffect(()=>{
+    const onKey=(e)=>{
+      if((e.metaKey||e.ctrlKey) && /^[1-6]$/.test(e.key)){
+        e.preventDefault();
+        const map=['overview','scraper','base','scoring','kanban','whatsapp'];
+        const i=Number(e.key)-1; if(map[i]) setActiveTab(map[i]);
+      }
+      if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); setIsCmdOpen(v=>!v); }
+    };
+    window.addEventListener('keydown', onKey);
+    return()=> window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle('side-locked', isSidebarLocked);
+    document.body.classList.toggle('nav-open', isMobileNavOpen);
+    document.body.classList.toggle('route-whatsapp', activeTab === 'whatsapp');
+    document.body.classList.toggle('route-kanban', activeTab === 'kanban');
+    return () => {
+      document.body.classList.remove('side-locked', 'nav-open', 'route-whatsapp', 'route-kanban');
+    };
+  }, [isSidebarLocked, isMobileNavOpen, activeTab]);
+
+  const navigate = (tab) => {
+    setActiveTab(tab);
+    setIsMobileNavOpen(false);
+  };
+
+  const handleMinimize = () => window.electronAPI?.winMinimize();
+  const handleMaximize = () => window.electronAPI?.winMaximize();
+  const handleClose = () => window.electronAPI?.winClose();
+
+  const handleStartExtraction = async ({ niche, neigh, city, limit }) => {
+    if (activeExtraction) {
+      addNotification({
+        type: 'info',
+        category: 'scraper',
+        title: 'Extração em andamento',
+        message: 'Aguarde a busca atual terminar ou cancele-a antes de iniciar outra.',
+      });
+      return;
+    }
+    setActiveTab('scraper');
+    const qstr = [niche, neigh, city].filter(Boolean).join(' ').trim();
+    const searchId = `scrape_${Date.now()}`;
+    addNotification({
+      type: 'info',
+      category: 'scraper',
+      title: 'Iniciando Extração',
+      message: `Buscando ${niche} em ${neigh}, ${city}...`
+    });
+
+    if (!window.electronAPI || typeof window.electronAPI.startScrape !== 'function') {
+      addNotification({ type: 'error', category: 'scraper', title: 'Extração indisponível', message: 'A ponte do desktop não está disponível. Reinicie o aplicativo.' });
+      return;
+    }
+
+    setActiveExtraction({ id: searchId, query: qstr, startedAt: Date.now() });
+    try {
+      const res = await window.electronAPI.startScrape(qstr, limit, searchId);
+      if (!res?.success) {
+        if (res?.cancelled) {
+          addNotification({ type: 'info', category: 'scraper', title: 'Extração cancelada', message: 'Nenhum resultado parcial foi adicionado à base.' });
+          return;
+        }
+        throw new Error(res?.error || 'O Google Maps não retornou resultados para esta busca.');
+      }
+      const resultLeads = Array.isArray(res.data) ? res.data : [];
+      if (!resultLeads.length) throw new Error('A busca foi concluída, mas não retornou leads válidos.');
+
+      const current = readLocalArray('sigma_leads');
+      const combined = normalizeLeadCollection([
+        ...resultLeads.map((lead) => ({ ...lead, searchId, id: lead.id || Math.random().toString(36).slice(2) })),
+        ...current,
+      ]);
+      const currentSearches = readLocalArray('sigma_searches');
+      const nextSearches = [
+        ...currentSearches.filter((search) => String(search?.id) !== searchId),
+        {
+          id: searchId,
+          query: qstr,
+          label: `${niche} · ${neigh}${city ? ` · ${city}` : ''}`,
+          source: 'maps',
+          timestamp: Date.now(),
+        },
+      ];
+      localStorage.setItem('sigma_leads', JSON.stringify(combined));
+      localStorage.setItem('sigma_searches', JSON.stringify(nextSearches));
+      setLeadsCount(dedupeLeads(combined).length);
+      window.dispatchEvent(new CustomEvent('sigma:leads-updated', {
+        detail: { leads: combined, searches: nextSearches },
+      }));
+      addNotification({
+        type: res.partial ? 'info' : 'success',
+        category: 'scraper',
+        title: res.partial ? 'Extração concluída parcialmente' : 'Extração concluída',
+        message: res.partial && res.warnings?.length
+          ? `${resultLeads.length} leads adicionados. ${res.warnings[0]}`
+          : `${resultLeads.length} leads adicionados!`,
+      });
+    } catch (err) {
+      addNotification({
+        type: 'error',
+        category: 'scraper',
+        title: 'Erro na extração',
+        message: err?.message || 'Não foi possível concluir a busca. Tente novamente.',
+      });
+    } finally {
+      setActiveExtraction(null);
+    }
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <Overview onNavigate={navigate} onNewExtraction={() => setIsNewExtractionOpen(true)} waStatus={waStatus} leadsCount={leadsCount} scoringCount={scoringCount} />;
+      case 'scraper':
+        return (
+          <ErrorBoundaryLite label="Scraper">
+            <MapScraperView
+              onUpdateLeadsCount={setLeadsCount}
+              addLog={(msg) => console.log(msg)}
+              onOpenNewExtraction={() => setIsNewExtractionOpen(true)}
+              activeExtraction={activeExtraction}
+            />
+          </ErrorBoundaryLite>
+        );
+      case 'scoring':
+        return (
+          <ErrorBoundaryLite label="Lead Scoring">
+            <LeadScoring onUpdateScoringCount={setScoringCount} addLog={(msg) => console.log(msg)} />
+          </ErrorBoundaryLite>
+        );
+      case 'kanban':
+        return (
+          <ErrorBoundaryLite label="Kanban">
+            <KanbanBoard onNavigate={navigate} addLog={(msg) => console.log(msg)} />
+          </ErrorBoundaryLite>
+        );
+      case 'base':
+        return (
+          <ErrorBoundaryLite label="Base de Leads">
+            <LeadsManager onUpdateLeadsCount={setLeadsCount} addLog={(msg) => console.log(msg)} />
+          </ErrorBoundaryLite>
+        );
+      case 'whatsapp':
+        return (
+          <ErrorBoundaryLite label="WhatsApp">
+            <WhatsAppPanel waStatus={waStatus} setWaStatus={setWaStatus} addLog={(msg) => console.log(msg)} />
+          </ErrorBoundaryLite>
+        );
+      case 'campaigns': // compat: alias → whatsapp/campanhas tab
+        return (
+          <ErrorBoundaryLite label="Campanhas">
+            <WhatsAppPanel waStatus={waStatus} setWaStatus={setWaStatus} addLog={(msg) => console.log(msg)} initialTab="campaigns" />
+          </ErrorBoundaryLite>
+        );
+      case 'dashboard':
+        return (
+          <ErrorBoundaryLite label="Dashboard">
+            <Dashboard />
+          </ErrorBoundaryLite>
+        );
+      case 'settings':
+        return (
+          <section className="settings-open-design-view">
+            <div className="page-head">
+              <div><h1 style={{ fontSize: 20 }}>Configurações</h1></div>
+            </div>
+            <div className="table-wrap settings-open-design-card">
+              <div className="field">
+                <label htmlFor="themeSel">Modo de interface</label>
+                <select id="themeSel" defaultValue="light">
+                  <option value="light">Claro (padrão travado)</option>
+                  <option value="dark">Escuro (override futuro)</option>
+                </select>
+              </div>
+              <div>
+                <button className="btn btn-primary" onClick={() => addNotification({ type: 'info', title: 'Preferências salvas', message: 'Modo de interface atualizado.' })}>
+                  Salvar preferências
+                </button>
+              </div>
+              <p>Contagem local por instalação. Nenhum dado pessoal sai do app sem endpoint configurado.</p>
+            </div>
+          </section>
+        );
+      default:
+        return (
+          <MapScraperView
+            onUpdateLeadsCount={setLeadsCount}
+            addLog={(msg) => console.log(msg)}
+            onOpenNewExtraction={() => setIsNewExtractionOpen(true)}
+            activeExtraction={activeExtraction}
+          />
+        );
+    }
+  };
+
+  return (
+    <div className="app-layout-root">
+      {/* Left Sidebar */}
+      <aside className="app-sidebar">
+        {/* Brand Header */}
+        <button
+          type="button"
+          className="sidebar-brand"
+          onClick={() => setIsSidebarLocked((value) => !value)}
+          aria-pressed={isSidebarLocked}
+          title="Fixar ou soltar o menu"
+        >
+          <div className="brand-icon-box">
+            <LogoGrow size={30} />
+          </div>
+          <div className="brand-text-col">
+            <span className="brand-name">Grow+</span>
+            <span className="brand-tag">PROSPECT</span>
+          </div>
+        </button>
+
+        {/* Primary CTA Button */}
+        <div className="sidebar-action-wrap">
+          <button
+            className="btn-new-extraction"
+            onClick={() => setIsNewExtractionOpen(true)}
+          >
+            <Plus className="sidebar-plus" size={18} aria-hidden="true" />
+            <span>Nova Extração</span>
+          </button>
+        </div>
+
+        {/* Navigation Menu */}
+        <nav className="sidebar-nav">
+          <div className="sidebar-nav-label">Produto</div>
+          <button
+            className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => navigate('overview')}
+          >
+            <LayoutDashboard className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Visão Geral</span><span className="nav-kbd">1</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'scraper' ? 'active' : ''}`}
+            onClick={() => navigate('scraper')}
+          >
+            <MapPin className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Scraper Maps</span><span className="nav-kbd">2</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'base' ? 'active' : ''}`}
+            onClick={() => navigate('base')}
+          >
+            <Database className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Base de Leads</span><span className="nav-kbd">3</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'scoring' ? 'active' : ''}`}
+            onClick={() => navigate('scoring')}
+          >
+            <Target className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Lead Scoring</span><span className="nav-kbd">4</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'kanban' ? 'active' : ''}`}
+            onClick={() => navigate('kanban')}
+          >
+            <Columns3 className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Kanban</span><span className="nav-kbd">5</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'whatsapp' ? 'active' : ''}`}
+            onClick={() => navigate('whatsapp')}
+          >
+            <MessageCircle className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">WhatsApp</span><span className="nav-kbd">6</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => navigate('dashboard')}
+          >
+            <BarChart3 className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Dashboard</span><span className="nav-lote">Lote 2</span>
+          </button>
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="sidebar-footer">
+          <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')}>
+            <Settings className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Configurações</span>
+          </button>
+          <div className="sidebar-release">v{APP_VERSION}</div>
+        </div>
+      </aside>
+      <button type="button" className="app-nav-scrim" aria-label="Fechar navegação" onClick={() => setIsMobileNavOpen(false)} />
+
+      {/* Main Container (Header + Main Screen Area) */}
+      <div className="app-main-viewport">
+        {/* Top Header Bar — 48px, light, blur */}
+        <header className="app-header-bar" onDoubleClick={handleMaximize}>
+          <button type="button" className="mobile-menu-btn" onClick={() => setIsMobileNavOpen(true)} aria-label="Abrir navegação"><Menu size={18} /></button>
+          <button type="button" className="header-search-wrap" onClick={() => setIsCmdOpen(true)} title="Abrir busca global (⌘K)">
+            <Search size={14} className="header-search-icon" />
+            <span>Buscar leads, campanhas, ações…</span>
+          </button>
+
+          {/* Right Header Actions */}
+          <div className="header-right-actions">
+            <button type="button" className="hdr-perfil" onClick={() => navigate('whatsapp')} title="Gerenciar conexões do WhatsApp">
+              <span className={`hdr-avatar${waStatus === 'connected' ? ' on' : ''}`} aria-hidden="true">
+                <MessageCircle size={17} />
+              </span>
+              <span className="hdr-perfil-txt">
+                <b>{waPhone ? `+${waPhone}` : 'WhatsApp'}</b>
+                <span>{waStatus === 'connected' ? 'Conectado' : 'Desconectado'}</span>
+              </span>
+            </button>
+
+            {/* Window Controls (Frameless Drag/Close) */}
+            <div className="window-control-buttons">
+              <button onClick={handleMinimize} title="Minimizar" className="win-btn"><Minus size={13} /></button>
+              <button onClick={handleMaximize} title="Maximizar" className="win-btn"><Square size={11} /></button>
+              <button onClick={handleClose} title="Fechar" className="win-btn win-close"><X size={13} /></button>
+            </div>
+          </div>
+        </header>
+
+        {/* Screen Content — view-transition */}
+        <main className="app-screen-container">
+          <UpdateBanner />
+          <div key={activeTab} className="view-transition" style={{ flex:1, display:'flex', flexDirection:'column' }}>
+            {renderContent()}
+          </div>
+        </main>
+        <CommandPalette open={isCmdOpen} onClose={setIsCmdOpen} onNavigate={setActiveTab} onNewExtraction={() => setIsNewExtractionOpen(true)} />
+        <OnboardingTour onNavigate={setActiveTab} />
+      </div>
+
+      {/* New Extraction Modal */}
+      <NewExtractionModal
+        isOpen={isNewExtractionOpen}
+        onClose={() => setIsNewExtractionOpen(false)}
+        onStartExtraction={handleStartExtraction}
+        onAddToQueue={({ niche, neigh, city }) => {
+          addNotification({
+            type: 'info',
+            category: 'scraper',
+            title: 'Adicionado à Fila',
+            message: `${niche} em ${neigh}, ${city}`
+          });
+        }}
+        isProcessing={Boolean(activeExtraction)}
+      />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <NotificationProvider>
+      <AppInner />
+    </NotificationProvider>
+  );
+}

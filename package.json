@@ -1,0 +1,101 @@
+{
+  "name": "grow-prospect",
+  "version": "1.1.6",
+  "description": "Grow+ Prospect: aplicativo desktop de prospecção B2B que coleta empresas no Google Maps, qualifica leads e dispara campanhas no WhatsApp.",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "npm run build:renderer && electron .",
+    "start:quick": "electron .",
+    "test": "node --test",
+    "build": "npm run build:renderer && electron-builder",
+    "build:portable": "npm run build:renderer && electron-builder --win",
+    "build:win": "npm run build:renderer && electron-builder --win",
+    "build:linux": "npm run build:renderer && electron-builder --linux",
+    "build:renderer": "vite build && node scripts/stamp-renderer.js",
+    "qa:ui": "npm run build:renderer && electron scripts/capture-open-design-ui.js",
+    "qa:compare": "node scripts/compare-open-design-ui.js",
+    "qa:packaged": "node scripts/smoke-packaged.js",
+    "dev:renderer": "vite"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc13",
+    "electron-updater": "^6.8.9",
+    "ffmpeg-static": "^5.3.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.400.0",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
+    "playwright": "^1.61.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tldts": "^7.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^39.8.10",
+    "electron-builder": "^26.15.3",
+    "pngjs": "^5.0.0",
+    "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "com.growmais.prospect",
+    "productName": "Grow+ Prospect",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "scraper.js",
+      "preload.js",
+      "config.js",
+      "lead-scoring/**/*",
+      "kanban/**/*",
+      "utils/**/*",
+      "whatsapp/**/*",
+      "campaigns/**/*",
+      "assets/**/*",
+      "renderer/dist/**/*",
+      "node_modules/**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!node_modules/.bin",
+      "!node_modules/playwright-core/node_modules",
+      "!node_modules/playwright/node_modules"
+    ],
+    "win": {
+      "artifactName": "Grow-Prospect-${version}-${arch}.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Office"
+    },
+    "asar": true,
+    "compression": "maximum"
+  }
+}
