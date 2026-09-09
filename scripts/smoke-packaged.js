@@ -4,8 +4,12 @@ const os = require('os');
 const path = require('path');
 const { _electron: electron } = require('playwright');
 
-const packageVersion = require('../package.json').version;
-const executablePath = path.resolve(process.argv[2] || path.join(__dirname, '..', 'dist', 'win-unpacked', 'Sigma GMaps Scraper.exe'));
+const pacote = require('../package.json');
+const packageVersion = pacote.version;
+// O nome do executável vem do productName. Deixá-lo fixo aqui fazia o
+// smoke test procurar o binário da marca antiga depois de cada rebrand.
+const nomeExecutavel = `${pacote.build.productName}.exe`;
+const executablePath = path.resolve(process.argv[2] || path.join(__dirname, '..', 'dist', 'win-unpacked', nomeExecutavel));
 const outputFile = path.resolve(process.argv[3] || path.join(__dirname, '..', 'docs', 'qa', 'open-design-lote1', `packaged-v${packageVersion}-smoke.png`));
 const profilePath = fs.mkdtempSync(path.join(os.tmpdir(), 'sigma-gmaps-packaged-qa-'));
 const errors = [];
