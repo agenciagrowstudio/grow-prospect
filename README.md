@@ -113,7 +113,7 @@ test/                              Testes unitários e de integração
 
 O Grow+ Prospect deriva do **Sigma GMaps Scraper**, de Ferdy, distribuído sob
 licença MIT. O aviso de copyright original está preservado em
-[LICENSE](LICENSE), como a licença exige. As mudanças de marca, interface,
+[LICENSE](LICENSE) e no [NOTICE](NOTICE), como a licença exige. As mudanças de marca, interface,
 design system e funcionalidades feitas pela Grow+ seguem os mesmos termos.
 
 MIT. Veja [LICENSE](LICENSE).
