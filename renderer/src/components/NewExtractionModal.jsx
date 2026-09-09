@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import MapaPreviaLocal from './MapaPreviaLocal';
 
 const NICHOS = [
   'Dentistas', 'Clínica odontológica', 'Ortodontista', 'Odontologia', 'Aparelho ortodôntico',
@@ -208,7 +210,9 @@ export default function NewExtractionModal({
 
   return (
     <div className="overlay on modal-overlay" onClick={onClose} style={{ display: 'grid' }}>
-      <div className="modal modal-content" onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px, 94vw)' }}>
+      {/* A largura e a grade das etapas vivem no CSS, nao aqui: estilo em linha
+          vence media query e travava o card em uma coluna de 558px. */}
+      <div className="modal modal-content modal-extracao" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div className="eyebrow">Etapa {step} de 3</div>
           <h2 id="mTitle" style={{ fontSize: '20px', fontWeight: 600, marginTop: '4px' }}>
@@ -216,7 +220,7 @@ export default function NewExtractionModal({
           </h2>
         </div>
 
-        <div className="modal-body" style={{ gridTemplateColumns: '1fr', padding: '16px 20px' }}>
+        <div className="modal-body wz-corpo">
           <div className="wz-dots" aria-hidden="true">
             <i className={step >= 1 ? 'on' : ''} />
             <i className={step >= 2 ? 'on' : ''} />
@@ -268,7 +272,7 @@ export default function NewExtractionModal({
                   onClick={() => carViewRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
                   aria-label="Sugestões anteriores"
                 >
-                  ‹
+                  <ChevronLeft size={16} strokeWidth={1.5} />
                 </button>
                 <div className="car-view" ref={carViewRef} role="list">
                   {NICHOS.map((t) => (
@@ -288,7 +292,7 @@ export default function NewExtractionModal({
                   onClick={() => carViewRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
                   aria-label="Próximas sugestões"
                 >
-                  ›
+                  <ChevronRight size={16} strokeWidth={1.5} />
                 </button>
               </div>
             </div>
@@ -296,7 +300,8 @@ export default function NewExtractionModal({
 
           {/* STEP 2: CIDADE */}
           {step === 2 && (
-            <div className="wz-step">
+            <div className="wz-step wz-2col">
+             <div className="wz-2col-form">
               <div className={`field ${cidadeError ? 'invalid' : ''}`}>
                 <label htmlFor="wzCidade">Cidade ou estado</label>
                 <div className="ac-wrap">
@@ -358,12 +363,17 @@ export default function NewExtractionModal({
                   );
                 })}
               </div>
+             </div>
+
+              {/* Confere o lugar antes de gastar uma extracao. */}
+              <MapaPreviaLocal local={cidadeObj} textoLivre={cidadeInput} bairros={[]} />
             </div>
           )}
 
           {/* STEP 3: BAIRROS */}
           {step === 3 && (
-            <div className="wz-step">
+            <div className="wz-step wz-2col">
+             <div className="wz-2col-form">
               <div className="field">
                 <label htmlFor="wzBairro">Bairros (opcional — deixe em branco para o município inteiro)</label>
                 <div className="hood-add">
@@ -382,7 +392,8 @@ export default function NewExtractionModal({
                     autoFocus
                   />
                   <button type="button" className="btn btn-sm" onClick={addBairro}>
-                    + Adicionar
+                    <Plus size={15} strokeWidth={1.5} />
+                    Adicionar
                   </button>
                 </div>
               </div>
@@ -392,13 +403,18 @@ export default function NewExtractionModal({
                   <div key={h} className="hood-row">
                     <span>{h}</span>
                     <button type="button" onClick={() => removeBairro(idx)} aria-label={`Remover ${h}`}>
-                      ×
+                      <X size={14} strokeWidth={1.5} />
                     </button>
                   </div>
                 ))}
               </div>
+             </div>
 
-              <div className="wz-review" style={{ marginTop: '12px' }}>
+              {/* Com bairros na lista o mapa enquadra todos; sem nenhum, mostra
+                  o municipio inteiro, que e exatamente o que sera extraido. */}
+              <MapaPreviaLocal local={cidadeObj} textoLivre={cidadeInput} bairros={bairros} />
+
+              <div className="wz-review wz-2col-full">
                 <b>{nicho || '—'}</b>
                 <span> · {cidadeLabel()} · {bairros.length ? `${bairros.length} bairro(s)` : 'município inteiro'}</span>
               </div>
