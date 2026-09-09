@@ -1,5 +1,8 @@
 # Grow+ Prospect
 
+[![Release](https://img.shields.io/github/v/release/agenciagrowstudio/grow-prospect?display_name=tag)](https://github.com/agenciagrowstudio/grow-prospect/releases)
+[![Licença](https://img.shields.io/github/license/agenciagrowstudio/grow-prospect)](LICENSE)
+
 Aplicativo desktop para transformar pesquisas do Google Maps em uma operação de
 prospecção: encontrar empresas, organizar leads, priorizar oportunidades e
 iniciar conversas pelo WhatsApp. Tudo roda na máquina do usuário.
@@ -44,6 +47,15 @@ Electron + React + Playwright, em uma única aplicação para Windows.
 - Sete telas: Visão Geral, Scraper Maps, Base de Leads, Lead Scoring, WhatsApp, Dashboard e Configurações.
 - Design system **Modo Claro**: superfície branca, cor reservada para estado e ação, tipografia Inter, ícones Lucide.
 - Gráfico de área próprio, sem biblioteca de terceiros, compartilhado entre Visão Geral, Dashboard e Base de Leads.
+
+## Instalar no Windows
+
+Baixe a [versão mais recente](https://github.com/agenciagrowstudio/grow-prospect/releases):
+
+- `Grow-Prospect-<versão>-x64.exe` — instalador, recomendado.
+- `Grow-Prospect-<versão>-x64.zip` — versão portátil.
+
+A atualização automática funciona na versão instalada pelo instalador. A pasta `win-unpacked` é saída de teste local e não recebe atualização.
 
 ## Privacidade
 

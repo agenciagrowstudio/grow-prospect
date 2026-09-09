@@ -2,6 +2,18 @@
   "name": "grow-prospect",
   "version": "1.1.6",
   "description": "Grow+ Prospect: aplicativo desktop de prospecção B2B que coleta empresas no Google Maps, qualifica leads e dispara campanhas no WhatsApp.",
+  "author": {
+    "name": "Grow+",
+    "email": "contato.m2bstudio@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agenciagrowstudio/grow-prospect.git"
+  },
+  "homepage": "https://github.com/agenciagrowstudio/grow-prospect",
+  "bugs": {
+    "url": "https://github.com/agenciagrowstudio/grow-prospect/issues"
+  },
   "main": "main.js",
   "license": "MIT",
   "scripts": {
@@ -96,6 +108,13 @@
       "category": "Office"
     },
     "asar": true,
-    "compression": "maximum"
+    "compression": "maximum",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "agenciagrowstudio",
+        "repo": "grow-prospect"
+      }
+    ]
   }
 }
