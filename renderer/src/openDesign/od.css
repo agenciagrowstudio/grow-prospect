@@ -1088,3 +1088,21 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 /* Nome da categoria no Overview, com o icone do nicho antes. */
 .ov-cat-nome{display:flex;align-items:center;gap:8px;min-width:0}
 .ov-cat-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* --- Cabecalho do Lead Scoring ------------------------------------------ */
+
+/* Os tres quadros numerados sairam: pareciam um assistente de passos, e a tela
+   nao e um assistente, e uma area de trabalho sobre um grupo ja escolhido. */
+.sc-cabecalho{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--elev-raised);padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.sc-cab-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
+.sc-cab-icone{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--surface-warm);display:grid;place-items:center;color:var(--accent)}
+.sc-cab-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sc-cab-texto h2{font-size:16px;font-weight:600;letter-spacing:-1px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-cab-texto span{font-size:12.5px;color:var(--muted)}
+.sc-cab-acoes{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
+
+.sc-cab-rodape{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
+.sc-cab-ia{display:flex;align-items:center;gap:6px;flex:1;min-width:0;font-size:12.5px;color:var(--muted)}
+.sc-cab-ia svg{flex-shrink:0;opacity:.7}
+.sc-link{border:0;background:transparent;padding:0;font:inherit;font-size:12.5px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.sc-link:hover{color:var(--accent-hover)}

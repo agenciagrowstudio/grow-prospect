@@ -304,7 +304,7 @@ function AppInner() {
       case 'scoring':
         return (
           <ErrorBoundaryLite label="Lead Scoring">
-            <LeadScoring onUpdateScoringCount={setScoringCount} addLog={(msg) => console.log(msg)} />
+            <LeadScoring onUpdateScoringCount={setScoringCount} addLog={(msg) => console.log(msg)} onAbrirConfiguracoes={() => navigate('settings')} />
           </ErrorBoundaryLite>
         );
       case 'kanban':

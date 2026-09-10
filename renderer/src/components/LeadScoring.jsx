@@ -15,8 +15,7 @@ import {
   ChevronRight,
   Search,
   Users,
-  Eye,
-  EyeOff
+  Bot
 } from 'lucide-react';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from '../leadData';
 
@@ -156,7 +155,7 @@ function auditLead(lead, preset = 'sites') {
   };
 }
 
-export default function LeadScoring({ onUpdateScoringCount, addLog }) {
+export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfiguracoes }) {
   const [leads, setLeads] = useState(() => normalizeLeadCollection(readLocalArray('sigma_leads')));
   const [groups, setGroups] = useState(() => {
     const g = readLocalArray('sigma_groups');
@@ -186,7 +185,6 @@ export default function LeadScoring({ onUpdateScoringCount, addLog }) {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiDraft, setAiDraft] = useState(() => readAiConfig());
   const [showKey, setShowKey] = useState(false);
-  const [testStatusMsg, setTestStatusMsg] = useState('');
 
   // Banco de análises com seed inicial se vazio
   const [analysisMap, setAnalysisMap] = useState(() => {
@@ -292,7 +290,6 @@ export default function LeadScoring({ onUpdateScoringCount, addLog }) {
   // Abrir modal de IA
   const handleOpenAiModal = () => {
     setAiDraft({ ...aiConfig });
-    setTestStatusMsg('');
     setShowKey(false);
     setIsAiModalOpen(true);
   };
@@ -305,21 +302,6 @@ export default function LeadScoring({ onUpdateScoringCount, addLog }) {
   };
 
   // Testar conexão de IA
-  const handleTestAi = () => {
-    setTestStatusMsg('Testando conexão…');
-    setTimeout(() => {
-      if (!aiDraft.key) {
-        setTestStatusMsg('Informe a API Key.');
-        return;
-      }
-      if (aiDraft.baseUrl && !/^https?:\/\/.+\..+/.test(aiDraft.baseUrl)) {
-        setTestStatusMsg('Base URL inválida.');
-        return;
-      }
-      setTestStatusMsg('Conexão realizada com sucesso.');
-    }, 800);
-  };
-
   // Executar análise em lote
   const handleRunScoring = () => {
     if (isRunning) {
@@ -486,58 +468,40 @@ export default function LeadScoring({ onUpdateScoringCount, addLog }) {
         /* Quando grupo está selecionado: Área de Trabalho (#scWork) */
         <div id="scWork" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Top 3 Steps */}
-          <div className="sc-steps" data-od-id="scoring-steps">
-            {/* Step 1: Grupo */}
-            <div className="sc-step">
-              <div className="lb">1 · Grupo</div>
-              <button
-                type="button"
-                className="sc-pick"
-                id="scGroupBtn"
-                title="Clique para trocar de grupo"
-                onClick={() => handleSelectGroup('')}
-              >
-                {currentGroup.name}
-              </button>
-              <span className="result-count" id="scGroupN">
-                {groupLeads.length} leads
-              </span>
-            </div>
-
-            {/* Step 2: IA e Análise */}
-            <div className="sc-step">
-              <div className="lb">2 · IA e análise</div>
-              <div className="sc-cfg" id="scCfgLine">
-                IA: {currentProviderName} · {aiConfig.model || 'modelo padrão'} · {currentPresetName}
-              </div>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost"
-                id="scCfgBtn"
-                onClick={handleOpenAiModal}
-              >
-                Configurar
-              </button>
-            </div>
-
-            {/* Step 3: Ação */}
-            <div className="sc-step">
-              <div className="lb">3 · Ação</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  id="scRunBtn"
-                  onClick={handleRunScoring}
-                >
-                  {isRunning ? 'Pausar análise' : 'Analisar grupo'}
-                </button>
-                <span className="result-count" id="scRunN">
-                  {isRunning
-                    ? `${progressCount.current}/${progressCount.total}`
-                    : `${groupLeads.length} leads serão analisados.`}
+          <div className="sc-cabecalho" data-od-id="scoring-header">
+            <div className="sc-cab-topo">
+              <span className="sc-cab-icone"><Target size={18} strokeWidth={1.5} /></span>
+              <div className="sc-cab-texto">
+                <h2>{currentGroup.name}</h2>
+                <span>
+                  {groupLeads.length} {groupLeads.length === 1 ? 'lead' : 'leads'} · foco em {currentPresetName}
                 </span>
               </div>
+              <div className="sc-cab-acoes">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleSelectGroup('')}>
+                  Trocar grupo
+                </button>
+                <button type="button" className="btn btn-primary" id="scRunBtn" onClick={handleRunScoring}>
+                  {isRunning
+                    ? `Pausar (${progressCount.current}/${progressCount.total})`
+                    : `Analisar ${groupLeads.length} ${groupLeads.length === 1 ? 'lead' : 'leads'}`}
+                </button>
+              </div>
+            </div>
+
+            <div className="sc-cab-rodape">
+              <span className="sc-cab-ia">
+                <Bot size={13} strokeWidth={1.5} aria-hidden="true" />
+                {currentProviderName} · {aiConfig.model || 'modelo padrão'}
+                {onAbrirConfiguracoes && (
+                  <button type="button" className="sc-link" onClick={onAbrirConfiguracoes}>
+                    ajustar em Configurações
+                  </button>
+                )}
+              </span>
+              <button type="button" className="btn btn-ghost btn-sm" id="scCfgBtn" onClick={handleOpenAiModal}>
+                Mudar foco
+              </button>
             </div>
           </div>
 
@@ -742,99 +706,10 @@ export default function LeadScoring({ onUpdateScoringCount, addLog }) {
             style={{ width: 'min(520px, 94vw)' }}
           >
             <div className="modal-head">
-              <h2 id="aiCfgTitle">Configurar análise</h2>
+              <h2 id="aiCfgTitle">Foco da auditoria</h2>
             </div>
 
             <div className="modal-body" style={{ gridTemplateColumns: '1fr', gap: 14 }}>
-              <div className="exp-sec">Provedor de IA — quem executa</div>
-              <div id="aiProv" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {Object.keys(PROVIDERS).map((k) => {
-                  const p = PROVIDERS[k];
-                  const isSel = aiDraft.provider === k;
-                  return (
-                    <div
-                      key={k}
-                      className={`exp-row ${isSel ? 'sel' : ''}`}
-                      role="radio"
-                      aria-checked={isSel}
-                      tabIndex={0}
-                      onClick={() => {
-                        setAiDraft((prev) => ({
-                          ...prev,
-                          provider: k,
-                          baseUrl: k !== 'custom' && p.base ? p.base : prev.baseUrl
-                        }));
-                      }}
-                    >
-                      <b>{p.name}</b>
-                      <span>{isSel ? 'em uso' : 'usar'}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="field">
-                <label htmlFor="aiBase">Base URL</label>
-                <input
-                  id="aiBase"
-                  autoComplete="off"
-                  spellCheck="false"
-                  readOnly={aiDraft.provider !== 'custom'}
-                  placeholder={aiDraft.provider === 'custom' ? 'https://sua-api.com/v1' : ''}
-                  value={aiDraft.baseUrl || ''}
-                  onChange={(e) => setAiDraft({ ...aiDraft, baseUrl: e.target.value })}
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="aiKey">API Key</label>
-                <div className="hood-add" style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    id="aiKey"
-                    type={showKey ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    spellCheck="false"
-                    style={{ flex: 1 }}
-                    value={aiDraft.key || ''}
-                    onChange={(e) => setAiDraft({ ...aiDraft, key: e.target.value })}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    id="aiShow"
-                    onClick={() => setShowKey((v) => !v)}
-                  >
-                    {showKey ? 'Ocultar' : 'Mostrar'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="field">
-                <label htmlFor="aiModel">Modelo</label>
-                <input
-                  id="aiModel"
-                  list="aiModelsList"
-                  autoComplete="off"
-                  spellCheck="false"
-                  value={aiDraft.model || ''}
-                  onChange={(e) => setAiDraft({ ...aiDraft, model: e.target.value })}
-                />
-                <datalist id="aiModelsList">
-                  {(PROVIDERS[aiDraft.provider]?.models || []).map((m) => (
-                    <option key={m} value={m} />
-                  ))}
-                </datalist>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button type="button" className="btn btn-sm" id="aiTest" onClick={handleTestAi}>
-                  Testar conexão
-                </button>
-                <span className="result-count" id="aiTestMsg" role="status">
-                  {testStatusMsg}
-                </span>
-              </div>
-
               <div className="exp-sec">Foco da auditoria — o que procurar</div>
               <div id="auditPresets" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {Object.keys(AUDITS).map((k) => {
