@@ -193,6 +193,17 @@ function profileFrom(raw = {}) {
     website: cleanText(company.website || company.site || raw.website || raw.site || '', 300),
     email: cleanText(company.email || company.mail || raw.email || raw.mail || '', 180),
     category: cleanText(company.category || company.cat || raw.category || raw.cat || '', 100),
+    instagram: cleanText(company.instagram || company.ig || raw.instagram || raw.ig || '', 300),
+    facebook: cleanText(company.facebook || company.fb || raw.facebook || raw.fb || '', 300),
+    rating: toNumber(company.rating ?? raw.rating),
+    reviewCount: toNumber(company.reviewCount ?? company.totalReviews ?? raw.reviewCount ?? raw.reviews),
+    // So a miniatura, nao a foto cheia: o card mostra 34px e o arquivo do
+    // quadro nao precisa carregar a versao de 1920 de largura.
+    photos: (() => {
+      const fonte = company.photos || raw.photos || {};
+      const mini = cleanText(fonte.thumbnail || fonte.main || '', 500);
+      return mini ? { thumbnail: mini } : undefined;
+    })(),
     address: cleanText(company.address || raw.address || '', 220),
     city: cleanText(company.city || company.cidade || raw.city || raw.cidade || '', 100),
     state: cleanText(company.state || company.uf || raw.state || raw.uf || '', 8),

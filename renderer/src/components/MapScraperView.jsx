@@ -20,9 +20,11 @@ import {
   FileSpreadsheet,
   X,
   Navigation,
-  Star
+  MessageCircle
 } from 'lucide-react';
 import AvatarLead from './AvatarLead';
+import SeloNota from './SeloNota';
+import ChipsCanais from './ChipsCanais';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -975,120 +977,7 @@ export default function MapScraperView({
               setIsFilterDrawerOpen(false);
             }}
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              style={{ width: 16, height: 16 }}
-            >
-              <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
-              <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
-              <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
-            </svg>
-          </button>
-        </div>
-
-        {mapTileError && (
-          <div className="map-tile-error" role="alert">
-            <AlertCircle size={15} />
-            <span>{mapTileError}</span>
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={() => {
-                setMapTileError('');
-                tileErrorsRef.current = 0;
-                tileLayerRef.current?.redraw?.();
-              }}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        )}
-
-        {/* Popover de Basemap */}
-        {isBasePopOpen && (
-          <div className="map-pop" id="basePop">
-            <button
-              type="button"
-              className="bopt"
-              aria-pressed={baseKey === 'padrao'}
-              onClick={() => { setBaseKey('padrao'); setIsBasePopOpen(false); }}
-            >
-              Padrão
-            </button>
-            <button
-              type="button"
-              className="bopt"
-              aria-pressed={baseKey === 'satelite'}
-              onClick={() => { setBaseKey('satelite'); setIsBasePopOpen(false); }}
-            >
-              Satélite
-            </button>
-            <button
-              type="button"
-              className="bopt"
-              aria-pressed={baseKey === 'terreno'}
-              onClick={() => { setBaseKey('terreno'); setIsBasePopOpen(false); }}
-            >
-              Terreno
-            </button>
-          </div>
-        )}
-
-        {/* Popover de Localização */}
-        {isLocPopOpen && (
-          <div className="map-pop" id="locPop" style={{ minWidth: 260, padding: 12 }}>
-            <div className="loc-title">Minha localização</div>
-            <div className="field" style={{ marginTop: 8 }}>
-              <div className="ac-wrap">
-                <input
-                  id="locAddr"
-                  placeholder="Digite seu endereço…"
-                  autoComplete="off"
-                  aria-label="Digite seu endereço"
-                  style={{ minHeight: 44 }}
-                  value={locAddrQuery}
-                  onChange={(e) => handleAddrSearchChange(e.target.value)}
-                />
-                {locSuggestions.length > 0 && (
-                  <div className="ac-list" role="listbox">
-                    {locSuggestions.map((item, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        className="ac-item"
-                        onClick={() => handlePickAddress(item)}
-                      >
-                        <span title={item.full}>{item.label}</span>
-                        <span className="t">Endereço</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {isSearchingLoc && <span className="map-location-searching" role="status">Buscando endereço…</span>}
-              {locationError && <span className="field-err" role="alert">{locationError}</span>}
-            </div>
-
-            <button type="button" className="loc-auto" id="locAuto" onClick={handleUseMyLocation}>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#EA4335"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                style={{ width: 17, height: 17 }}
-              >
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
+            <MapPin size={15} strokeWidth={2} aria-hidden="true" />
               Usar minha localização
             </button>
 
@@ -1369,21 +1258,19 @@ export default function MapScraperView({
                   <div className="lead-card-corpo">
                     <AvatarLead lead={lead} size={44} />
                     <div className="lead-card-texto">
-                      <div className="lead-top">
-                        <b>{name}</b>
-                        <span className="rate">
-                          <Star size={13} strokeWidth={0} fill="currentColor" aria-hidden="true" />
-                          <b className="rv">{rating}</b>
-                          <span className="rc">({reviews})</span>
+                      <b className="lead-nome">{name}</b>
+                      <span className="lead-cat">{getLeadCat(lead)}</span>
+                      {(hood || city) && (
+                        <span className="lead-local">
+                          <MapPin size={11} strokeWidth={1.5} aria-hidden="true" />
+                          {`${hood || city}${uf ? ` · ${uf}` : ''}`}
                         </span>
-                      </div>
-
-                      <div className="lead-meta">
-                        {getLeadCat(lead)}
-                        {(hood || city) ? ` · ${hood || city}${uf ? ` · ${uf}` : ''}` : ''}
-                      </div>
+                      )}
                     </div>
+                    <SeloNota nota={rating} avaliacoes={reviews} size="sm" />
                   </div>
+
+                  <ChipsCanais lead={lead} limite={3} className="lead-canais" />
 
                   <div className="lead-actions">
                     {phone && (
@@ -1398,18 +1285,7 @@ export default function MapScraperView({
                           handleWhatsAppLead(lead);
                         }}
                       >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="var(--accent)"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                          style={{ width: 15, height: 15 }}
-                        >
-                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                        </svg>
+                        <MessageCircle size={15} strokeWidth={2} style={{ color: 'var(--accent)' }} aria-hidden="true" />
                       </button>
                     )}
 
@@ -1451,20 +1327,7 @@ export default function MapScraperView({
                           window.open(`https://instagram.com/${ig.replace('@', '')}`, '_blank', 'noopener');
                         }}
                       >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#E056A0"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                          style={{ width: 15, height: 15 }}
-                        >
-                          <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-                        </svg>
+                        <Instagram size={15} strokeWidth={2} style={{ color: '#E056A0' }} aria-hidden="true" />
                       </button>
                     )}
 

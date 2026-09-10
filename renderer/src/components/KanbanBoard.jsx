@@ -18,6 +18,9 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
+import AvatarLead from './AvatarLead';
+import SeloNota from './SeloNota';
+import ChipsCanais from './ChipsCanais';
 import { readLocalArray } from '../leadData';
 
 const FIELD_OPTIONS = [
@@ -460,8 +463,17 @@ export default function KanbanBoard({ onNavigate, addLog }) {
                   const profile = card.entity.profile || {};
                   return (
                     <article key={card.entityKey} className="kanban-card" draggable onDragStart={() => setDraggingKey(card.entityKey)} onDragEnd={() => setDraggingKey(null)} onClick={() => setSelectedCard(card)}>
-                      <div className="kanban-card-title"><GripVertical size={15} aria-hidden="true" /><strong>{cardName(card)}</strong>{card.manualOverride ? <span title="Movido manualmente">Manual</span> : null}</div>
-                      <div className="kanban-card-meta"><span>{profile.category || 'Sem categoria'}</span>{profile.city ? <span>{profile.city}</span> : null}</div>
+                      <div className="kanban-card-topo">
+                        <GripVertical size={15} className="kanban-grip" aria-hidden="true" />
+                        <AvatarLead lead={profile} size={34} />
+                        <div className="kanban-card-texto">
+                          <strong>{cardName(card)}</strong>
+                          <span>{profile.category || 'Sem categoria'}{profile.city ? ` · ${profile.city}` : ''}</span>
+                        </div>
+                        {profile.rating ? <SeloNota nota={profile.rating} avaliacoes={profile.reviewCount} size="sm" /> : null}
+                        {card.manualOverride ? <span className="kanban-manual" title="Movido manualmente">Manual</span> : null}
+                      </div>
+                      <ChipsCanais lead={profile} limite={3} />
                       <div className="kanban-card-bottom"><span className="kanban-score">Score <b>{Number(profile.score || 0)}</b></span><span className="kanban-source-chips">{cardSources(card).map((source) => <i key={source}>{source}</i>)}</span></div>
                       <label className="kanban-card-move" onClick={(event) => event.stopPropagation()}>
                         <span className="sr-only">Mover {cardName(card)} para</span>
