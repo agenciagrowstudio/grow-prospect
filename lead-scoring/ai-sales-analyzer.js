@@ -104,6 +104,19 @@ function resolveProviderConfig(ai = {}) {
       },
     };
   }
+  if (provider === "gemini") {
+    // O Google publica um endpoint compativel com o formato OpenAI, entao o
+    // Gemini entra aqui sem cliente HTTP novo. A chave vai no Bearer, como nos
+    // outros; o header X-goog-api-key e do endpoint nativo, que nao usamos.
+    return {
+      provider,
+      apiKey: ai.apiKey || "",
+      model: ai.model || "gemini-flash-latest",
+      defaultModel: "gemini-flash-latest",
+      chatCompletionsUrl: joinChatUrl(ai.baseUrl || "https://generativelanguage.googleapis.com/v1beta/openai"),
+      headers: parseExtraHeaders(ai.extraHeaders),
+    };
+  }
   if (provider === "custom") {
     return {
       provider,
@@ -418,4 +431,4 @@ function clamp(value) {
   return Math.max(0, Math.min(100, Math.round(Number(value || 0))));
 }
 
-module.exports = { analyzeWithSalesAI, analyzeBatchWithSalesAI, fallbackSalesAnalysis, resolveProviderConfig, resolveProviderChain };
+module.exports = { analyzeWithSalesAI, analyzeBatchWithSalesAI, fallbackSalesAnalysis, resolveProviderConfig, resolveProviderChain, requestChatCompletion };
