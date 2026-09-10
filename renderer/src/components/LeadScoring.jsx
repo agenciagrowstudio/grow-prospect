@@ -667,7 +667,7 @@ export default function LeadScoring({ onUpdateScoringCount, addLog }) {
                         </td>
                         <td>
                           <b
-                            style={{ cursor: 'pointer', color: 'var(--teal-deep)' }}
+                            style={{ cursor: 'pointer', color: 'var(--accent)' }}
                             onClick={() => setDetailLead(lead)}
                           >
                             {lead.name || 'Empresa'}

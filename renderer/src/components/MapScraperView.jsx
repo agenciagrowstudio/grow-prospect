@@ -19,8 +19,10 @@ import {
   ChevronDown,
   FileSpreadsheet,
   X,
-  Navigation
+  Navigation,
+  Star
 } from 'lucide-react';
+import AvatarLead from './AvatarLead';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -1364,19 +1366,23 @@ export default function MapScraperView({
                   data-od-id={`lead-card-${pos}`}
                   onClick={() => handleSpotlightLead(lead, leadId, loc?.lat, loc?.lng, true)}
                 >
-                  <div className="lead-top">
-                    <b>{name}</b>
-                    <span className="rate">
-                      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                      <b className="rv">{rating}</b>
-                      <span className="rc">({reviews})</span>
-                    </span>
-                  </div>
+                  <div className="lead-card-corpo">
+                    <AvatarLead lead={lead} size={44} />
+                    <div className="lead-card-texto">
+                      <div className="lead-top">
+                        <b>{name}</b>
+                        <span className="rate">
+                          <Star size={13} strokeWidth={0} fill="currentColor" aria-hidden="true" />
+                          <b className="rv">{rating}</b>
+                          <span className="rc">({reviews})</span>
+                        </span>
+                      </div>
 
-                  <div className="lead-meta">
-                    {hood || city ? `${hood || city}${uf ? ` · ${uf}` : ''}` : getLeadCat(lead)}
+                      <div className="lead-meta">
+                        {getLeadCat(lead)}
+                        {(hood || city) ? ` · ${hood || city}${uf ? ` · ${uf}` : ''}` : ''}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="lead-actions">

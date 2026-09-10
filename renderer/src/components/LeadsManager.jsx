@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import GraficoArea, { construirSerie, lerExtracoes, totalSerie, variacaoSerie } from './GraficoArea';
+import AvatarLead from './AvatarLead';
+import IconeNicho from './IconeNicho';
 import {
   Phone,
   Globe,
@@ -869,7 +871,8 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
               {chartGroups.map(({ label, items }) => {
                 const val = getMetricValue(items, bMet);
                 return (
-                  <div key={label} className="lr" style={{ display: 'flex', alignItems: 'center', padding: '9px 2px', borderBottom: '1px solid var(--border)', fontSize: '13px' }}>
+                  <div key={label} className="lr" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 2px', borderBottom: '1px solid var(--border)', fontSize: '13px' }}>
+                    {bDim === 'cat' ? <IconeNicho categoria={label} /> : null}
                     <span>{label}</span>
                     <b style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{formatMetricValue(bMet, val)}</b>
                   </div>
@@ -883,7 +886,10 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                 const pct = Math.round((val / maxMetricVal) * 100);
                 return (
                   <div key={label} className="bar-row">
-                    <span title={label}>{label}</span>
+                    <span title={label} className="bar-row-nome">
+                      {bDim === 'cat' ? <IconeNicho categoria={label} /> : null}
+                      {label}
+                    </span>
                     <div className="bar-track">
                       <div className="bar-fill" style={{ width: `${pct}%`, background: 'var(--accent)' }} />
                     </div>
@@ -1163,15 +1169,18 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       if (colId === 'nome') {
                         return (
                           <td key={colId}>
-                            <b
-                              style={{ cursor: 'pointer', color: 'var(--teal-deep)' }}
-                              onClick={() => {
-                                setActiveLead(l);
-                                setLeadModalTab('dados');
-                              }}
-                            >
-                              {getLeadName(l)}
-                            </b>
+                            <span className="td-empresa">
+                              <AvatarLead lead={l} size={30} />
+                              <b
+                                style={{ cursor: 'pointer', color: 'var(--accent)' }}
+                                onClick={() => {
+                                  setActiveLead(l);
+                                  setLeadModalTab('dados');
+                                }}
+                              >
+                                {getLeadName(l)}
+                              </b>
+                            </span>
                           </td>
                         );
                       }

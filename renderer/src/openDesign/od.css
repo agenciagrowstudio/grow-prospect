@@ -1017,3 +1017,26 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 .cfg-sobre>div{display:flex;flex-direction:column;gap:2px}
 .cfg-sobre span{font-size:12px;color:var(--meta)}
 .cfg-sobre b{font-size:14px;font-weight:600;color:var(--fg)}
+
+/* --- Retrato do lead e icone de nicho ----------------------------------- */
+
+.av-lead{flex-shrink:0;overflow:hidden;display:grid;place-items:center;background:var(--surface-warm);color:#12121a}
+.av-lead img{width:100%;height:100%;object-fit:cover;display:block}
+.av-lead-icone{border:1px solid rgba(16,24,40,.06)}
+
+/* O card da lista do Maps virou retrato mais texto. O texto precisa de
+   min-width zero, senao o nome longo empurra a estrela para fora. */
+.lead-card-corpo{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.lead-card-texto{flex:1;min-width:0}
+.lead-card-texto .lead-top{margin:0}
+.lead-card-texto .lead-meta{margin-top:2px}
+
+/* Icone do nicho na lista de categorias, no lugar do ponto colorido. */
+.nicho-chip{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex-shrink:0;color:#12121a}
+
+/* Nome da empresa na tabela, agora com retrato ao lado. */
+.td-empresa{display:flex;align-items:center;gap:9px;min-width:0}
+.td-empresa b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Nome da categoria na lista de barras, com o icone antes. */
+.bar-row-nome{display:flex;align-items:center;gap:8px;min-width:0}
