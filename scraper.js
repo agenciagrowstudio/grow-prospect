@@ -12,7 +12,7 @@ function checkCancelled(cancelToken) {
   }
 }
 
-async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = console.log, cancelToken = null) {
+async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = console.log, cancelToken = null, pais = 'BR') {
   onProgress('Launching browser...');
   let browser;
   const launchAttempts = [
@@ -117,7 +117,7 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
           if (needsGeocode) {
             try {
               checkCancelled(cancelToken);
-              const geo = await geocodeAddress(place.address, searchQuery);
+              const geo = await geocodeAddress(place.address, searchQuery, pais);
               if (geo && isValidCoord(geo.lat, geo.lng)) {
                 place.latitude = geo.lat;
                 place.longitude = geo.lng;

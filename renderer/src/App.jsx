@@ -202,7 +202,7 @@ function AppInner() {
   const handleMaximize = () => window.electronAPI?.winMaximize();
   const handleClose = () => window.electronAPI?.winClose();
 
-  const handleStartExtraction = async ({ niche, neigh, city, limit }) => {
+  const handleStartExtraction = async ({ niche, neigh, city, pais = 'BR', limit }) => {
     if (activeExtraction) {
       addNotification({
         type: 'info',
@@ -219,7 +219,9 @@ function AppInner() {
       type: 'info',
       category: 'scraper',
       title: 'Iniciando Extração',
-      message: `Buscando ${niche} em ${neigh}, ${city}...`
+      message: pais === 'US'
+        ? `Buscando ${niche} em ${city} (Estados Unidos)...`
+        : `Buscando ${niche} em ${neigh}, ${city}...`
     });
 
     if (!window.electronAPI || typeof window.electronAPI.startScrape !== 'function') {
@@ -227,9 +229,9 @@ function AppInner() {
       return;
     }
 
-    setActiveExtraction({ id: searchId, query: qstr, startedAt: Date.now() });
+    setActiveExtraction({ id: searchId, query: qstr, pais, startedAt: Date.now() });
     try {
-      const res = await window.electronAPI.startScrape(qstr, limit, searchId);
+      const res = await window.electronAPI.startScrape(qstr, limit, searchId, pais);
       if (!res?.success) {
         if (res?.cancelled) {
           addNotification({ type: 'info', category: 'scraper', title: 'Extração cancelada', message: 'Nenhum resultado parcial foi adicionado à base.' });
@@ -242,7 +244,7 @@ function AppInner() {
 
       const current = readLocalArray('sigma_leads');
       const combined = normalizeLeadCollection([
-        ...resultLeads.map((lead) => ({ ...lead, searchId, id: lead.id || Math.random().toString(36).slice(2) })),
+        ...resultLeads.map((lead) => ({ ...lead, searchId, pais, id: lead.id || Math.random().toString(36).slice(2) })),
         ...current,
       ]);
       const currentSearches = readLocalArray('sigma_searches');
@@ -251,8 +253,9 @@ function AppInner() {
         {
           id: searchId,
           query: qstr,
-          label: `${niche} · ${neigh}${city ? ` · ${city}` : ''}`,
+          label: `${niche} · ${neigh}${city ? ` · ${city}` : ''}${pais === 'US' ? ' · EUA' : ''}`,
           source: 'maps',
+          pais,
           timestamp: Date.now(),
         },
       ];
@@ -518,12 +521,12 @@ function AppInner() {
         isOpen={isNewExtractionOpen}
         onClose={() => setIsNewExtractionOpen(false)}
         onStartExtraction={handleStartExtraction}
-        onAddToQueue={({ niche, neigh, city }) => {
+        onAddToQueue={({ niche, neigh, city, pais }) => {
           addNotification({
             type: 'info',
             category: 'scraper',
             title: 'Adicionado à Fila',
-            message: `${niche} em ${neigh}, ${city}`
+            message: `${niche} em ${neigh || city}${pais === 'US' ? ' (EUA)' : ''}`
           });
         }}
         isProcessing={Boolean(activeExtraction)}

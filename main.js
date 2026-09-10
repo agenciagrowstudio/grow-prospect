@@ -46,6 +46,7 @@ const { saveProspectingCSV } = require("./lead-scoring/export-service");
 const { KanbanStore } = require("./kanban/kanban-store");
 const { normalizeAddress } = require("./utils/address-normalizer");
 const { geocodeAddress, isValidCoord } = require("./utils/geocode");
+const { resolvePais } = require("./utils/paises");
 
 const autoUpdaterMod = require("./utils/auto-updater");
 const { ensureInstallId } = require("./utils/install-id");
@@ -1235,8 +1236,11 @@ ipcMain.handle("metrics-settings-set", async (_, patch = {}) => {
 });
 
 // ─── START SCRAPE ──────────────────────────
-ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId }) => {
+ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais }) => {
   const cleanQuery = limitString(query, MAX_QUERY_LENGTH).trim();
+  // O pais decide o filtro da geocodificacao. resolvePais nunca devolve
+  // nulo, entao entrada estranha do renderer cai no Brasil.
+  const paisExtracao = resolvePais(pais).sigla;
   const cleanMaxResults = clampInteger(maxResults, 1, MAX_SCRAPE_RESULTS, 30);
   const key = limitString(queryId, 80, "") || `scrape_${Date.now()}`;
   const cancelToken = { cancelled: false };
@@ -1260,6 +1264,7 @@ ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId }) => {
         });
       },
       cancelToken,
+      paisExtracao,
     );
     if (!result || result.success === false) {
       const error = new Error(result?.error || "Não foi possível concluir a busca no Google Maps.");

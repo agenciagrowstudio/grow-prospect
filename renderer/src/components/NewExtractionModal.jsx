@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import MapaPreviaLocal from './MapaPreviaLocal';
 
-const NICHOS = [
+const NICHOS_BR = [
   'Dentistas', 'Clínica odontológica', 'Ortodontista', 'Odontologia', 'Aparelho ortodôntico',
   'Academias', 'Personal trainer', 'Crossfit', 'Restaurantes', 'Pizzarias', 'Hamburguerias',
   'Comida japonesa', 'Escritório de advocacia', 'Advogados', 'Advocacia trabalhista',
@@ -13,7 +13,7 @@ const NICHOS = [
   'Agências de marketing', 'Padarias', 'Farmácias', 'Hotéis', 'Lava-jatos', 'Clínicas médicas', 'Laboratórios'
 ];
 
-const CIDADES = [
+const CIDADES_BR = [
   ['São Paulo', 'SP'], ['Guarulhos', 'SP'], ['Campinas', 'SP'], ['São Bernardo do Campo', 'SP'],
   ['Santo André', 'SP'], ['São José dos Campos', 'SP'], ['Osasco', 'SP'], ['Ribeirão Preto', 'SP'],
   ['Sorocaba', 'SP'], ['Santos', 'SP'], ['Mauá', 'SP'], ['São José do Rio Preto', 'SP'],
@@ -34,7 +34,7 @@ const CIDADES = [
   ['Boa Vista', 'RR'], ['Macapá', 'AP'], ['Brasília', 'DF']
 ].map(([n, uf]) => ({ n, uf, estado: false }));
 
-const ESTADOS = [
+const ESTADOS_BR = [
   ['Acre', 'AC'], ['Alagoas', 'AL'], ['Amapá', 'AP'], ['Amazonas', 'AM'], ['Bahia', 'BA'],
   ['Ceará', 'CE'], ['Espírito Santo', 'ES'], ['Goiás', 'GO'], ['Maranhão', 'MA'],
   ['Mato Grosso', 'MT'], ['Mato Grosso do Sul', 'MS'], ['Minas Gerais', 'MG'], ['Pará', 'PA'],
@@ -44,7 +44,64 @@ const ESTADOS = [
   ['Sergipe', 'SE'], ['Tocantins', 'TO'], ['Distrito Federal', 'DF']
 ].map(([n, uf]) => ({ n, uf, estado: true }));
 
-const POP_CITIES = ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília', 'Curitiba', 'Porto Alegre', 'Salvador', 'Recife', 'Fortaleza', 'Goiânia'];
+const POP_CITIES_BR = ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília', 'Curitiba', 'Porto Alegre', 'Salvador', 'Recife', 'Fortaleza', 'Goiânia'];
+
+/**
+ * Nichos e cidades da prospeccao de brasileiros nos Estados Unidos.
+ *
+ * A lista de nichos e diferente da brasileira de proposito. O alvo aqui nao e
+ * o mercado americano em geral, e o negocio que atende a comunidade
+ * brasileira: restaurante, padaria, mercado, salao, limpeza, construcao,
+ * despachante. Buscar "Dentistas" em Framingham devolveria consultorio
+ * americano, que nao e o cliente.
+ */
+const NICHOS_US = [
+  'Restaurante brasileiro', 'Churrascaria', 'Padaria brasileira', 'Acai', 'Salgados brasileiros',
+  'Mercado brasileiro', 'Loja de produtos brasileiros', 'Salao de beleza brasileiro',
+  'Barbearia brasileira', 'Manicure brasileira', 'Estetica brasileira', 'Depilacao',
+  'Limpeza residencial', 'Cleaning service brasileiro', 'Construcao civil', 'Handyman brasileiro',
+  'Pintor brasileiro', 'Instalacao de piso', 'Landscaping brasileiro', 'Mudanca e transporte',
+  'Despachante brasileiro', 'Advogado de imigracao', 'Contador brasileiro', 'Remessa de dinheiro',
+  'Seguro para brasileiros', 'Auto repair brasileiro', 'Personal trainer brasileiro',
+  'Buffet e festa brasileira', 'Fotografo brasileiro', 'Igreja brasileira',
+  'Escola de portugues', 'Agencia de viagem brasileira',
+];
+
+/**
+ * Cidades com concentracao conhecida de brasileiros, mais as metropoles
+ * grandes. Vale confirmar cidade por cidade com uma extracao pequena antes de
+ * montar lista longa: a concentracao muda com o tempo.
+ */
+const CIDADES_US = [
+  ['Framingham', 'MA'], ['Everett', 'MA'], ['Somerville', 'MA'], ['Boston', 'MA'],
+  ['Marlborough', 'MA'], ['Brockton', 'MA'], ['Lowell', 'MA'], ['Revere', 'MA'],
+  ['Pompano Beach', 'FL'], ['Deerfield Beach', 'FL'], ['Orlando', 'FL'], ['Kissimmee', 'FL'],
+  ['Boca Raton', 'FL'], ['Miami', 'FL'], ['Fort Lauderdale', 'FL'], ['Tampa', 'FL'],
+  ['Newark', 'NJ'], ['Harrison', 'NJ'], ['Kearny', 'NJ'], ['Elizabeth', 'NJ'],
+  ['Danbury', 'CT'], ['Bridgeport', 'CT'], ['Stamford', 'CT'],
+  ['Marietta', 'GA'], ['Atlanta', 'GA'], ['Smyrna', 'GA'],
+  ['New York', 'NY'], ['Mount Vernon', 'NY'], ['Yonkers', 'NY'],
+  ['Los Angeles', 'CA'], ['San Francisco', 'CA'], ['San Diego', 'CA'],
+  ['Houston', 'TX'], ['Dallas', 'TX'], ['Austin', 'TX'],
+  ['Chicago', 'IL'], ['Philadelphia', 'PA'], ['Washington', 'DC'],
+  ['Las Vegas', 'NV'], ['Phoenix', 'AZ'], ['Denver', 'CO'],
+  ['Seattle', 'WA'], ['Portland', 'OR'], ['Charlotte', 'NC'], ['Nashville', 'TN'],
+].map(([n, uf]) => ({ n, uf, estado: false }));
+
+const ESTADOS_US = [
+  ['Massachusetts', 'MA'], ['Florida', 'FL'], ['New Jersey', 'NJ'], ['Connecticut', 'CT'],
+  ['Georgia', 'GA'], ['New York', 'NY'], ['California', 'CA'], ['Texas', 'TX'],
+  ['Illinois', 'IL'], ['Pennsylvania', 'PA'], ['Maryland', 'MD'], ['Virginia', 'VA'],
+  ['North Carolina', 'NC'], ['Arizona', 'AZ'], ['Nevada', 'NV'], ['Colorado', 'CO'],
+  ['Washington', 'WA'], ['Utah', 'UT'], ['Ohio', 'OH'], ['Michigan', 'MI'],
+].map(([n, uf]) => ({ n, uf, estado: true }));
+
+const POP_CITIES_US = ['Framingham', 'Pompano Beach', 'Orlando', 'Newark', 'Danbury', 'Marietta', 'Boston', 'Miami'];
+
+const CATALOGO = {
+  BR: { nichos: NICHOS_BR, cidades: CIDADES_BR, estados: ESTADOS_BR, populares: POP_CITIES_BR, rotuloEstado: 'Estado', rotuloCidade: 'Municipio' },
+  US: { nichos: NICHOS_US, cidades: CIDADES_US, estados: ESTADOS_US, populares: POP_CITIES_US, rotuloEstado: 'Estado', rotuloCidade: 'Cidade' },
+};
 
 function norm(s) {
   return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -58,6 +115,8 @@ export default function NewExtractionModal({
   isProcessing
 }) {
   const [step, setStep] = useState(1);
+  // O pais escolhido troca nichos, cidades e o filtro da geocodificacao.
+  const [pais, setPais] = useState('BR');
   const [nicho, setNicho] = useState('');
   const [nichoError, setNichoError] = useState(false);
   const [nichoSuggestions, setNichoSuggestions] = useState([]);
@@ -84,15 +143,18 @@ export default function NewExtractionModal({
       setCidadeError(false);
       setBairroInput('');
       setBairros([]);
+      setPais('BR');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
+  const cat = CATALOGO[pais] || CATALOGO.BR;
+
   const wzTitles = {
     1: 'Qual nicho você quer pesquisar?',
-    2: 'Em qual cidade?',
-    3: 'Quais bairros?'
+    2: pais === 'US' ? 'Em qual cidade dos Estados Unidos?' : 'Em qual cidade?',
+    3: pais === 'US' ? 'Quais bairros ou regiões?' : 'Quais bairros?'
   };
 
   const handleNichoChange = (val) => {
@@ -106,7 +168,7 @@ export default function NewExtractionModal({
     }
     const pre = [];
     const mid = [];
-    NICHOS.forEach((t) => {
+    cat.nichos.forEach((t) => {
       const nt = norm(t);
       if (nt.indexOf(nq) === 0) pre.push(t);
       else if (nt.indexOf(nq) >= 0) mid.push(t);
@@ -114,6 +176,21 @@ export default function NewExtractionModal({
     const results = pre.concat(mid).slice(0, 7);
     setNichoSuggestions(results);
     setShowNichoList(results.length > 0);
+  };
+
+  const trocaPais = (sigla) => {
+    if (sigla === pais) return;
+    setPais(sigla);
+    // Cidade de um pais nao existe no outro, e bairro muito menos. Os dois
+    // voltam ao inicio. O nicho fica: se o usuario digitou, foi de proposito,
+    // e nome em portugues e justamente o que acha negocio brasileiro la.
+    setCidadeObj(null);
+    setCidadeInput('');
+    setCidadeError(false);
+    setLocSuggestions([]);
+    setShowLocList(false);
+    setBairros([]);
+    setBairroInput('');
   };
 
   const pickNicho = (val) => {
@@ -133,7 +210,7 @@ export default function NewExtractionModal({
       setShowLocList(false);
       return;
     }
-    const all = CIDADES.concat(ESTADOS);
+    const all = cat.cidades.concat(cat.estados);
     const scored = [];
     all.forEach((c) => {
       const nn = norm(c.n);
@@ -203,6 +280,7 @@ export default function NewExtractionModal({
       niche: nicho.trim(),
       neigh,
       city,
+      pais,
       limit: 1000
     });
     onClose();
@@ -230,12 +308,32 @@ export default function NewExtractionModal({
           {/* STEP 1: NICHO */}
           {step === 1 && (
             <div className="wz-step">
+              {/* Vem antes do nicho porque a lista de nichos depende dele. */}
+              <div className="wz-pais" role="group" aria-label="Onde prospectar">
+                <button
+                  type="button"
+                  className={`wz-pais-btn${pais === 'BR' ? ' on' : ''}`}
+                  aria-pressed={pais === 'BR'}
+                  onClick={() => trocaPais('BR')}
+                >
+                  Brasil
+                </button>
+                <button
+                  type="button"
+                  className={`wz-pais-btn${pais === 'US' ? ' on' : ''}`}
+                  aria-pressed={pais === 'US'}
+                  onClick={() => trocaPais('US')}
+                >
+                  Brasileiros nos EUA
+                </button>
+              </div>
+
               <div className={`field ${nichoError ? 'invalid' : ''}`}>
                 <label htmlFor="wzNicho">Nicho</label>
                 <div className="ac-wrap">
                   <input
                     id="wzNicho"
-                    placeholder="Ex.: dentistas, advogados, pizzarias"
+                    placeholder={pais === 'US' ? 'Ex.: restaurante brasileiro, limpeza, despachante' : 'Ex.: dentistas, advogados, pizzarias'}
                     autoComplete="off"
                     value={nicho}
                     onChange={(e) => handleNichoChange(e.target.value)}
@@ -275,7 +373,7 @@ export default function NewExtractionModal({
                   <ChevronLeft size={16} strokeWidth={1.5} />
                 </button>
                 <div className="car-view" ref={carViewRef} role="list">
-                  {NICHOS.map((t) => (
+                  {cat.nichos.map((t) => (
                     <button
                       key={t}
                       type="button"
@@ -307,7 +405,7 @@ export default function NewExtractionModal({
                 <div className="ac-wrap">
                   <input
                     id="wzCidade"
-                    placeholder="Ex.: Rio de Janeiro, São Paulo, Curitiba"
+                    placeholder={pais === 'US' ? 'Ex.: Framingham, Pompano Beach, Newark' : 'Ex.: Rio de Janeiro, São Paulo, Curitiba'}
                     autoComplete="off"
                     value={cidadeInput}
                     onChange={(e) => handleLocChange(e.target.value)}
@@ -333,9 +431,9 @@ export default function NewExtractionModal({
                         >
                           <span>
                             <span>{c.n} — {c.uf}</span>
-                            <small>{c.estado ? 'Estado' : 'Município'}</small>
+                            <small>{c.estado ? cat.rotuloEstado : cat.rotuloCidade}</small>
                           </span>
-                          <span className="t">{c.estado ? 'Estado' : 'Município'}</span>
+                          <span className="t">{c.estado ? cat.rotuloEstado : cat.rotuloCidade}</span>
                         </button>
                       ))}
                     </div>
@@ -345,8 +443,8 @@ export default function NewExtractionModal({
               </div>
 
               <div className="ex-chips" style={{ marginTop: '12px' }}>
-                {POP_CITIES.map((name) => {
-                  const hit = CIDADES.find((c) => c.n === name);
+                {cat.populares.map((name) => {
+                  const hit = cat.cidades.find((c) => c.n === name);
                   if (!hit) return null;
                   return (
                     <button
@@ -366,7 +464,7 @@ export default function NewExtractionModal({
              </div>
 
               {/* Confere o lugar antes de gastar uma extracao. */}
-              <MapaPreviaLocal local={cidadeObj} textoLivre={cidadeInput} bairros={[]} />
+              <MapaPreviaLocal pais={pais} local={cidadeObj} textoLivre={cidadeInput} bairros={[]} />
             </div>
           )}
 
@@ -375,11 +473,15 @@ export default function NewExtractionModal({
             <div className="wz-step wz-2col">
              <div className="wz-2col-form">
               <div className="field">
-                <label htmlFor="wzBairro">Bairros (opcional — deixe em branco para o município inteiro)</label>
+                <label htmlFor="wzBairro">
+                  {pais === 'US'
+                    ? 'Bairros ou regiões (opcional: em branco busca a cidade inteira)'
+                    : 'Bairros (opcional: em branco busca o município inteiro)'}
+                </label>
                 <div className="hood-add">
                   <input
                     id="wzBairro"
-                    placeholder="Ex.: Copacabana, Pinheiros, Centro"
+                    placeholder={pais === 'US' ? 'Ex.: Downtown, Saxonville, Nobscot' : 'Ex.: Copacabana, Pinheiros, Centro'}
                     autoComplete="off"
                     value={bairroInput}
                     onChange={(e) => setBairroInput(e.target.value)}
@@ -412,11 +514,12 @@ export default function NewExtractionModal({
 
               {/* Com bairros na lista o mapa enquadra todos; sem nenhum, mostra
                   o municipio inteiro, que e exatamente o que sera extraido. */}
-              <MapaPreviaLocal local={cidadeObj} textoLivre={cidadeInput} bairros={bairros} />
+              <MapaPreviaLocal pais={pais} local={cidadeObj} textoLivre={cidadeInput} bairros={bairros} />
 
               <div className="wz-review wz-2col-full">
                 <b>{nicho || '—'}</b>
-                <span> · {cidadeLabel()} · {bairros.length ? `${bairros.length} bairro(s)` : 'município inteiro'}</span>
+                <span> · {cidadeLabel()} · {bairros.length ? `${bairros.length} bairro(s)` : (pais === 'US' ? 'cidade inteira' : 'município inteiro')}</span>
+                {pais === 'US' && <span className="wz-review-pais"> · Estados Unidos</span>}
               </div>
             </div>
           )}

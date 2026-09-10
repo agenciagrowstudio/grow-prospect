@@ -1,6 +1,8 @@
 const { createLeadId } = require("./prospecting-store");
 const { classifyUrl, VERSION: CLASSIFIER_VERSION } = require("./url-classifier");
 const { normalizeAddress } = require("../utils/address-normalizer");
+const { resolvePais } = require("../utils/paises");
+const { normalizePhone } = require("../whatsapp/phone-normalizer");
 
 function normalizeLead(raw, options = {}) {
   const lead = raw || {};
@@ -8,7 +10,10 @@ function normalizeLead(raw, options = {}) {
   const parsed = parseLocation(address, options.query || "");
   const phone = clean(lead.phone);
   const website = clean(lead.website);
-  const whatsapp = inferWhatsapp(phone, website);
+  // O pais vem da extracao que gerou o lead, nao de palpite sobre o
+  // endereco. Sem ele, telefone americano ganhava o codigo 55.
+  const pais = resolvePais(options.pais || lead.pais || lead.country);
+  const whatsapp = inferWhatsapp(phone, website, pais);
   const digitalPresence = classifyUrl(website);
   const company = {
     name: clean(lead.name || lead.company),
@@ -28,6 +33,7 @@ function normalizeLead(raw, options = {}) {
     latitude: lead.latitude || "",
     longitude: lead.longitude || "",
     googleMapsUrl: clean(lead.googleMapsUrl),
+    pais: pais.sigla,
   };
   return {
     id: lead.id || createLeadId(company),
@@ -72,15 +78,15 @@ function parseLocation(address, query) {
   return { city, state: stateMatch ? stateMatch[1].toUpperCase() : "" };
 }
 
-function inferWhatsapp(phone, website) {
+function inferWhatsapp(phone, website, pais) {
   const site = String(website || "");
   const waMatch = site.match(/(?:wa\.me\/|phone=)(\d{10,15})/i);
   if (waMatch) return `+${waMatch[1]}`;
-  const digits = String(phone || "").replace(/\D/g, "");
-  if (!digits) return "";
-  const br = digits.startsWith("55") ? digits : `55${digits}`;
-  if (br.length >= 12 && br.length <= 13) return `+${br}`;
-  return "";
+  // Delega ao normalizador do WhatsApp em vez de repetir a regra de
+  // prefixo aqui. Eram duas copias da mesma logica, e as duas erravam
+  // fora do Brasil.
+  const resultado = normalizePhone(String(phone || ""), pais);
+  return resultado.valid ? `+${resultado.number}` : "";
 }
 
 module.exports = { normalizeLead };

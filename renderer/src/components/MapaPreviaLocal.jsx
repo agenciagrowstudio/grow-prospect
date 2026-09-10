@@ -11,8 +11,19 @@ import 'leaflet/dist/leaflet.css';
  * apenas avisa em voz baixa.
  */
 
-const CENTRO_BRASIL = [-14.235, -51.925];
-const ZOOM_BRASIL = 3.6;
+/**
+ * Um registro proprio, pequeno, em vez de importar utils/paises: aquele e
+ * modulo do processo principal e traz coisa que a interface nao usa. O que o
+ * mapa precisa e so filtro do Nominatim, sufixo de busca e enquadramento.
+ */
+const PAISES_MAPA = {
+  BR: { nominatim: 'br', sufixo: 'Brasil', centro: [-14.235, -51.925], zoom: 3.6, zoomEstado: 6, zoomCidade: 11 },
+  US: { nominatim: 'us', sufixo: 'USA', centro: [39.8, -98.6], zoom: 3.4, zoomEstado: 6, zoomCidade: 11 },
+};
+
+function paisDoMapa(sigla) {
+  return PAISES_MAPA[String(sigla || 'BR').toUpperCase()] || PAISES_MAPA.BR;
+}
 
 // O Leaflet usa imagens do pacote para o marcador padrão, e o bundler quebra
 // esses caminhos. O resto do app resolve com divIcon, então seguimos igual.
@@ -80,15 +91,18 @@ function enfileira(tarefa) {
   return proxima;
 }
 
-async function geocodifica(consulta, sinal) {
-  const chave = normalizaConsulta(consulta);
-  if (!chave) return null;
+async function geocodifica(consulta, sinal, codigoPais = 'br') {
+  const base = normalizaConsulta(consulta);
+  if (!base) return null;
+  // O pais entra na chave: Springfield existe no Brasil e nos Estados
+  // Unidos, e sem isso o cache de um responderia pelo outro.
+  const chave = `${codigoPais}|${base}`;
 
   const cache = leCache();
   if (cache[chave]) return cache[chave];
 
   const resposta = await enfileira(() => fetch(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&q=${encodeURIComponent(consulta)}`,
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=${codigoPais}&q=${encodeURIComponent(consulta)}`,
     { headers: { Accept: 'application/json' }, signal: sinal },
   ));
 
@@ -110,7 +124,8 @@ async function geocodifica(consulta, sinal) {
   return achado;
 }
 
-export default function MapaPreviaLocal({ local, textoLivre, bairros = [] }) {
+export default function MapaPreviaLocal({ pais = 'BR', local, textoLivre, bairros = [] }) {
+  const info = paisDoMapa(pais);
   const containerRef = useRef(null);
   const mapaRef = useRef(null);
   const camadaRef = useRef(null);
@@ -123,8 +138,8 @@ export default function MapaPreviaLocal({ local, textoLivre, bairros = [] }) {
     if (!containerRef.current || mapaRef.current) return undefined;
 
     const mapa = L.map(containerRef.current, {
-      center: CENTRO_BRASIL,
-      zoom: ZOOM_BRASIL,
+      center: info.centro,
+      zoom: info.zoom,
       zoomControl: false,
       attributionControl: false,
       dragging: false,
@@ -169,7 +184,7 @@ export default function MapaPreviaLocal({ local, textoLivre, bairros = [] }) {
       camada.clearLayers();
       setSituacao('vazio');
       setRotulo('');
-      mapa.flyTo(CENTRO_BRASIL, ZOOM_BRASIL, { duration: 0.6 });
+      mapa.flyTo(info.centro, info.zoom, { duration: 0.6 });
       return undefined;
     }
 
@@ -177,8 +192,8 @@ export default function MapaPreviaLocal({ local, textoLivre, bairros = [] }) {
     const nomesBairros = bairros.filter((b) => String(b).trim());
 
     const alvos = nomesBairros.length > 0
-      ? nomesBairros.map((b) => ({ consulta: `${b}, ${contexto}, Brasil`, titulo: b }))
-      : [{ consulta: `${nomeLocal}, Brasil`, titulo: nomeLocal }];
+      ? nomesBairros.map((b) => ({ consulta: `${b}, ${contexto}, ${info.sufixo}`, titulo: b }))
+      : [{ consulta: `${nomeLocal}, ${info.sufixo}`, titulo: nomeLocal }];
 
     const controlador = new AbortController();
     let cancelado = false;
@@ -189,7 +204,7 @@ export default function MapaPreviaLocal({ local, textoLivre, bairros = [] }) {
       try {
         const achados = [];
         for (const alvo of alvos) {
-          const achado = await geocodifica(alvo.consulta, controlador.signal);
+          const achado = await geocodifica(alvo.consulta, controlador.signal, info.nominatim);
           if (cancelado) return;
           if (achado) achados.push({ ...achado, titulo: alvo.titulo });
         }
@@ -212,7 +227,7 @@ export default function MapaPreviaLocal({ local, textoLivre, bairros = [] }) {
         if (achados.length === 1) {
           // Bairro pede aproximação; cidade mostra o contorno; estado precisa
           // de distância para caber na tela.
-          const zoom = nomesBairros.length > 0 ? 14 : (local?.estado ? 6 : 11);
+          const zoom = nomesBairros.length > 0 ? 14 : (local?.estado ? info.zoomEstado : info.zoomCidade);
           mapa.flyTo([achados[0].lat, achados[0].lng], zoom, { duration: 0.9 });
         } else {
           const limites = L.latLngBounds(achados.map((a) => [a.lat, a.lng]));
@@ -233,10 +248,10 @@ export default function MapaPreviaLocal({ local, textoLivre, bairros = [] }) {
       controlador.abort();
       window.clearTimeout(relogio);
     };
-  }, [local, textoLivre, bairros.join('|')]);
+  }, [pais, local, textoLivre, bairros.join('|')]);
 
   const mensagens = {
-    vazio: 'Escolha a cidade para ver no mapa.',
+    vazio: pais === 'US' ? 'Escolha a cidade americana para ver no mapa.' : 'Escolha a cidade para ver no mapa.',
     buscando: 'Localizando no mapa...',
     ok: rotulo,
     'nao-encontrado': 'Não localizei esse lugar no mapa. A extração funciona mesmo assim.',

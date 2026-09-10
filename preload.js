@@ -5,8 +5,8 @@ const { contextBridge, ipcRenderer, webFrame } = require("electron");
 webFrame.setZoomFactor(1);
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  startScrape: (query, maxResults, queryId) =>
-    ipcRenderer.invoke("start-scrape", { query, maxResults, queryId }),
+  startScrape: (query, maxResults, queryId, pais) =>
+    ipcRenderer.invoke("start-scrape", { query, maxResults, queryId, pais }),
   cancelScrape: (queryId) =>
     ipcRenderer.invoke("cancel-scrape", { queryId }),
   repairMapAddresses: (leads) =>

@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { normalizeAddress } = require("./address-normalizer");
+const { resolvePais } = require("./paises");
 
 let cachePathOverride = null;
 let memCache = null;
@@ -48,9 +49,12 @@ function saveCache() {
   } catch {}
 }
 
-function normalizeKey(address, hint) {
+function normalizeKey(address, hint, sigla = "BR") {
   const combined = `${normalizeAddress(address)} ${String(hint || "").trim()}`.toLowerCase().trim().replace(/\s+/g, " ");
-  return combined.replace(/brasil$/i, "").trim().slice(0, 240);
+  const base = combined.replace(/brasil$/i, "").trim().slice(0, 240);
+  // Cidades homonimas existem entre paises. Sem o pais na chave, o cache
+  // de uma responderia pela outra.
+  return `${String(sigla).toLowerCase()}|${base}`;
 }
 
 function extractCep(address) {
@@ -71,12 +75,13 @@ async function throttle() {
   lastRequestAt = Date.now();
 }
 
-async function geocodeAddress(address, hint) {
+async function geocodeAddress(address, hint, pais) {
+  const info = resolvePais(pais);
   const cleanAddress = normalizeAddress(address);
   const query = `${cleanAddress} ${String(hint || "").trim()}`.trim();
   if (!query || query.length < 4) return null;
 
-  const key = normalizeKey(cleanAddress, hint);
+  const key = normalizeKey(cleanAddress, hint, info.sigla);
   const cache = loadCache();
   const cached = cache[key];
   if (cached && cached.lat != null) {
@@ -88,13 +93,13 @@ async function geocodeAddress(address, hint) {
   await throttle();
 
   const q = encodeURIComponent(query);
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}&addressdetails=1&countrycodes=br`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}&addressdetails=1&countrycodes=${info.codigoNominatim}`;
 
   let res;
   try {
     res = await fetch(url, {
       headers: {
-        "User-Agent": "SigmaGMaps/1.0 (sigma-gmaps-scraper)",
+        "User-Agent": "GrowMaisProspect/1.0 (grow-prospect)",
         Accept: "application/json",
       },
       signal: AbortSignal.timeout(8000),
