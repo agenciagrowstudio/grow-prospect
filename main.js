@@ -47,6 +47,8 @@ const { KanbanStore } = require("./kanban/kanban-store");
 const { normalizeAddress } = require("./utils/address-normalizer");
 const { geocodeAddress, isValidCoord } = require("./utils/geocode");
 const { resolvePais } = require("./utils/paises");
+const { avaliaSinaisBrasileiros } = require("./lead-scoring/sinais-brasileiros");
+const { qualificaComIA } = require("./lead-scoring/sinais-brasileiros-ia");
 
 const autoUpdaterMod = require("./utils/auto-updater");
 const { ensureInstallId } = require("./utils/install-id");
@@ -1284,6 +1286,12 @@ ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais }) =
       seen.add(key);
       return true;
     });
+
+    data = data.map((item) => ({
+      ...item,
+      pais: paisExtracao,
+      sinalBr: avaliaSinaisBrasileiros({ ...item, pais: paisExtracao }),
+    }));
 
     emitProgress({ status: "running", current: data.length, total: data.length, message: `${data.length} resultados únicos após deduplicação.` });
 
@@ -2639,6 +2647,32 @@ ipcMain.handle("dialog-open-file", async (_, { filters } = {}) => {
 // ─── LEAD SCORING ──────────────────────────
 ipcMain.handle("lead-scoring-get-settings", async () => {
   return { success: true, settings: leadScoringService.getSettings() };
+});
+
+// ─── QUALIFICACAO DE NEGOCIO BRASILEIRO ───────────────────────
+ipcMain.handle("qualificar-brasileiros", async (_, { leads, comIA } = {}) => {
+  try {
+    const lista = Array.isArray(leads) ? leads.slice(0, 2000) : [];
+    if (!lista.length) return { success: true, resultados: [] };
+
+    if (!comIA) {
+      return {
+        success: true,
+        resultados: lista.map((lead, i) => ({
+          id: String(lead.id || i),
+          ...avaliaSinaisBrasileiros(lead),
+        })),
+      };
+    }
+
+    // A camada de IA usa a mesma configuracao do Lead Scoring, entao a chave
+    // que o usuario colou no painel vale aqui tambem.
+    const ai = leadScoringService?.getSettings?.()?.ai || {};
+    const resultados = await qualificaComIA(lista, ai);
+    return { success: true, resultados };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 ipcMain.handle("lead-scoring-update-settings", async (_, { patch }) => {

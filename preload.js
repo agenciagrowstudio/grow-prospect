@@ -7,6 +7,8 @@ webFrame.setZoomFactor(1);
 contextBridge.exposeInMainWorld("electronAPI", {
   startScrape: (query, maxResults, queryId, pais) =>
     ipcRenderer.invoke("start-scrape", { query, maxResults, queryId, pais }),
+  qualificarBrasileiros: (leads, comIA) =>
+    ipcRenderer.invoke("qualificar-brasileiros", { leads, comIA }),
   cancelScrape: (queryId) =>
     ipcRenderer.invoke("cancel-scrape", { queryId }),
   repairMapAddresses: (leads) =>

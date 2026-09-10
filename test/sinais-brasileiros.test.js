@@ -3,9 +3,9 @@ const test = require('node:test');
 
 const {
   avaliaSinaisBrasileiros,
-  qualificaComIA,
   extraiJson,
 } = require('../lead-scoring/sinais-brasileiros');
+const { qualificaComIA } = require('../lead-scoring/sinais-brasileiros-ia');
 
 test('categoria que declara origem sozinha ja classifica alto', () => {
   const r = avaliaSinaisBrasileiros({

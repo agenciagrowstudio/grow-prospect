@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import GraficoArea, { construirSerie, lerExtracoes, totalSerie, variacaoSerie } from './GraficoArea';
 import {
@@ -32,6 +32,7 @@ const DEFAULT_COLS = [
   { id: 'wa', label: 'WhatsApp' },
   { id: 'ig', label: 'Instagram' },
   { id: 'fb', label: 'Facebook' },
+  { id: 'br', label: 'Brasileiro' },
   { id: 'site', label: 'Site' },
   { id: 'mail', label: 'E-mail' },
   { id: 'av', label: 'Avaliação' },
@@ -130,6 +131,23 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   // State for visible columns
   const [visCols, setVisCols] = useState(['nome', 'tel', 'ig', 'av', 'status', 'city', 'hood']);
   const [showColPop, setShowColPop] = useState(false);
+  const colunaBrJaOferecida = useRef(false);
+
+  /**
+   * Liga a coluna do sinal brasileiro na primeira vez que a base tiver lead
+   * de fora do Brasil.
+   *
+   * Numa base so brasileira a coluna seria ruido: la todo lead e brasileiro.
+   * E acontece uma vez so, com trava em ref, senao o usuario que desligar a
+   * coluna a veria voltar na proxima extracao.
+   */
+  useEffect(() => {
+    if (colunaBrJaOferecida.current) return;
+    const temForaDoBrasil = leads.some((l) => String(l.pais || 'BR').toUpperCase() !== 'BR');
+    if (!temForaDoBrasil) return;
+    colunaBrJaOferecida.current = true;
+    setVisCols((prev) => (prev.includes('br') ? prev : [...prev, 'br']));
+  }, [leads]);
 
   // Filters
   const [bq, setBq] = useState('');
@@ -140,6 +158,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   const [bGrupo, setBGrupo] = useState('');
   const [bRate, setBRate] = useState(0);
   const [bChans, setBChans] = useState([]);
+  // Filtro do sinal brasileiro. O nivel vem gravado no lead pela extracao.
+  const [bSinalBr, setBSinalBr] = useState('');
+  const [qualificando, setQualificando] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   // Period
@@ -205,6 +226,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   // O Facebook passou a ser coletado porque na comunidade brasileira nos
   // Estados Unidos ele costuma ser o unico canal do negocio.
   const getLeadFb = (l) => l.facebook || l.fb || '';
+  const getSinalBr = (l) => (l.sinalBr && l.sinalBr.nivel) || '';
   const getLeadMail = (l) => l.email || l.mail || '';
   const getLeadCity = (l) => l.city || '';
   const getLeadUf = (l) => l.state || l.uf || '';
@@ -258,6 +280,13 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
       const ig = getLeadIg(l);
       const rn = parseFloat(String(getLeadRating(l)).replace(',', '.')) || 0;
 
+      if (bSinalBr) {
+        const nivel = getSinalBr(l);
+        if (bSinalBr === 'alto' && nivel !== 'alto') return false;
+        if (bSinalBr === 'medio+' && nivel !== 'alto' && nivel !== 'medio') return false;
+        if (bSinalBr === 'baixo' && nivel !== 'baixo') return false;
+        if (bSinalBr === 'sem' && nivel) return false;
+      }
       if (bCat && cat !== bCat) return false;
       if (bUf && uf !== bUf) return false;
       if (bCity && city !== bCity) return false;
@@ -276,9 +305,36 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
       }
       return true;
     });
-  }, [leads, bq, bCat, bUf, bCity, bHood, bRate, bGrupo, bChans, groups]);
+  }, [leads, bq, bCat, bUf, bCity, bHood, bRate, bGrupo, bChans, bSinalBr, groups]);
 
   // Stats calculation
+  /**
+   * Reavalia os leads da lista filtrada, agora com a camada de IA.
+   *
+   * O sinal ja vem calculado pelas regras no momento da extracao. Isto aqui
+   * serve para a faixa do meio, que as regras nao resolvem, e para bases
+   * antigas, extraidas antes de o qualificador existir.
+   */
+  const qualificarComIA = async () => {
+    if (qualificando || !filteredLeads.length) return;
+    setQualificando(true);
+    try {
+      const res = await window.electronAPI?.qualificarBrasileiros?.(filteredLeads, true);
+      if (res?.success && Array.isArray(res.resultados)) {
+        const porId = new Map(res.resultados.map((r) => [String(r.id), r]));
+        setLeads((prev) => prev.map((l) => {
+          const r = porId.get(String(l.id));
+          if (!r) return l;
+          return { ...l, sinalBr: { pontos: r.pontos, nivel: r.nivel, sinais: r.sinais, fonte: r.fonte } };
+        }));
+      }
+    } catch {
+      // A falha ja e tratada no processo principal; aqui so nao trava o botao.
+    } finally {
+      setQualificando(false);
+    }
+  };
+
   const stats = useMemo(() => {
     let sent = 0;
     let replies = 0;
@@ -531,6 +587,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
         else if (c.id === 'wa') row[c.label] = getLeadTel(l) || '—';
         else if (c.id === 'ig') row[c.label] = getLeadIg(l) || '—';
         else if (c.id === 'fb') row[c.label] = getLeadFb(l) || '—';
+        else if (c.id === 'br') row[c.label] = getSinalBr(l) || '—';
         else if (c.id === 'site') row[c.label] = getLeadSite(l) || '—';
         else if (c.id === 'mail') row[c.label] = getLeadMail(l) || '—';
         else if (c.id === 'av') row[c.label] = `${getLeadRating(l)} (${getLeadReviews(l)})`;
@@ -957,6 +1014,30 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           </div>
 
           <div className="field">
+            <label>Qualificar com IA</label>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={qualificarComIA}
+              disabled={qualificando || !filteredLeads.length}
+              title="Reavalia os leads da lista atual, usando a IA só nos casos que as regras não resolvem"
+            >
+              {qualificando ? 'Avaliando…' : `Avaliar ${filteredLeads.length} lead(s)`}
+            </button>
+          </div>
+
+          <div className="field">
+            <label>Sinal brasileiro</label>
+            <select value={bSinalBr} onChange={(e) => setBSinalBr(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="alto">Só alto</option>
+              <option value="medio+">Alto e médio</option>
+              <option value="baixo">Só baixo</option>
+              <option value="sem">Ainda não avaliados</option>
+            </select>
+          </div>
+
+          <div className="field">
             <label>Avaliação mínima</label>
             <select value={bRate} onChange={(e) => setBRate(Number(e.target.value))}>
               <option value={0}>Qualquer</option>
@@ -973,6 +1054,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                 { ch: 'tel', label: 'Tel' },
                 { ch: 'wa', label: 'WA' },
                 { ch: 'ig', label: 'IG' },
+                { ch: 'fb', label: 'FB' },
                 { ch: 'site', label: 'Site' },
                 { ch: 'mail', label: 'E-mail' },
               ].map(({ ch, label }) => (
@@ -1133,6 +1215,17 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       if (colId === 'wa') return <td key={colId}>{getLeadTel(l) || '—'}</td>;
                       if (colId === 'ig') return <td key={colId}>{getLeadIg(l) || '—'}</td>;
                       if (colId === 'fb') return <td key={colId}>{getLeadFb(l) || '—'}</td>;
+                      if (colId === 'br') {
+                        const nivel = getSinalBr(l);
+                        if (!nivel) return <td key={colId}>—</td>;
+                        return (
+                          <td key={colId}>
+                            <span className={`sinal-br sinal-br-${nivel}`} title={(l.sinalBr.sinais || []).join(' · ')}>
+                              {nivel === 'alto' ? 'Alto' : nivel === 'medio' ? 'Médio' : 'Baixo'}
+                            </span>
+                          </td>
+                        );
+                      }
                       if (colId === 'site') return <td key={colId}>{getLeadSite(l) || '—'}</td>;
                       if (colId === 'mail') return <td key={colId}>{getLeadMail(l) || '—'}</td>;
                       if (colId === 'av') return <td key={colId} className="num">{getLeadRating(l)} ({getLeadReviews(l)})</td>;
@@ -1383,6 +1476,14 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                     <div>
                       <div className="lb">Facebook</div>
                       <div className="v">{getLeadFb(activeLead) || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="lb">Sinal brasileiro</div>
+                      <div className="v">
+                        {activeLead.sinalBr
+                          ? `${activeLead.sinalBr.nivel} · ${(activeLead.sinalBr.sinais || []).join(', ') || 'sem sinal'}`
+                          : '—'}
+                      </div>
                     </div>
                     <div>
                       <div className="lb">Site</div>
