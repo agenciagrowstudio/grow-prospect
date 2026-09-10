@@ -2650,6 +2650,28 @@ ipcMain.handle("lead-scoring-get-settings", async () => {
 });
 
 // ─── QUALIFICACAO DE NEGOCIO BRASILEIRO ───────────────────────
+// ─── TESTE DE CONEXAO DA IA ───────────────────────
+ipcMain.handle("ia-testar", async (_, { ai } = {}) => {
+  try {
+    const { resolveProviderConfig, requestChatCompletion } = require("./lead-scoring/ai-sales-analyzer");
+    const config = resolveProviderConfig(ai || {});
+    if (!config.apiKey) return { success: false, error: "Cole a chave antes de testar." };
+
+    // Chamada minima so para provar que a chave e o modelo respondem. Descobrir
+    // que a chave esta errada no meio de um lote de analise e tarde demais.
+    const inicio = Date.now();
+    await requestChatCompletion(config, { ping: "ok" });
+    return {
+      success: true,
+      provedor: config.provider,
+      modelo: config.model || config.defaultModel,
+      ms: Date.now() - inicio,
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle("qualificar-brasileiros", async (_, { leads, comIA } = {}) => {
   try {
     const lista = Array.isArray(leads) ? leads.slice(0, 2000) : [];

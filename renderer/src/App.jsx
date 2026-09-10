@@ -27,6 +27,7 @@ const APP_VERSION = '1.1.6';
 import KanbanBoard from './components/KanbanBoard';
 import WhatsAppPanel from './components/WhatsAppPanel';
 import NewExtractionModal from './components/NewExtractionModal';
+import Configuracoes from './components/Configuracoes';
 import OnboardingTour from './components/OnboardingTour';
 import { NotificationProvider, useNotifications } from './components/NotificationCenter';
 import UpdateBanner from './components/UpdateBanner';
@@ -338,26 +339,9 @@ function AppInner() {
         );
       case 'settings':
         return (
-          <section className="settings-open-design-view">
-            <div className="page-head">
-              <div><h1 style={{ fontSize: 20 }}>Configurações</h1></div>
-            </div>
-            <div className="table-wrap settings-open-design-card">
-              <div className="field">
-                <label htmlFor="themeSel">Modo de interface</label>
-                <select id="themeSel" defaultValue="light">
-                  <option value="light">Claro (padrão travado)</option>
-                  <option value="dark">Escuro (override futuro)</option>
-                </select>
-              </div>
-              <div>
-                <button className="btn btn-primary" onClick={() => addNotification({ type: 'info', title: 'Preferências salvas', message: 'Modo de interface atualizado.' })}>
-                  Salvar preferências
-                </button>
-              </div>
-              <p>Contagem local por instalação. Nenhum dado pessoal sai do app sem endpoint configurado.</p>
-            </div>
-          </section>
+          <ErrorBoundaryLite label="Configurações">
+            <Configuracoes versao={APP_VERSION} onNotificar={addNotification} />
+          </ErrorBoundaryLite>
         );
       default:
         return (
@@ -459,7 +443,7 @@ function AppInner() {
             onClick={() => navigate('dashboard')}
           >
             <BarChart3 className="ico" size={18} aria-hidden="true" />
-            <span className="nav-label-text">Dashboard</span><span className="nav-lote">Lote 2</span>
+            <span className="nav-label-text">Dashboard</span><span className="nav-kbd">7</span>
           </button>
         </nav>
 

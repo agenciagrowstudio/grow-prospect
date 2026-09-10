@@ -977,3 +977,43 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 /* --meta (#767e8c) sobre #fafafa da 3,9:1, e texto de 11,5px precisa de
    4,5:1. --fg-2 (#6b7280) da 4,63:1 e passa. */
 .sinal-br-baixo{background:var(--surface-warm);color:var(--fg-2);border:1px solid var(--border)}
+
+/* --- Tela de Configuracoes ---------------------------------------------- */
+
+.cfg-view{display:flex;flex-direction:column;gap:16px}
+.cfg-tagline{margin-top:4px;font-size:14px;color:var(--muted);letter-spacing:-1px}
+
+.cfg-card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--elev-raised);padding:24px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.cfg-card-head{display:flex;gap:12px;align-items:flex-start}
+.cfg-card-head h2{font-size:16px;font-weight:600;letter-spacing:-1px;color:var(--fg)}
+.cfg-card-head p{margin-top:4px;font-size:13.5px;line-height:1.5;color:var(--muted);max-width:64ch}
+.cfg-icone{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--surface-warm);display:grid;place-items:center;color:var(--accent)}
+
+/* Segmentado, no papel de aba: o escolhido usa o preto de acao. */
+.cfg-provedores{display:flex;flex-wrap:wrap;gap:6px;padding:4px;background:var(--surface-warm);border:1px solid var(--border);border-radius:var(--radius-pill);align-self:flex-start;max-width:100%}
+.cfg-provedor{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:var(--radius-pill);cursor:pointer;white-space:nowrap;transition:background 200ms cubic-bezier(.4,0,.2,1),color 200ms cubic-bezier(.4,0,.2,1)}
+.cfg-provedor:hover{color:var(--fg)}
+.cfg-provedor.on{background:var(--action,#0a0a0a);color:#fff}
+
+.cfg-linha{display:grid;grid-template-columns:1fr;gap:12px;min-width:0}
+@media (min-width:900px){.cfg-linha{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}}
+
+.cfg-chave{display:flex;gap:8px;min-width:0}
+.cfg-chave input{flex:1;min-width:0;font-family:var(--font-mono)}
+.cfg-olho{width:40px;flex-shrink:0;border:1px solid var(--border);background:#fff;border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;display:grid;place-items:center}
+.cfg-olho:hover{color:var(--fg);border-color:#d4d4d4}
+.cfg-dica{display:block;margin-top:6px;font-size:12px;color:var(--meta);line-height:1.5}
+
+.cfg-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.cfg-acoes .btn{display:inline-flex;align-items:center;gap:6px}
+.cfg-girando{animation:cfg-gira 900ms linear infinite}
+@keyframes cfg-gira{to{transform:rotate(360deg)}}
+
+.cfg-resultado{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;line-height:1.4}
+.cfg-resultado.ok{background:var(--accent-soft);color:#0b4f9e}
+.cfg-resultado.erro{background:var(--red-bg);color:var(--danger)}
+
+.cfg-sobre{display:flex;flex-wrap:wrap;gap:24px;padding-top:4px}
+.cfg-sobre>div{display:flex;flex-direction:column;gap:2px}
+.cfg-sobre span{font-size:12px;color:var(--meta)}
+.cfg-sobre b{font-size:14px;font-weight:600;color:var(--fg)}
