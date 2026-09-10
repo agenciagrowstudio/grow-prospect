@@ -136,12 +136,30 @@ function scoreDigitalPain(company, site, digitalPainRules) {
   return clamp(score, 0, 45);
 }
 
+/**
+ * A rede que importa muda com o pais.
+ *
+ * No Brasil o negocio local vive no Instagram. Na comunidade brasileira nos
+ * Estados Unidos o canal ainda e o Facebook, por causa dos grupos. Pontuar
+ * os dois com o mesmo peso em todo lugar significa pontuar errado nos dois.
+ */
+function redesDoPais(company) {
+  const eua = String(company.pais || "BR").toUpperCase() === "US";
+  return {
+    principal: eua ? company.facebook : company.instagram,
+    secundaria: eua ? company.instagram : company.facebook,
+    nomePrincipal: eua ? "Facebook" : "Instagram",
+  };
+}
+
 function scoreContactability(company, site) {
   let score = 0;
   if (company.phone) score += 5;
   if (company.whatsapp || site.conversion?.hasWhatsappButton) score += 5;
   if (company.email) score += 3;
-  if (company.instagram) score += 2;
+  const redes = redesDoPais(company);
+  if (redes.principal) score += 3;
+  if (redes.secundaria) score += 1;
   return clamp(score, 0, 15);
 }
 
@@ -190,7 +208,15 @@ function buildReasons(company, site, score, pains = []) {
   if (company.website && siteReachable && pains.length >= 2) {
     reasons.push("Tem site com várias falhas — prioridade alta para oferecer correção ou redesign.");
   }
-  if (company.reviewCount >= 50) reasons.push("Tem bastante avaliação no Google — já tem credibilidade para vender.");
+  if (!company.website) {
+    const redes = redesDoPais(company);
+    if (redes.principal) {
+      reasons.push(`Sem site, mas com ${redes.nomePrincipal} ativo: dá para oferecer um site e levar para lá o público que já existe.`);
+    } else if (redes.secundaria) {
+      reasons.push(`Sem site e sem ${redes.nomePrincipal}, só a outra rede: presença digital fraca para o público desse mercado.`);
+    }
+  }
+  if (company.reviewCount >= 50) reasons.push("Tem bastante avaliação no Google, já tem credibilidade para vender.");
   if (!site.conversion?.hasWhatsappButton && company.website && siteReachable) reasons.push("No site não aparece WhatsApp de forma clara para o cliente chamar.");
   if (!site.conversion?.hasForm && company.website && siteReachable) reasons.push("Não tem formulário visível para pedir orçamento.");
   if (!hasMediaPixel(site) && company.website && siteReachable) reasons.push("Sem pixel de anúncio — difícil medir campanhas; ótimo argumento de venda.");

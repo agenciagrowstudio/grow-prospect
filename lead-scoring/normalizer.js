@@ -26,6 +26,7 @@ function normalizeLead(raw, options = {}) {
     email: clean(lead.email),
     website,
     instagram: clean(lead.instagram),
+    facebook: clean(lead.facebook),
     rating: Number(lead.rating || 0),
     totalReviews: clean(lead.totalReviews || lead.reviews || lead.reviewCount),
     reviewCount: Number(lead.reviewCount || lead.reviews || onlyDigits(lead.totalReviews) || 0),

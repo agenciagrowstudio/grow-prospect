@@ -33,7 +33,7 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
     throw new Error(`Falha ao abrir navegador. Verifique se o Chrome está instalado. Detalhes: ${launchError?.message || 'unknown'}`);
   }
   const places = [];
-  const statistics = { withPhone: 0, withWebsite: 0, withInstagram: 0, withEmail: 0, withRating: 0, withPhotos: 0 };
+  const statistics = { withPhone: 0, withWebsite: 0, withInstagram: 0, withFacebook: 0, withEmail: 0, withRating: 0, withPhotos: 0 };
   let context;
   let page;
 
@@ -144,6 +144,15 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
             if (await ig.count() > 0) place.instagram = await ig.getAttribute('href');
           }
 
+          if (place.website && place.website.includes('facebook.com')) {
+            place.facebook = place.website;
+            place.website = '';
+          }
+          if (!place.facebook) {
+            const fb = await page.locator('a[href*="facebook.com"]').first();
+            if (await fb.count() > 0) place.facebook = await fb.getAttribute('href');
+          }
+
           if (place.website && !place.website.includes('instagram.com') && !place.website.includes('facebook.com') && !place.website.includes('youtube.com')) {
             checkCancelled(cancelToken);
             place.email = await scrapeEmails(browser, place.website, onProgress, cancelToken);
@@ -156,14 +165,18 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
           if (place.phone) statistics.withPhone++;
           if (place.website) statistics.withWebsite++;
           if (place.instagram) statistics.withInstagram++;
+          if (place.facebook) statistics.withFacebook++;
           if (place.email) statistics.withEmail++;
           if (place.rating) statistics.withRating++;
           if (place.photos?.count > 0) statistics.withPhotos++;
 
-          const web = place.website ? '🌐' : '';
-          const ig = place.instagram ? '📷' : '';
-          const em = place.email ? '✉️' : '';
-          onProgress(`  [${i + 1}/${total}] ${place.name} ${place.rating}★${web}${ig}${em}`);
+          const canais = [
+            place.website ? 'site' : '',
+            place.instagram ? 'ig' : '',
+            place.facebook ? 'fb' : '',
+            place.email ? 'email' : '',
+          ].filter(Boolean).join(' ');
+          onProgress(`  [${i + 1}/${total}] ${place.name} ${place.rating}★${canais ? ' · ' + canais : ''}`);
         }
       } catch (err) {
         if (err.code === 'SCRAPE_CANCELLED') throw err;

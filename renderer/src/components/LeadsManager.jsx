@@ -31,6 +31,7 @@ const DEFAULT_COLS = [
   { id: 'tel', label: 'Telefone' },
   { id: 'wa', label: 'WhatsApp' },
   { id: 'ig', label: 'Instagram' },
+  { id: 'fb', label: 'Facebook' },
   { id: 'site', label: 'Site' },
   { id: 'mail', label: 'E-mail' },
   { id: 'av', label: 'Avaliação' },
@@ -201,6 +202,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   const getLeadTel = (l) => l.phone || l.tel || '';
   const getLeadSite = (l) => l.website || l.site || '';
   const getLeadIg = (l) => l.instagram || l.ig || '';
+  // O Facebook passou a ser coletado porque na comunidade brasileira nos
+  // Estados Unidos ele costuma ser o unico canal do negocio.
+  const getLeadFb = (l) => l.facebook || l.fb || '';
   const getLeadMail = (l) => l.email || l.mail || '';
   const getLeadCity = (l) => l.city || '';
   const getLeadUf = (l) => l.state || l.uf || '';
@@ -212,6 +216,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   const leadHasChan = (l, ch) => {
     if (ch === 'tel' || ch === 'wa') return Boolean(getLeadTel(l));
     if (ch === 'ig') return Boolean(getLeadIg(l));
+    if (ch === 'fb') return Boolean(getLeadFb(l));
     if (ch === 'site') return Boolean(getLeadSite(l));
     if (ch === 'mail') return Boolean(getLeadMail(l));
     return false;
@@ -525,6 +530,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
         else if (c.id === 'tel') row[c.label] = getLeadTel(l) || '—';
         else if (c.id === 'wa') row[c.label] = getLeadTel(l) || '—';
         else if (c.id === 'ig') row[c.label] = getLeadIg(l) || '—';
+        else if (c.id === 'fb') row[c.label] = getLeadFb(l) || '—';
         else if (c.id === 'site') row[c.label] = getLeadSite(l) || '—';
         else if (c.id === 'mail') row[c.label] = getLeadMail(l) || '—';
         else if (c.id === 'av') row[c.label] = `${getLeadRating(l)} (${getLeadReviews(l)})`;
@@ -1126,6 +1132,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       if (colId === 'tel') return <td key={colId}>{getLeadTel(l) || '—'}</td>;
                       if (colId === 'wa') return <td key={colId}>{getLeadTel(l) || '—'}</td>;
                       if (colId === 'ig') return <td key={colId}>{getLeadIg(l) || '—'}</td>;
+                      if (colId === 'fb') return <td key={colId}>{getLeadFb(l) || '—'}</td>;
                       if (colId === 'site') return <td key={colId}>{getLeadSite(l) || '—'}</td>;
                       if (colId === 'mail') return <td key={colId}>{getLeadMail(l) || '—'}</td>;
                       if (colId === 'av') return <td key={colId} className="num">{getLeadRating(l)} ({getLeadReviews(l)})</td>;
@@ -1372,6 +1379,10 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                     <div>
                       <div className="lb">Instagram</div>
                       <div className="v">{getLeadIg(activeLead) || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="lb">Facebook</div>
+                      <div className="v">{getLeadFb(activeLead) || '—'}</div>
                     </div>
                     <div>
                       <div className="lb">Site</div>
