@@ -13,6 +13,7 @@ import {
   Send,
   Users,
 } from 'lucide-react';
+import IconeNicho from './IconeNicho';
 import GraficoArea, { construirSerie, totalSerie, variacaoSerie } from './GraficoArea';
 import {
   dedupeLeads,
@@ -280,7 +281,11 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
             aria-pressed={!category.isOther && selectedCategories.includes(category.name)}
           >
             {categoryView === 'list' && <em>{category.isOtherMember ? '↳' : `#${index + 1}`}</em>}
-            <span title={category.name}>{category.isOther ? `Outros ${expandedOther ? '−' : '+'}` : category.name}</span>
+            <span className="ov-cat-nome" title={category.name}>
+              {/* "Outros" e um agregado, nao um nicho: nao ganha icone. */}
+              {!category.isOther && <IconeNicho categoria={category.name} size={24} />}
+              {category.isOther ? `Outros ${expandedOther ? '−' : '+'}` : category.name}
+            </span>
             {categoryView === 'bars' && (
               <span className="overview-compare-bars">
                 {selectedMetrics.map((id) => (

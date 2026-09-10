@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { PROVIDERS, readAiConfig, saveAiConfig } from '../configIA';
+import AvatarLead from './AvatarLead';
 import {
   Target,
   Settings,
@@ -666,12 +667,15 @@ export default function LeadScoring({ onUpdateScoringCount, addLog }) {
                           />
                         </td>
                         <td>
-                          <b
-                            style={{ cursor: 'pointer', color: 'var(--accent)' }}
-                            onClick={() => setDetailLead(lead)}
-                          >
-                            {lead.name || 'Empresa'}
-                          </b>
+                          <span className="td-empresa">
+                            <AvatarLead lead={lead} size={30} />
+                            <b
+                              style={{ cursor: 'pointer', color: 'var(--accent)' }}
+                              onClick={() => setDetailLead(lead)}
+                            >
+                              {lead.name || 'Empresa'}
+                            </b>
+                          </span>
                         </td>
                         <td>
                           {an ? (

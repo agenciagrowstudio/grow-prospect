@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Search, Activity, Users, Phone, Globe, Instagram, Clock, TrendingUp, TrendingDown, ArrowUpRight, Layers, Zap, Target } from 'lucide-react';
+import IconeNicho from './IconeNicho';
 import GraficoArea, { construirSerie, lerExtracoes, totalSerie, variacaoSerie } from './GraficoArea';
 import { dedupeLeads, getLeadStats, getSearchLeadCount, readLocalArray } from '../leadData';
 
@@ -137,8 +138,9 @@ function Dashboard() {
           ) : (
             <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:10 }}>
               {topCategories.map(([name, count], idx)=>(
-                <div key={name} style={{ display:'grid', gridTemplateColumns:'24px 1fr 36px', gap:8, alignItems:'center' }}>
+                <div key={name} style={{ display:'grid', gridTemplateColumns:'24px 26px 1fr 36px', gap:8, alignItems:'center' }}>
                   <span style={{ fontSize:11, fontWeight:700, color: idx===0?'var(--accent)':'var(--muted)' }}>#{idx+1}</span>
+                  <IconeNicho categoria={name} size={26} />
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontSize:12, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }} title={name}>{name}</div>
                     <div style={{ height:6, background:'var(--track-bg)', borderRadius:999, marginTop:4, overflow:'hidden' }}>
