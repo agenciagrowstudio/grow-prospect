@@ -208,7 +208,7 @@ function persistError(report) {
     localStorage.setItem('sigma_last_react_error_at', String(Date.now()));
   } catch { /* ignore */ }
   try {
-    document.title = 'ERRO React — Sigma';
+    document.title = 'ERRO React · Grow+ Prospect';
   } catch { /* ignore */ }
   console.error(report);
 }

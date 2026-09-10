@@ -92,11 +92,11 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
     } catch {}
     return {
       'lead-1': [
-        { k: 'sent', ts: new Date(2026, 8, 3, 14, 32).getTime(), text: 'Olá, tudo bem? Vi que o site da Odonto Lume está sem HTTPS — consigo resolver isso e ativar o botão de WhatsApp em 1 dia. Posso te mostrar?', wa: 'Sigma · +55 21 90000-0001', camp: 'Lançamento Setembro' },
+        { k: 'sent', ts: new Date(2026, 8, 3, 14, 32).getTime(), text: 'Olá, tudo bem? Vi que o site da Odonto Lume está sem HTTPS — consigo resolver isso e ativar o botão de WhatsApp em 1 dia. Posso te mostrar?', wa: 'Grow+ · +55 21 90000-0001', camp: 'Lançamento Setembro' },
         { k: 'reply', ts: new Date(2026, 8, 3, 15, 4).getTime(), text: 'Olá! Pode me explicar melhor?' }
       ],
       'lead-2': [
-        { k: 'sent', ts: new Date(2026, 8, 2, 10, 15).getTime(), text: 'Oi! Aqui é da Sigma — percebi que o site do Café Aurora não tem botão de WhatsApp. Coloco isso no ar hoje. Quer ver?', wa: 'Sigma · +55 21 90000-0001', camp: 'Cafés Zona Sul' }
+        { k: 'sent', ts: new Date(2026, 8, 2, 10, 15).getTime(), text: 'Oi! Aqui é da Grow+. Percebi que o site do Café Aurora não tem botão de WhatsApp. Coloco isso no ar hoje. Quer ver?', wa: 'Grow+ · +55 21 90000-0001', camp: 'Cafés Zona Sul' }
       ]
     };
   });

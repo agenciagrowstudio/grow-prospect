@@ -290,7 +290,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
       const saved = JSON.parse(localStorage.getItem('sigma_wa_profile') || 'null');
       if (saved && typeof saved === 'object') return saved;
     } catch (_) {}
-    return { name: 'Sigma Comercial', about: 'Prospecção B2B no automático', phone: '' };
+    return { name: 'Grow+ Comercial', about: 'Prospecção B2B no automático', phone: '' };
   });
   const [isFindBarOpen, setIsFindBarOpen] = useState(false);
   const [inChatSearchTerm, setInChatSearchTerm] = useState('');
@@ -353,7 +353,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     } catch (e) {}
     // Preset inicial: mensagens prontas comuns para prospecção/comercial
     return [
-      { id: 'snip_intro', kind: 'text', label: 'Apresentação inicial', text: 'Olá {{name}}, tudo bem? Aqui é da Sigma — vemos oportunidades de melhorar sua presença digital.' },
+      { id: 'snip_intro', kind: 'text', label: 'Apresentação inicial', text: 'Olá {{name}}, tudo bem? Aqui é da Grow+. Vemos oportunidades de melhorar sua presença digital.' },
       { id: 'snip_followup', kind: 'text', label: 'Follow-up educado', text: 'Oi {{name}}, apenas retornando o contato. Posso te mandar um diagnóstico rápido do seu site?' },
       { id: 'snip_offer', kind: 'text', label: 'Oferta de diagnóstico', text: '{{name}}, fiz uma análise rápida do seu site e encontrei pontos de melhoria. Posso compartilhar?' },
       { id: 'snip_close', kind: 'text', label: 'Fechamento', text: 'Perfeito, {{name}}! Vou preparar a proposta. Alguma preferência de horário para conversarmos?' },
@@ -823,7 +823,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
 
   const saveSessionProfile = () => {
     const next = {
-      name: String(sessionProfile.name || '').trim() || 'Sigma Comercial',
+      name: String(sessionProfile.name || '').trim() || 'Grow+ Comercial',
       about: String(sessionProfile.about || '').trim(),
       phone: String(sessionProfile.phone || '').trim(),
     };
@@ -1056,7 +1056,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
           );
           if (local?.success) {
             setMessages((prev) => prev.filter((x) => x.key?.id !== m.key.id));
-            addLog('[WHATSAPP] Não deu para apagar para todos; removida só no Sigma.');
+            addLog('[WHATSAPP] Não deu para apagar para todos; removida só no Grow+ Prospect.');
             return;
           }
         }

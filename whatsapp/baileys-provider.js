@@ -1875,7 +1875,7 @@ class BaileysProvider extends WhatsAppProvider {
   /**
    * Apaga mensagem.
    * forEveryone=true: tenta apagar para todos (só próprias, janela do WA).
-   * forEveryone=false: remove só do histórico local do Sigma.
+   * forEveryone=false: remove só do histórico local do app.
    */
   async deleteMessage(jid, key, { forEveryone = true } = {}) {
     if (!key?.id) return { success: false, error: "Mensagem inválida" };
