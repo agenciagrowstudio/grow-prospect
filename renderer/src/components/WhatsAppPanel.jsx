@@ -114,10 +114,13 @@ function resolveKanbanStage(lead) {
 function campaignStatusPresentation(campaign) {
   const status = campaign?.status || 'ready';
   if (status === 'paused' && campaign?.pauseReason === 'daily_limit') {
-    return { statusClass: 'paused', label: 'Limite diário' };
+    return { statusClass: 'paused', label: 'Limite de 24h' };
   }
   if (status === 'running' && campaign?.waitReason === 'outside_hours') {
     return { statusClass: 'running', label: 'Fora do horário' };
+  }
+  if (status === 'running' && campaign?.waitReason === 'follow_up_wait') {
+    return { statusClass: 'running', label: 'Aguardando follow-up' };
   }
   if (status === 'running' && campaign?.waitReason === 'no_provider') {
     return { statusClass: 'running', label: 'Aguardando WhatsApp' };
@@ -242,6 +245,14 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   const [intervalSec, setIntervalSec] = useState(30);
   const [scheduleMode, setScheduleMode] = useState('interval');
   const [scheduleStartAt, setScheduleStartAt] = useState('');
+  // Follow-up é opt-in: sem ele a campanha envia só a abordagem.
+  const [followUpEnabled, setFollowUpEnabled] = useState(false);
+  const [followUpSteps, setFollowUpSteps] = useState([
+    { afterDays: 2, text: '' },
+    { afterDays: 4, text: '' },
+  ]);
+  const updateFollowUpStep = (index, patch) =>
+    setFollowUpSteps((prev) => prev.map((step, i) => (i === index ? { ...step, ...patch } : step)));
 
   // Selected Campaign for Monitoring
   const [monitoringCampaignId, setMonitoringCampaignId] = useState(null);
@@ -688,7 +699,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     const off = window.campaignAPI.onProgress(({ campaignId, event, data }) => {
       loadCampaigns();
       if (event === 'daily-limit') {
-        addLog('[CAMPAIGN] Limite diário atingido — progresso salvo. Retoma amanhã ou ao reiniciar com cota livre.');
+        addLog('[CAMPAIGN] Limite de 24h atingido: progresso salvo. A campanha retoma sozinha quando uma vaga liberar.');
         loadSettings();
       } else if (event === 'waiting' && data?.reason === 'no_provider') {
         addLog('[CAMPAIGN] Aguardando WhatsApp conectado para continuar os disparos…');
@@ -2303,6 +2314,10 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
         template,
         leadIds: leads,
         schedule,
+        followUp: {
+          enabled: followUpEnabled,
+          steps: followUpSteps.filter((step) => step.text.trim()),
+        },
       });
       if (res?.success) {
         closeCampaignModal();
@@ -4378,12 +4393,14 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                       const phones = campaignPhoneLabels(c);
                       const statusLabel =
                         c.status === 'paused' && c.pauseReason === 'daily_limit'
-                          ? 'Limite diário'
+                          ? 'Limite de 24h'
                           : c.status === 'running' && c.waitReason === 'outside_hours'
                             ? 'Fora do horário'
                             : c.status === 'running' && c.waitReason === 'no_provider'
                               ? 'Aguardando WhatsApp'
-                              : {
+                              : c.status === 'running' && c.waitReason === 'follow_up_wait'
+                                ? 'Aguardando follow-up'
+                                : {
                                   ready: 'Rascunho',
                                   running: 'Em andamento',
                                   scheduled: 'Agendada',
@@ -4630,11 +4647,11 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                         <div className="camp-hint" style={{ marginTop: 12, lineHeight: 1.5 }}>
                           Regras globais (aba Configurações):
                           <br />
-                          · Limite diário por número:{' '}
+                          · Limite por número a cada 24h:{' '}
                           <strong>
                             {settings.campaigns?.manualUnlimited
                               ? 'manual (sem teto)'
-                              : `${settings.campaigns?.dailyLimit || 10}/dia`}
+                              : `${settings.campaigns?.dailyLimit || 10}/24h`}
                           </strong>
                           <br />
                           · Horário de disparo:{' '}
@@ -4644,8 +4661,50 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                               : `${settings.campaigns?.workingHoursStart || '07:00'}–${settings.campaigns?.workingHoursEnd || '18:00'}`}
                           </strong>
                           <br />
-                          Ao bater o limite, a campanha pausa e retoma no próximo dia ou ao reiniciar o app.
+                          Ao bater o limite, a campanha pausa e retoma sozinha quando uma vaga da janela de 24h liberar.
                         </div>
+
+                        <div className="camp-field" style={{ marginTop: 16 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={followUpEnabled}
+                              onChange={(e) => setFollowUpEnabled(e.target.checked)}
+                            />
+                            <span>Follow-up automático para quem não responder</span>
+                          </label>
+                          <span className="camp-hint">
+                            Desligado, a campanha envia só a abordagem e a conversa segue com você.
+                            Ligado, quem não responder recebe as mensagens abaixo. Quem responde sai da fila na hora.
+                            Os follow-ups contam no mesmo limite de 24h.
+                          </span>
+                        </div>
+                        {followUpEnabled && followUpSteps.map((step, index) => (
+                          <div className="camp-field-row" key={index} style={{ alignItems: 'flex-start' }}>
+                            <label className="camp-field" style={{ maxWidth: 140 }}>
+                              <span>{index + 1}º follow-up após</span>
+                              <select
+                                value={step.afterDays}
+                                onChange={(e) => updateFollowUpStep(index, { afterDays: Number(e.target.value) })}
+                              >
+                                {[1, 2, 3, 4, 5, 7, 10, 14].map((d) => (
+                                  <option key={d} value={d}>{d} dia{d > 1 ? 's' : ''}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="camp-field" style={{ flex: 1 }}>
+                              <span>Mensagem {index === 0 ? '' : '(opcional)'}</span>
+                              <textarea
+                                rows={3}
+                                value={step.text}
+                                onChange={(e) => updateFollowUpStep(index, { text: e.target.value })}
+                                placeholder={index === 0
+                                  ? 'Oi {{name}}, conseguiu ver minha mensagem?'
+                                  : 'Última tentativa por aqui, {{name}}. Se fizer sentido, é só responder.'}
+                              />
+                            </label>
+                          </div>
+                        ))}
                       </div>
                     )}
 
@@ -4682,6 +4741,15 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                                 : scheduleMode === 'immediate'
                                   ? 'imediato rápido'
                                   : `intervalo ${intervalSec}s`}
+                            </li>
+                            <li>
+                              <strong>Follow-up:</strong>{' '}
+                              {followUpEnabled && followUpSteps.some((step) => step.text.trim())
+                                ? followUpSteps
+                                    .filter((step) => step.text.trim())
+                                    .map((step) => `${step.afterDays} dia${step.afterDays > 1 ? 's' : ''}`)
+                                    .join(' e depois ') + ' sem resposta'
+                                : 'desligado (só a abordagem)'}
                             </li>
                             <li>
                               <strong>Mensagem:</strong>
@@ -5449,13 +5517,13 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
               <div>
                 <h3 style={{ margin: '0 0 4px' }}>Campanhas · proteção do número</h3>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>
-                  Limite diário por número para aquecer a conta e reduzir risco de ban.
+                  Limite por número a cada 24h para aquecer a conta e reduzir risco de ban.
                   Ao atingir o teto, a campanha pausa e continua no próximo dia (ou ao reiniciar o app com cota livre).
                 </p>
               </div>
 
               <div>
-                <strong style={{ fontSize: 13 }}>Limite diário por número</strong>
+                <strong style={{ fontSize: 13 }}>Limite por número a cada 24h</strong>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                   {limitTiers.map((tier) => {
                     const unlocked = (settings.campaigns?.unlockedLimits || [10]).includes(tier)
@@ -5488,7 +5556,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                           }
                           if (canUnlock) {
                             const ok = confirm(
-                              `Desbloquear limite de ${tier} msgs/dia por número?\n\n` +
+                              `Desbloquear limite de ${tier} msgs/24h por número?\n\n` +
                               'Aumente aos poucos para aquecer o WhatsApp. Valores altos no começo elevam o risco de ban.',
                             );
                             if (!ok) return;
@@ -5506,13 +5574,13 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                         }}
                         title={
                           unlocked
-                            ? `${tier} mensagens/dia`
+                            ? `${tier} mensagens/24h`
                             : canUnlock
-                              ? `Clique para desbloquear ${tier}/dia`
+                              ? `Clique para desbloquear ${tier}/24h`
                               : 'Desbloqueie o nível anterior primeiro'
                         }
                       >
-                        {tier}/dia {unlocked ? '' : '🔒'}
+                        {tier}/24h {unlocked ? '' : '🔒'}
                       </button>
                     );
                   })}
@@ -5520,7 +5588,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                 <p className="camp-hint" style={{ marginTop: 8 }}>
                   Atual: {settings.campaigns?.manualUnlimited
                     ? 'modo manual (sem limite)'
-                    : `${settings.campaigns?.dailyLimit || 10} msgs/dia por número`}
+                    : `${settings.campaigns?.dailyLimit || 10} msgs/24h por número`}
                   {dailyQuota?.date ? ` · uso de hoje (${dailyQuota.date})` : ''}
                 </p>
                 {dailyQuota?.byConnection && Object.keys(dailyQuota.byConnection).length > 0 && (
@@ -5544,7 +5612,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                 <div>
                   <strong style={{ fontSize: '13px' }}>Modo manual (sem limite)</strong>
                   <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
-                    Remove o teto diário. Use por conta e risco — aumenta chance de restrição.
+                    Remove o teto da janela de 24h. Use por conta e risco — aumenta chance de restrição.
                   </div>
                 </div>
                 <input
@@ -5553,7 +5621,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                   onChange={(e) => {
                     if (e.target.checked) {
                       const ok = confirm(
-                        'Ativar modo manual sem limite diário?\n\n' +
+                        'Ativar modo manual sem limite de 24h?\n\n' +
                         'Isso desliga a proteção de aquecimento. Você assume o risco de ban.',
                       );
                       if (!ok) return;
@@ -5756,7 +5824,7 @@ function CampaignMonitorView({ campaign, onBack, connections = [] }) {
   };
   const statusLabel =
     campaign?.status === 'paused' && campaign?.pauseReason === 'daily_limit'
-      ? 'Limite diário (salva — retoma depois)'
+      ? 'Limite de 24h (salva e retoma sozinha)'
       : {
           ready: 'Pronta',
           running: 'Em andamento',
@@ -5811,7 +5879,7 @@ function CampaignMonitorView({ campaign, onBack, connections = [] }) {
       open: 'Abriu a conversa',
       reply: 'Respondeu',
       'reply-again': 'Nova resposta',
-      daily_limit: 'Limite diário atingido',
+      daily_limit: 'Limite de 24h atingido',
     };
     return map[ev.type] || ev.type || 'evento';
   };

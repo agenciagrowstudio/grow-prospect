@@ -58,12 +58,20 @@ let mainWindow;
 const whatsappProviders = new Map();
 let activeWhatsAppId = null;
 let campaignManager = null;
+let emailSettings = null;
+let emailCampanhas = null;
 let leadScoringService = null;
 let kanbanStore = null;
 const resultStore = new Map();
 const allowedMediaPaths = new Set();
 const activeScrapes = new Map();
 const { LIMIT_TIERS } = require("./campaigns/daily-quota");
+const { normalizeFollowUp } = require("./campaigns/follow-up");
+const { EmailSettings } = require("./email/email-settings");
+const { EmailCampanhas } = require("./email/email-campanhas");
+const gmail = require("./email/gmail");
+const { sugereBairros } = require("./utils/bairros");
+const { scrapePorAreas } = require("./utils/scrape-por-areas");
 
 const defaultWhatsAppSettings = {
   notifications: {
@@ -518,6 +526,13 @@ function sanitizeCampaignData(data) {
         : null,
       workingHours,
     },
+    followUp: normalizeFollowUp({
+      enabled: !!input.followUp?.enabled,
+      steps: (Array.isArray(input.followUp?.steps) ? input.followUp.steps : []).map((step) => ({
+        afterDays: step?.afterDays,
+        text: limitString(step?.text, 4096, ""),
+      })),
+    }),
   };
 }
 
@@ -959,6 +974,14 @@ app.whenReady().then(() => {
     });
   });
 
+  emailSettings = new EmailSettings(app.getPath("userData"));
+  emailCampanhas = new EmailCampanhas(app.getPath("userData"), {
+    settings: emailSettings,
+    gmail,
+    onProgresso: (campanhaId, evento, dados) => safeSend("email-progress", { campanhaId, evento, dados }),
+  });
+  emailCampanhas.retomar();
+
   // Auto-reconnect saved WhatsApp sessions after renderer loads
   mainWindow.webContents.on("did-finish-load", () => {
     setTimeout(() => autoReconnectSessions(), 2000);
@@ -1086,6 +1109,7 @@ async function autoReconnectSessions() {
 app.on("before-quit", async () => {
   try { autoUpdaterMod.shutdown(); } catch {}
   if (campaignManager) campaignManager.shutdown();
+  if (emailCampanhas) emailCampanhas.desligar();
   for (const provider of whatsappProviders.values()) {
     try {
       await provider.disconnect();
@@ -1238,7 +1262,18 @@ ipcMain.handle("metrics-settings-set", async (_, patch = {}) => {
 });
 
 // ─── START SCRAPE ──────────────────────────
-ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais }) => {
+ipcMain.handle("sugerir-bairros", async (_, { cidade, pais } = {}) => {
+  try {
+    const r = await sugereBairros(limitString(cidade, 200, ""), resolvePais(pais), {
+      onProgresso: (atual, total) => safeSend("bairros-progress", { atual, total }),
+    });
+    return { success: true, ...r };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais, divisao }) => {
   const cleanQuery = limitString(query, MAX_QUERY_LENGTH).trim();
   // O pais decide o filtro da geocodificacao. resolvePais nunca devolve
   // nulo, entao entrada estranha do renderer cai no Brasil.
@@ -1252,22 +1287,30 @@ ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais }) =
     if (!cleanQuery) throw new Error("Query is required");
     try { appMetrics.track("scrape_started", { maxResults: cleanMaxResults, queryLen: cleanQuery.length }); } catch {}
     emitProgress({ status: "started", current: 0, total: cleanMaxResults, message: `Iniciando extração: ${cleanQuery}` });
-    const result = await scrapeGoogleMaps(
-      cleanQuery,
-      cleanMaxResults,
-      (message) => {
-        const text = String(message || "");
-        const match = text.match(/\[(\d+)\/(\d+)\]/);
-        emitProgress({
-          status: "running",
-          current: match ? Number(match[1]) : null,
-          total: match ? Number(match[2]) : cleanMaxResults,
-          message: text,
-        });
-      },
-      cancelToken,
-      paisExtracao,
-    );
+    const onScrapeProgress = (message) => {
+      const text = String(message || "");
+      const match = text.match(/\[(\d+)\/(\d+)\]/);
+      emitProgress({
+        status: "running",
+        current: match ? Number(match[1]) : null,
+        total: match ? Number(match[2]) : cleanMaxResults,
+        message: text,
+      });
+    };
+    const areas = Array.isArray(divisao?.areas)
+      ? [...new Set(divisao.areas.map((a) => limitString(a, 80, "").trim()).filter(Boolean))].slice(0, 60)
+      : [];
+    const result = areas.length > 1
+      ? await scrapePorAreas(scrapeGoogleMaps, {
+          nicho: limitString(divisao.nicho, 120, "").trim(),
+          cidade: limitString(divisao.cidade, 160, "").trim(),
+          areas,
+          maxResults: cleanMaxResults,
+          onProgress: onScrapeProgress,
+          cancelToken,
+          pais: paisExtracao,
+        })
+      : await scrapeGoogleMaps(cleanQuery, cleanMaxResults, onScrapeProgress, cancelToken, paisExtracao);
     if (!result || result.success === false) {
       const error = new Error(result?.error || "Não foi possível concluir a busca no Google Maps.");
       error.warnings = Array.isArray(result?.warnings) ? result.warnings : [];
@@ -3013,6 +3056,45 @@ ipcMain.handle("campaign-create", async (_, data) => {
     return { success: false, error: err.message };
   }
 });
+
+// ---------- E-mail (Gmail com senha de app) ----------
+
+function emailHandler(fn) {
+  return async (_, args = {}) => {
+    try {
+      if (!emailCampanhas) throw new Error("O módulo de e-mail ainda não iniciou.");
+      return { success: true, ...(await fn(args || {})) };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+}
+
+ipcMain.handle("email-get-settings", emailHandler(async () => ({
+  settings: emailSettings.publico(),
+  usados24h: emailCampanhas.cota.getUsage("gmail"),
+})));
+ipcMain.handle("email-save-settings", emailHandler(async ({ patch }) => ({
+  settings: emailSettings.atualizar(patch || {}),
+})));
+ipcMain.handle("email-test", emailHandler(async () => {
+  if (!emailSettings.data.user || !emailSettings.senha()) {
+    throw new Error("Preencha o e-mail e a senha de app antes de testar.");
+  }
+  const r = await gmail.testar({ ...emailSettings.data, senha: emailSettings.senha() });
+  if (!r.success) throw new Error(r.error);
+  return {};
+}));
+ipcMain.handle("email-campaign-list", emailHandler(async () => ({ campanhas: emailCampanhas.listar() })));
+ipcMain.handle("email-campaign-get", emailHandler(async ({ id }) => ({ campanha: emailCampanhas.obter(String(id)) })));
+ipcMain.handle("email-campaign-create", emailHandler(async ({ dados }) => ({ campanha: emailCampanhas.criar(dados || {}) })));
+ipcMain.handle("email-campaign-start", emailHandler(async ({ id }) => ({ campanha: emailCampanhas.iniciar(String(id)) })));
+ipcMain.handle("email-campaign-pause", emailHandler(async ({ id }) => ({ campanha: emailCampanhas.pausar(String(id)) })));
+ipcMain.handle("email-campaign-delete", emailHandler(async ({ id }) => {
+  emailCampanhas.excluir(String(id));
+  return {};
+}));
+ipcMain.handle("email-check-replies", emailHandler(async () => emailCampanhas.lerRespostas()));
 
 ipcMain.handle("campaign-update", async (_, { id, updates }) => {
   try {

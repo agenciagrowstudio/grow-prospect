@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, MapPinned, Loader } from 'lucide-react';
 import MapaPreviaLocal from './MapaPreviaLocal';
 
 const NICHOS_BR = [
@@ -130,6 +130,8 @@ export default function NewExtractionModal({
 
   const [bairroInput, setBairroInput] = useState('');
   const [bairros, setBairros] = useState([]);
+  const [sugerindo, setSugerindo] = useState(null);
+  const [erroSugestao, setErroSugestao] = useState('');
 
   const carViewRef = useRef(null);
 
@@ -248,6 +250,32 @@ export default function NewExtractionModal({
     setBairros(bairros.filter((_, i) => i !== index));
   };
 
+  // Lê os bairros da cidade no OpenStreetMap e junta com os já digitados.
+  const sugerirBairros = async () => {
+    if (sugerindo || !window.electronAPI?.sugerirBairros) return;
+    const city = cidadeObj ? (cidadeObj.estado ? cidadeObj.n : `${cidadeObj.n}, ${cidadeObj.uf}`) : cidadeInput;
+    setErroSugestao('');
+    setSugerindo({ atual: 0, total: 0 });
+    const off = window.electronAPI.onBairrosProgress?.((p) => setSugerindo(p));
+    try {
+      const r = await window.electronAPI.sugerirBairros(city, pais);
+      if (!r?.success) throw new Error(r?.error || 'Não foi possível consultar o mapa.');
+      if (!r.bairros.length) {
+        setErroSugestao('O mapa não tem bairros marcados para essa cidade. A busca vai cobrir a cidade inteira.');
+        return;
+      }
+      setBairros((atuais) => {
+        const vistos = new Set(atuais.map((b) => b.toLowerCase()));
+        return [...atuais, ...r.bairros.filter((b) => !vistos.has(b.toLowerCase()))];
+      });
+    } catch (e) {
+      setErroSugestao(e.message);
+    } finally {
+      if (typeof off === 'function') off();
+      setSugerindo(null);
+    }
+  };
+
   const cidadeLabel = () => {
     if (!cidadeObj) return cidadeInput;
     return cidadeObj.estado ? `${cidadeObj.n} · Estado` : `${cidadeObj.n} — ${cidadeObj.uf}`;
@@ -279,6 +307,7 @@ export default function NewExtractionModal({
     onStartExtraction?.({
       niche: nicho.trim(),
       neigh,
+      bairros,
       city,
       pais,
       limit: 1000
@@ -498,9 +527,21 @@ export default function NewExtractionModal({
                     Adicionar
                   </button>
                 </div>
+                <button type="button" className="btn btn-sm btn-ghost hood-sugerir" onClick={sugerirBairros} disabled={!!sugerindo}>
+                  {sugerindo ? <Loader size={15} strokeWidth={1.5} className="cfg-girando" /> : <MapPinned size={15} strokeWidth={1.5} />}
+                  {sugerindo
+                    ? `Lendo o mapa${sugerindo.total ? ` (${sugerindo.atual}/${sugerindo.total})` : ''}…`
+                    : 'Sugerir bairros da cidade'}
+                </button>
+                <span className="cfg-dica">
+                  {sugerindo
+                    ? 'Leva cerca de 40 segundos. Na próxima vez, para a mesma cidade, é na hora.'
+                    : 'Cada bairro vira uma busca separada, e os resultados são somados sem repetição. É assim que se passa do limite de cerca de 120 resultados por busca do Google Maps.'}
+                </span>
+                {erroSugestao && <span className="field-err" style={{ display: 'block' }}>{erroSugestao}</span>}
               </div>
 
-              <div className="hood-list">
+              <div className="hood-list hood-list-rolavel">
                 {bairros.map((h, idx) => (
                   <div key={h} className="hood-row">
                     <span>{h}</span>
@@ -518,7 +559,7 @@ export default function NewExtractionModal({
 
               <div className="wz-review wz-2col-full">
                 <b>{nicho || '—'}</b>
-                <span> · {cidadeLabel()} · {bairros.length ? `${bairros.length} bairro(s)` : (pais === 'US' ? 'cidade inteira' : 'município inteiro')}</span>
+                <span> · {cidadeLabel()} · {bairros.length ? `${bairros.length} bairro(s), ${bairros.length} busca(s)` : (pais === 'US' ? 'cidade inteira' : 'município inteiro')}</span>
                 {pais === 'US' && <span className="wz-review-pais"> · Estados Unidos</span>}
               </div>
             </div>

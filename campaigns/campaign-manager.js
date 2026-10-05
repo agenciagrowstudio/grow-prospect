@@ -1,6 +1,7 @@
 const { CampaignStore } = require('./campaign-store');
 const { CampaignScheduler } = require('./campaign-scheduler');
 const { DailyQuota } = require('./daily-quota');
+const { planFollowUps } = require('./follow-up');
 
 class CampaignManager {
   constructor(userDataPath) {
@@ -17,6 +18,32 @@ class CampaignManager {
     this._phoneIndex = new Map();
     this._rebuildMessageIndex();
     this._rebuildPhoneIndex();
+    // A cota é janela móvel de 24h: a vaga volta sozinha, então campanha
+    // pausada por limite precisa ser retomada sem esperar o app reiniciar.
+    this._quotaTimer = setInterval(() => this.resumeQuotaPaused(), 60 * 1000);
+    if (this._quotaTimer.unref) this._quotaTimer.unref();
+  }
+
+  /** Retoma campanhas pausadas por limite quando algum número ganhou vaga. */
+  resumeQuotaPaused() {
+    const map = this.providersMap;
+    if (!map) return 0;
+    const limitCfg = DailyQuota.resolveLimitConfig(this.getCampaignSettings());
+    const hasSlot = [...map.entries()].some(
+      ([id, p]) => this._providerReady(p) && this.dailyQuota.check(id, limitCfg).allowed,
+    );
+    if (!hasSlot) return 0;
+    let resumed = 0;
+    for (const c of this.store.getAll()) {
+      if (c.status !== 'paused' || c.pauseReason !== 'daily_limit') continue;
+      try {
+        this.start(c.id);
+        resumed++;
+      } catch (e) {
+        console.error(`Failed to resume campaign ${c.id}:`, e.message);
+      }
+    }
+    return resumed;
   }
 
   setCampaignSettingsProvider(fn) {
@@ -229,7 +256,10 @@ class CampaignManager {
     if (!campaign) throw new Error('Campaign not found');
 
     // Ainda há leads pendentes?
-    const hasPending = (campaign.leads || []).some((l) => l.status === 'pending');
+    const followPlan = planFollowUps(campaign);
+    const hasPending = (campaign.leads || []).some((l) => l.status === 'pending')
+      || followPlan.due.length > 0
+      || followPlan.waiting;
     if (!hasPending && campaign.status !== 'scheduled') {
       this.store.update(campaignId, { status: 'completed', pauseReason: null });
       return { connectionId: campaign.connectionId, status: 'completed' };
@@ -555,6 +585,7 @@ class CampaignManager {
   }
 
   shutdown() {
+    if (this._quotaTimer) clearInterval(this._quotaTimer);
     if (this.scheduler) {
       this.scheduler.stop();
     }

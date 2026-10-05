@@ -1,4 +1,5 @@
 const path = require('path');
+const { normalizeFollowUp } = require('./follow-up');
 const fs = require('fs');
 const {
   recomputeStats: computeAnalytics,
@@ -149,6 +150,7 @@ class CampaignStore {
         startAt: data.schedule?.startAt || null,
         workingHours: data.schedule?.workingHours || null,
       },
+      followUp: normalizeFollowUp(data.followUp),
       status: 'ready',
       pauseReason: null,
       stats: emptyStats((data.leadIds || []).length),

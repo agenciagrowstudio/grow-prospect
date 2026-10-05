@@ -5,8 +5,14 @@ const { contextBridge, ipcRenderer, webFrame } = require("electron");
 webFrame.setZoomFactor(1);
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  startScrape: (query, maxResults, queryId, pais) =>
-    ipcRenderer.invoke("start-scrape", { query, maxResults, queryId, pais }),
+  startScrape: (query, maxResults, queryId, pais, divisao) =>
+    ipcRenderer.invoke("start-scrape", { query, maxResults, queryId, pais, divisao }),
+  sugerirBairros: (cidade, pais) => ipcRenderer.invoke("sugerir-bairros", { cidade, pais }),
+  onBairrosProgress: (callback) => {
+    const listener = (_, data) => callback(data);
+    ipcRenderer.on("bairros-progress", listener);
+    return () => ipcRenderer.removeListener("bairros-progress", listener);
+  },
   testarIA: (ai) => ipcRenderer.invoke("ia-testar", { ai }),
   qualificarBrasileiros: (leads, comIA) =>
     ipcRenderer.invoke("qualificar-brasileiros", { leads, comIA }),
@@ -63,6 +69,24 @@ contextBridge.exposeInMainWorld("whatsappAPI", {
     const listener = (_, data) => callback(data);
     ipcRenderer.on("whatsapp-status-changed", listener);
     return () => ipcRenderer.removeListener("whatsapp-status-changed", listener);
+  },
+});
+
+contextBridge.exposeInMainWorld("emailAPI", {
+  getSettings: () => ipcRenderer.invoke("email-get-settings"),
+  saveSettings: (patch) => ipcRenderer.invoke("email-save-settings", { patch }),
+  test: () => ipcRenderer.invoke("email-test"),
+  list: () => ipcRenderer.invoke("email-campaign-list"),
+  get: (id) => ipcRenderer.invoke("email-campaign-get", { id }),
+  create: (dados) => ipcRenderer.invoke("email-campaign-create", { dados }),
+  start: (id) => ipcRenderer.invoke("email-campaign-start", { id }),
+  pause: (id) => ipcRenderer.invoke("email-campaign-pause", { id }),
+  remove: (id) => ipcRenderer.invoke("email-campaign-delete", { id }),
+  checkReplies: () => ipcRenderer.invoke("email-check-replies"),
+  onProgress: (callback) => {
+    const listener = (_, data) => callback(data);
+    ipcRenderer.on("email-progress", listener);
+    return () => ipcRenderer.removeListener("email-progress", listener);
   },
 });
 

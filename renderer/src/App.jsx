@@ -12,6 +12,7 @@ import {
   Columns3,
   MessageCircle,
   BarChart3,
+  Mail,
   Plus,
   Settings
 } from 'lucide-react';
@@ -26,6 +27,7 @@ import LogoGrow from './components/LogoGrow';
 const APP_VERSION = '1.1.6';
 import KanbanBoard from './components/KanbanBoard';
 import WhatsAppPanel from './components/WhatsAppPanel';
+import EmailPanel from './components/EmailPanel';
 import NewExtractionModal from './components/NewExtractionModal';
 import Configuracoes from './components/Configuracoes';
 import OnboardingTour from './components/OnboardingTour';
@@ -103,6 +105,7 @@ function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
     { id: 'scoring', label: 'Ir para Lead Scoring', desc: 'Quem ligar primeiro', icon: Target, action: () => { onNavigate('scoring'); onClose(false); } },
     { id: 'kanban', label: 'Ir para Kanban', desc: 'Funil comercial de todos os leads', icon: Columns3, action: () => { onNavigate('kanban'); onClose(false); } },
     { id: 'whatsapp', label: 'Ir para WhatsApp', desc: 'Chats e campanhas', icon: MessageCircle, action: () => { onNavigate('whatsapp'); onClose(false); } },
+    { id: 'email', label: 'Ir para E-mail', desc: 'Campanhas pelo Gmail', icon: Mail, action: () => { onNavigate('email'); onClose(false); } },
     { id: 'dashboard', label: 'Ir para Dashboard', desc: 'Métricas e categorias', icon: BarChart3, action: () => { onNavigate('dashboard'); onClose(false); } },
     { id: 'new', label: 'Nova Extração…', desc: 'Criar busca no Google Maps', icon: Plus, action: () => { onClose(false); onNewExtraction(); } },
   ];
@@ -136,7 +139,7 @@ function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
 
 function AppInner() {
   const [activeTab, setActiveTab] = useState(() => {
-    try { const h = location.hash.slice(1); if(['overview','scraper','base','scoring','kanban','whatsapp','dashboard','settings'].includes(h)) return h; } catch{}
+    try { const h = location.hash.slice(1); if(['overview','scraper','base','scoring','kanban','whatsapp','email','dashboard','settings'].includes(h)) return h; } catch{}
     return 'overview';
   });
   const [isNewExtractionOpen, setIsNewExtractionOpen] = useState(false);
@@ -203,7 +206,7 @@ function AppInner() {
   const handleMaximize = () => window.electronAPI?.winMaximize();
   const handleClose = () => window.electronAPI?.winClose();
 
-  const handleStartExtraction = async ({ niche, neigh, city, pais = 'BR', limit }) => {
+  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit }) => {
     if (activeExtraction) {
       addNotification({
         type: 'info',
@@ -214,7 +217,9 @@ function AppInner() {
       return;
     }
     setActiveTab('scraper');
-    const qstr = [niche, neigh, city].filter(Boolean).join(' ').trim();
+    // Com muitos bairros o texto ficaria enorme na notificação e no histórico.
+    const local = bairros.length > 2 ? `${bairros.length} bairros` : neigh;
+    const qstr = [niche, bairros.length > 1 ? '' : neigh, city].filter(Boolean).join(' ').trim();
     const searchId = `scrape_${Date.now()}`;
     addNotification({
       type: 'info',
@@ -222,7 +227,7 @@ function AppInner() {
       title: 'Iniciando Extração',
       message: pais === 'US'
         ? `Buscando ${niche} em ${city} (Estados Unidos)...`
-        : `Buscando ${niche} em ${neigh}, ${city}...`
+        : `Buscando ${niche} em ${local ? `${local}, ` : ''}${city}...`
     });
 
     if (!window.electronAPI || typeof window.electronAPI.startScrape !== 'function') {
@@ -232,7 +237,9 @@ function AppInner() {
 
     setActiveExtraction({ id: searchId, query: qstr, pais, startedAt: Date.now() });
     try {
-      const res = await window.electronAPI.startScrape(qstr, limit, searchId, pais);
+      // Dois ou mais bairros: uma busca por bairro, somadas no processo principal.
+      const divisao = bairros.length > 1 ? { nicho: niche, cidade: city, areas: bairros } : null;
+      const res = await window.electronAPI.startScrape(qstr, limit, searchId, pais, divisao);
       if (!res?.success) {
         if (res?.cancelled) {
           addNotification({ type: 'info', category: 'scraper', title: 'Extração cancelada', message: 'Nenhum resultado parcial foi adicionado à base.' });
@@ -254,7 +261,7 @@ function AppInner() {
         {
           id: searchId,
           query: qstr,
-          label: `${niche} · ${neigh}${city ? ` · ${city}` : ''}${pais === 'US' ? ' · EUA' : ''}`,
+          label: `${niche}${local ? ` · ${local}` : ''}${city ? ` · ${city}` : ''}${pais === 'US' ? ' · EUA' : ''}`,
           source: 'maps',
           pais,
           timestamp: Date.now(),
@@ -323,6 +330,12 @@ function AppInner() {
         return (
           <ErrorBoundaryLite label="WhatsApp">
             <WhatsAppPanel waStatus={waStatus} setWaStatus={setWaStatus} addLog={(msg) => console.log(msg)} />
+          </ErrorBoundaryLite>
+        );
+      case 'email':
+        return (
+          <ErrorBoundaryLite label="E-mail">
+            <EmailPanel />
           </ErrorBoundaryLite>
         );
       case 'campaigns': // compat: alias → whatsapp/campanhas tab
@@ -436,6 +449,14 @@ function AppInner() {
           >
             <MessageCircle className="ico" size={18} aria-hidden="true" />
             <span className="nav-label-text">WhatsApp</span><span className="nav-kbd">6</span>
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'email' ? 'active' : ''}`}
+            onClick={() => navigate('email')}
+          >
+            <Mail className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">E-mail</span>
           </button>
 
           <button

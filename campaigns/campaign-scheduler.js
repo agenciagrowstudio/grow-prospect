@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { assertAllowedMediaPath, assertMaxBytes } = require('../utils/security');
 const { DailyQuota } = require('./daily-quota');
+const { planFollowUps, normalizeFollowUp } = require('./follow-up');
 
 const MAX_CAMPAIGN_MEDIA_BYTES = 50 * 1024 * 1024;
 
@@ -90,11 +91,18 @@ class CampaignScheduler {
    */
   _pickNextSend(campaign) {
     const leads = campaign.leads || [];
-    const pendingIdxs = [];
+    let pendingIdxs = [];
     for (let i = 0; i < leads.length; i++) {
       if (leads[i].status === 'pending') pendingIdxs.push(i);
     }
-    if (!pendingIdxs.length) return { done: true };
+    // Abordagem primeiro. Follow-up só entra quando não resta ninguém a abordar.
+    let followUp = false;
+    if (!pendingIdxs.length) {
+      const plan = planFollowUps(campaign);
+      if (!plan.due.length) return plan.waiting ? { waiting: true } : { done: true };
+      pendingIdxs = plan.due;
+      followUp = true;
+    }
 
     const campIds = this._campaignConnectionIds(campaign);
     const quota = this._getDailyQuota();
@@ -109,7 +117,7 @@ class CampaignScheduler {
         const check = quota.check(connectionId, limitCfg);
         if (!check.allowed) return null;
       }
-      return { leadIndex, connectionId, provider, limitCfg };
+      return { leadIndex, connectionId, provider, limitCfg, followUp };
     };
 
     // 1) lead com connectionId próprio e cota
@@ -137,7 +145,7 @@ class CampaignScheduler {
             const check = quota.check(cid, limitCfg);
             if (!check.allowed) continue;
           }
-          return { leadIndex: idx, connectionId: cid, provider, limitCfg };
+          return { leadIndex: idx, connectionId: cid, provider, limitCfg, followUp };
         }
       }
     }
@@ -232,9 +240,18 @@ class CampaignScheduler {
         continue;
       }
 
+      if (pick.waiting) {
+        if (campaign.waitReason !== 'follow_up_wait') {
+          campaign.waitReason = 'follow_up_wait';
+          this.store.update(campaignId, { waitReason: 'follow_up_wait' }, true);
+          if (this.onProgress) this.onProgress(campaignId, 'waiting', { reason: 'follow_up_wait', stats: campaign.stats });
+        }
+        continue;
+      }
+
       if (pick.blocked) {
         if (pick.reason === 'daily_limit') {
-          // Salva estado e pausa até amanhã / próxima cota
+          // Salva estado e pausa até a próxima vaga da janela de 24h
           campaign.status = 'paused';
           campaign.pauseReason = 'daily_limit';
           campaign.waitReason = 'daily_limit';
@@ -248,7 +265,7 @@ class CampaignScheduler {
           this._lastSentAt.delete(campaignId);
           this.store.pushEvent(campaign, {
             type: 'daily_limit',
-            msg: 'Limite diário de mensagens atingido — campanha salva e retoma depois',
+            msg: 'Limite de 24h atingido: campanha salva e retoma sozinha quando uma vaga liberar',
           });
           this.store.update(campaignId, { eventLog: campaign.eventLog }, true);
           if (this.onProgress) {
@@ -294,8 +311,11 @@ class CampaignScheduler {
         this.store.update(campaignId, { connectionId });
       }
 
-      const content = interpolate(campaign.template, lead);
-      const media = (campaign.media) || (content && content.media) || null;
+      const followStep = pick.followUp
+        ? normalizeFollowUp(campaign.followUp).steps[Number(lead.followUpCount || 0)]
+        : null;
+      const content = interpolate(followStep ? { text: followStep.text } : campaign.template, lead);
+      const media = followStep ? null : ((campaign.media) || (content && content.media) || null);
       const textPreview = typeof content === 'string'
         ? content
         : (content?.text || content?.header || content?.caption || '');
@@ -329,10 +349,18 @@ class CampaignScheduler {
         }
 
         if (result && result.success && result.messageId) {
-          lead.status = 'sent';
-          lead.sentAt = now;
-          lead.messageId = result.messageId;
-          lead.jid = result.jid || null;
+          if (pick.followUp) {
+            // O lead continua como "enviado": sentAt e messageId seguem sendo
+            // os da abordagem, que é o que as métricas medem.
+            lead.followUpCount = Number(lead.followUpCount || 0) + 1;
+            lead.followUpSentAt = now;
+            lead.jid = result.jid || lead.jid || null;
+          } else {
+            lead.status = 'sent';
+            lead.sentAt = now;
+            lead.messageId = result.messageId;
+            lead.jid = result.jid || null;
+          }
           lead.connectionId = connectionId;
           lead.errorMessage = null;
           lead.retryCount = 0;
@@ -356,7 +384,15 @@ class CampaignScheduler {
           const errMsg = (result && result.error) || 'Envio sem confirmação do WhatsApp (sem messageId)';
           const attempts = (lead.retryCount || 0) + 1;
           lead.retryCount = attempts;
-          if (attempts <= this._maxRetries) {
+          if (pick.followUp) {
+            // Follow-up que falha não derruba o lead: pula esse passo.
+            if (attempts > this._maxRetries) {
+              lead.followUpCount = Number(lead.followUpCount || 0) + 1;
+              lead.followUpSentAt = now;
+              lead.retryCount = 0;
+            }
+            lead.errorMessage = `follow-up: ${errMsg}`;
+          } else if (attempts <= this._maxRetries) {
             lead.status = 'pending';
             lead.errorMessage = `tentativa ${attempts}: ${errMsg}`;
             console.warn(`[SCHEDULER] retry ${attempts}: ${errMsg}`);
@@ -368,9 +404,15 @@ class CampaignScheduler {
           }
         }
       } catch (e) {
-        lead.status = 'failed';
-        lead.errorMessage = e.message;
-        lead.sentAt = now;
+        if (pick.followUp) {
+          lead.followUpCount = Number(lead.followUpCount || 0) + 1;
+          lead.followUpSentAt = now;
+          lead.errorMessage = `follow-up: ${e.message}`;
+        } else {
+          lead.status = 'failed';
+          lead.errorMessage = e.message;
+          lead.sentAt = now;
+        }
         console.error(`[SCHEDULER] exception:`, e.message);
       }
 

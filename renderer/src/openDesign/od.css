@@ -1106,3 +1106,59 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 .sc-cab-ia svg{flex-shrink:0;opacity:.7}
 .sc-link{border:0;background:transparent;padding:0;font:inherit;font-size:12.5px;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .sc-link:hover{color:var(--accent-hover)}
+
+/* --- Tela de E-mail ------------------------------------------------------ */
+/* Um tom por público: verde para BR no Brasil, azul para BR nos EUA, âmbar para americanos. */
+:root{
+  --pub-br:#047857; --pub-br-bg:#ecfdf5;
+  --pub-brus:#0b4f9e; --pub-brus-bg:#eef4ff;
+  --pub-us:#92400e; --pub-us-bg:#fdf6e9;
+}
+.email-grade{display:grid;grid-template-columns:1fr;gap:12px;min-width:0}
+@media (min-width:900px){.email-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.email-horario{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.email-horario input,.email-horario select{width:auto;flex:1;min-width:120px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;color:var(--fg)}
+.email-horario span{font-size:13px;color:var(--muted)}
+.email-cab{flex-wrap:wrap}
+.email-vazio{font-size:13px;color:var(--muted)}
+.email-lista{display:flex;flex-direction:column;gap:10px}
+.email-camp{border:1px solid var(--border);border-radius:var(--radius-md,14px);padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.email-camp-topo{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.email-camp-topo b{font-size:14px;color:var(--fg);margin-right:8px}
+.email-status{font-size:12px;font-weight:600;padding:3px 10px;border-radius:var(--radius-pill);background:var(--surface-warm);color:var(--muted)}
+.email-status.st-running{background:var(--accent-soft);color:#0b4f9e}
+.email-status.st-completed{background:var(--pub-br-bg);color:var(--success)}
+.email-status.st-paused{background:var(--amber-bg);color:var(--warn)}
+.email-barra{height:6px;border-radius:var(--radius-pill);background:var(--surface-warm);overflow:hidden}
+.email-barra span{display:block;height:100%;background:var(--accent);border-radius:inherit;transition:width 300ms cubic-bezier(.4,0,.2,1)}
+.email-numeros{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.email-numeros .n-resp{color:var(--success);font-weight:600}
+.email-numeros .n-alerta{color:var(--warn)}
+.email-numeros .n-erro{color:var(--danger)}
+.email-publicos{display:flex;gap:6px;flex-wrap:wrap}
+.email-pub{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:var(--radius-pill);white-space:nowrap}
+.email-pub.pub-br{color:var(--pub-br);background:var(--pub-br-bg)}
+.email-pub.pub-brus{color:var(--pub-brus);background:var(--pub-brus-bg)}
+.email-pub.pub-us{color:var(--pub-us);background:var(--pub-us-bg)}
+.email-nova{display:flex;flex-direction:column;gap:16px;padding:16px;border:1px solid var(--border);border-radius:var(--radius-md,14px);background:var(--surface-warm)}
+.email-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.email-busca{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;color:var(--fg)}
+.email-leads{max-height:280px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm)}
+.email-lead{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border-soft);font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--fg)}
+.email-lead:last-child{border-bottom:0}
+.email-lead-todos{grid-template-columns:auto 1fr;font-weight:600;background:var(--surface-warm)}
+.email-lead-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.email-lead-mail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-family:var(--font-mono);font-size:12px}
+@media (max-width:640px){.email-lead{grid-template-columns:auto minmax(0,1fr) auto}.email-lead-mail{display:none}}
+.email-modelo{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.email-modelo textarea,.email-nova textarea{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font:inherit;font-size:14px;color:var(--fg);resize:vertical;width:100%;line-height:1.5}
+.email-check{display:flex!important;align-items:center;gap:8px;text-transform:none!important;letter-spacing:0!important;font-size:14px!important;color:var(--fg)!important;cursor:pointer}
+/* .field label e .field input valem para o formulário inteiro; aqui não. */
+.field .email-lead,.field .email-check{text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;color:var(--fg)}
+.field .email-lead-todos{font-weight:600}
+.field .email-check{font-size:14px}
+.email-lead input[type=checkbox],.email-check input[type=checkbox]{width:16px;height:16px;min-height:0;padding:0;flex:none;accent-color:var(--accent);cursor:pointer}
+
+/* Sugestão de bairros no assistente de extração */
+.hood-sugerir{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin-top:8px}
+.hood-list-rolavel{max-height:240px;overflow:auto;padding-right:4px}

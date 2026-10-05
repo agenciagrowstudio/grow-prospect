@@ -122,4 +122,4 @@ function extractVariables(template) {
   return [...new Set(matches.map(m => m.replace(/[{}]/g, '')))];
 }
 
-module.exports = { interpolate, extractVariables, resolveSpintax };
+module.exports = { interpolate, extractVariables, resolveSpintax, resolveVar };
