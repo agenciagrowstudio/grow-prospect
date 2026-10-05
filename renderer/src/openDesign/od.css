@@ -1162,3 +1162,12 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 /* Sugestão de bairros no assistente de extração */
 .hood-sugerir{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin-top:8px}
 .hood-list-rolavel{max-height:240px;overflow:auto;padding-right:4px}
+
+/* API oficial da Meta: credenciais e modelo aprovado */
+.meta-cred{display:flex;flex-direction:column;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.meta-cred input{width:100%}
+.meta-aviso{display:flex;flex-direction:column;gap:6px;background:var(--blue-bg);border-radius:var(--radius-sm);padding:12px 14px;font-size:12.5px;line-height:1.5;color:var(--fg)}
+.meta-modelo{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-warm);margin-bottom:12px}
+.meta-modelo-linha{display:flex;gap:8px;flex-wrap:wrap}
+.meta-modelo-linha select{flex:1;min-width:200px}
+.modal .meta-cred{margin-top:0;padding-top:0;border-top:0}

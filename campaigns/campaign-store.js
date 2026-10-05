@@ -151,6 +151,8 @@ class CampaignStore {
         workingHours: data.schedule?.workingHours || null,
       },
       followUp: normalizeFollowUp(data.followUp),
+      // Na API oficial a abordagem precisa ser um modelo aprovado pela Meta.
+      metaTemplate: data.metaTemplate || null,
       status: 'ready',
       pauseReason: null,
       stats: emptyStats((data.leadIds || []).length),

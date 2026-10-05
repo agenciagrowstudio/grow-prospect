@@ -215,6 +215,13 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   const [pendingConnectionId, setPendingConnectionId] = useState(null);
   const pendingConnectionIdRef = useRef(null);
   const [providerType, setProviderType] = useState('baileys');
+  // Credenciais da API oficial. O token não volta para a tela depois de salvo.
+  const [metaCred, setMetaCred] = useState({ phoneNumberId: '', accessToken: '', wabaId: '' });
+  const [metaModelos, setMetaModelos] = useState([]);
+  const [metaModelo, setMetaModelo] = useState(null);
+  const [metaParams, setMetaParams] = useState([]);
+  const [metaCarregando, setMetaCarregando] = useState(false);
+  const [metaErro, setMetaErro] = useState('');
 
   // Campaigns state
   const [campaigns, setCampaigns] = useState([]);
@@ -294,6 +301,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   const [isConvMenuOpen, setIsConvMenuOpen] = useState(false);
   const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isMetaModalOpen, setIsMetaModalOpen] = useState(false);
   const [qrError, setQrError] = useState('');
   const [isSessionProfileOpen, setIsSessionProfileOpen] = useState(false);
   const [sessionProfile, setSessionProfile] = useState(() => {
@@ -748,7 +756,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   }, [messages]);
 
   // WhatsApp Connect Action
-  const handleConnect = async () => {
+  const handleConnect = async (tipoArg) => {
+    const tipo = typeof tipoArg === 'string' ? tipoArg : providerType;
     if (!window.whatsappAPI) {
       setQrError('Integração do WhatsApp indisponível. Reinicie o app e tente novamente.');
       return;
@@ -762,8 +771,12 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
       // Não força bolinha vermelha se já houver outra sessão online
       const hasOnline = (connections || []).some((c) => c.status === 'connected');
       if (!hasOnline) setWaStatus('connecting');
-      addLog(`[WHATSAPP] Conectando via ${providerType}...`);
-      const res = await window.whatsappAPI.connect(providerType, {});
+      addLog(`[WHATSAPP] Conectando via ${tipo}...`);
+      const res = await window.whatsappAPI.connect(tipo, tipo === 'meta' ? metaCred : {});
+      if (tipo === 'meta' && res?.success) {
+        setMetaCred((c) => ({ ...c, accessToken: '' }));
+        setIsMetaModalOpen(false);
+      }
       if (res?.connections) {
         setConnections(res.connections);
         const any = res.connections.some((c) => c.status === 'connected');
@@ -824,12 +837,46 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     }
   };
 
+  // Formulário da API oficial, usado na janela de conexão.
+  const metaCredForm = (
+                <div className="meta-cred">
+                  <div className="camp-field-row">
+                    <label className="camp-field">
+                      <span>ID do número de telefone</span>
+                      <input value={metaCred.phoneNumberId} onChange={(e) => setMetaCred((c) => ({ ...c, phoneNumberId: e.target.value }))} placeholder="Ex.: 104567890123456" autoComplete="off" />
+                    </label>
+                    <label className="camp-field">
+                      <span>ID da conta do WhatsApp Business (WABA)</span>
+                      <input value={metaCred.wabaId} onChange={(e) => setMetaCred((c) => ({ ...c, wabaId: e.target.value }))} placeholder="Para listar os modelos aprovados" autoComplete="off" />
+                    </label>
+                  </div>
+                  <label className="camp-field">
+                    <span>Token de acesso permanente</span>
+                    <input type="password" value={metaCred.accessToken} onChange={(e) => setMetaCred((c) => ({ ...c, accessToken: e.target.value }))} placeholder="Token de usuário do sistema (EAAG...)" autoComplete="off" spellCheck="false" />
+                  </label>
+                  <div className="meta-aviso">
+                    <p><strong>Onde achar:</strong> Meta for Developers, seu app, WhatsApp, Configuração da API. O token permanente se gera em Configurações do Negócio, Usuários do sistema. Ele fica cifrado nesta máquina.</p>
+                    <p><strong>Como funciona a abordagem:</strong> a Meta só deixa iniciar conversa com um modelo de mensagem aprovado por ela. Crie e aprove o modelo no Gerenciador do WhatsApp antes; o app escolhe e envia.</p>
+                    <p><strong>Custo:</strong> a Meta cobra por modelo de marketing entregue, cerca de US$ 0,06 no Brasil e US$ 0,025 nos EUA (confira a tabela atual da Meta). Em troca, não há risco de banimento por volume.</p>
+                    <p><strong>Respostas:</strong> a Meta avisa respostas por webhook, que precisa de servidor na internet, e este app roda só no computador. Use a coexistência da Meta para manter o número no app WhatsApp Business do celular e responder por lá.</p>
+                    <p><strong>Para americanos:</strong> mesmo pela API oficial, só aborde quem deu permissão (opt-in). Mensagem fria para celular nos EUA pode gerar multa pela TCPA.</p>
+                  </div>
+                </div>
+  );
+
   const openQrModal = () => {
     setQrError('');
     setIsQrModalOpen(true);
     setIsAcctMenuOpen(false);
     setIsConnMenuOpen(false);
-    handleConnect();
+    handleConnect('baileys');
+  };
+
+  const openMetaModal = () => {
+    setQrError('');
+    setIsMetaModalOpen(true);
+    setIsAcctMenuOpen(false);
+    setIsConnMenuOpen(false);
   };
 
   const saveSessionProfile = () => {
@@ -2280,7 +2327,11 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
       alert('Adicione ao menos um destinatário (lead, contato, grupo ou número manual).');
       return;
     }
-    if (!templateText.trim()) {
+    if (campanhaUsaMeta && !metaModelo) {
+      alert('Escolha o modelo aprovado da Meta.');
+      return;
+    }
+    if (!campanhaSoMeta && !templateText.trim()) {
       alert('Escreva o template da mensagem.');
       return;
     }
@@ -2301,7 +2352,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
             end: campSettings.workingHoursEnd || '18:00',
           },
     };
-    const template = { text: templateText, variables: ['name'], media: null };
+    // Só API oficial: guarda o corpo do modelo como texto, para a lista e o relatório.
+    const template = { text: templateText.trim() || metaModelo?.corpo || '', variables: ['name'], media: null };
     const leads = mapRecipientsToPayload(campaignRecipients, connIds);
 
     try {
@@ -2314,6 +2366,9 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
         template,
         leadIds: leads,
         schedule,
+        metaTemplate: campanhaUsaMeta && metaModelo
+          ? { nome: metaModelo.nome, idioma: metaModelo.idioma, parametros: metaParams }
+          : null,
         followUp: {
           enabled: followUpEnabled,
           steps: followUpSteps.filter((step) => step.text.trim()),
@@ -2541,10 +2596,41 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     { id: 'review', title: 'Revisar campanha' },
   ];
 
+  // Números da API oficial na campanha: abordagem por modelo aprovado.
+  const conexaoDaCampanha = (id) => connections.find((c) => c.id === id);
+  const campanhaUsaMeta = campaignConnectionIds.some((id) => conexaoDaCampanha(id)?.provider === 'meta');
+  const campanhaSoMeta = campaignConnectionIds.length > 0
+    && campaignConnectionIds.every((id) => conexaoDaCampanha(id)?.provider === 'meta');
+
+  const carregarModelosMeta = async () => {
+    const id = campaignConnectionIds.find((cid) => conexaoDaCampanha(cid)?.provider === 'meta');
+    setMetaErro('');
+    setMetaCarregando(true);
+    try {
+      const r = await window.whatsappAPI?.metaTemplates?.(id);
+      if (!r?.success) throw new Error(r?.error || 'Não foi possível ler os modelos.');
+      setMetaModelos(r.modelos || []);
+      if (!r.modelos?.length) setMetaErro('Nenhum modelo aprovado nessa conta. Crie um no Gerenciador do WhatsApp.');
+    } catch (e) {
+      setMetaErro(e.message);
+    } finally {
+      setMetaCarregando(false);
+    }
+  };
+
+  const escolherModeloMeta = (chave) => {
+    const m = metaModelos.find((x) => `${x.nome}|${x.idioma}` === chave) || null;
+    setMetaModelo(m);
+    setMetaParams(m ? Array.from({ length: m.variaveis }, (_, i) => (i === 0 ? '{{name}}' : '')) : []);
+  };
+
   const canWizardNext = () => {
     if (editingCampaignId) return true;
     if (campaignWizardStep === 0) return campaignRecipients.length > 0;
-    if (campaignWizardStep === 1) return !!templateText.trim();
+    if (campaignWizardStep === 1) {
+      if (campanhaUsaMeta && !metaModelo) return false;
+      return campanhaSoMeta || !!templateText.trim();
+    }
     if (campaignWizardStep === 2) {
       if (scheduleMode === 'scheduled' && !scheduleStartAt) return false;
       return intervalSec >= 5;
@@ -2555,7 +2641,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   const goWizardNext = () => {
     if (!canWizardNext()) {
       if (campaignWizardStep === 0) alert('Adicione ao menos um destinatário.');
-      else if (campaignWizardStep === 1) alert('Escreva a mensagem da campanha.');
+      else if (campaignWizardStep === 1) alert(campanhaUsaMeta && !metaModelo ? 'Escolha o modelo aprovado da Meta.' : 'Escreva a mensagem da campanha.');
       else if (campaignWizardStep === 2) alert('Confira o intervalo e o agendamento.');
       return;
     }
@@ -3857,6 +3943,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                 ))}
                 {connections.length > 0 && <div className="wa-menu-sep" />}
                 <button type="button" onClick={openQrModal}>+ Adicionar WhatsApp</button>
+                <button type="button" onClick={openMetaModal}>+ API oficial (Meta)</button>
                 <button type="button" onClick={() => { setIsConnectionsModalOpen(true); setIsAcctMenuOpen(false); }}>Gerenciar conexões</button>
               </div>
             )}
@@ -4064,6 +4151,33 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
         </div>
       )}
 
+      {isMetaModalOpen && (
+        <div className="overlay on" onClick={() => setIsMetaModalOpen(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="metaTitle" style={{ maxWidth: 640 }} onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head">
+              <div className="eyebrow">Conectar número</div>
+              <h2 id="metaTitle">API oficial do WhatsApp (Meta)</h2>
+            </div>
+            <div className="modal-body" style={{ gridTemplateColumns: '1fr' }}>
+              {metaCredForm}
+              {qrError && <div className="field-err" role="alert" style={{ display: 'block' }}>{qrError}</div>}
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-ghost" onClick={() => setIsMetaModalOpen(false)}>Cancelar</button>
+              <span style={{ flex: 1 }} />
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={connectFlowStatus === 'connecting' || !metaCred.phoneNumberId.trim() || !metaCred.accessToken.trim()}
+                onClick={() => handleConnect('meta')}
+              >
+                {connectFlowStatus === 'connecting' ? 'Conectando…' : 'Conectar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isSessionProfileOpen && (
         <div className="overlay on" id="profileOv" data-od-id="modal-perfil" onClick={() => setIsSessionProfileOpen(false)}>
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="profileTitle" style={{ maxWidth: 440 }} onClick={(event) => event.stopPropagation()}>
@@ -4105,7 +4219,10 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                   </div>
                 ))}
               </div>
-              <button type="button" className="btn btn-sm" onClick={() => { setIsConnectionsModalOpen(false); openQrModal(); }}>+ Adicionar WhatsApp</button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-sm" onClick={() => { setIsConnectionsModalOpen(false); openQrModal(); }}>+ Adicionar WhatsApp</button>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setIsConnectionsModalOpen(false); openMetaModal(); }}>+ API oficial (Meta)</button>
+              </div>
             </div>
             <div className="modal-foot"><button type="button" className="btn btn-ghost" onClick={() => setIsConnectionsModalOpen(false)}>Fechar</button></div>
           </div>
@@ -4198,6 +4315,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
               <p style={{ color: 'var(--muted)', fontSize: '12px', margin: '10px 0 0 0' }}>
                 Clique em <strong>Adicionar novo número</strong> para abrir uma nova sessão e conectar outro WhatsApp sem perder os números já salvos.
               </p>
+              {providerType === 'meta' && metaCredForm}
             </div>
 
             {/* QR Code Container — usa connectFlowStatus (local), não o agregado global */}
@@ -4585,8 +4703,54 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                     {/* STEP 1: message */}
                     {!editingCampaignId && campaignWizardStep === 1 && (
                       <div className="camp-wizard-pane">
+                        {campanhaUsaMeta && (
+                          <div className="meta-modelo">
+                            <div className="camp-field">
+                              <span>Modelo aprovado da Meta (API oficial)</span>
+                              <div className="meta-modelo-linha">
+                                <select
+                                  value={metaModelo ? `${metaModelo.nome}|${metaModelo.idioma}` : ''}
+                                  onChange={(e) => escolherModeloMeta(e.target.value)}
+                                  disabled={!metaModelos.length}
+                                >
+                                  <option value="">{metaModelos.length ? 'Escolha um modelo' : 'Carregue os modelos'}</option>
+                                  {metaModelos.map((m) => (
+                                    <option key={`${m.nome}|${m.idioma}`} value={`${m.nome}|${m.idioma}`}>
+                                      {m.nome} ({m.idioma}, {m.categoria === 'MARKETING' ? 'marketing' : String(m.categoria || '').toLowerCase()})
+                                    </option>
+                                  ))}
+                                </select>
+                                <button type="button" className="btn btn-secondary" onClick={carregarModelosMeta} disabled={metaCarregando}>
+                                  {metaCarregando ? 'Carregando…' : 'Carregar modelos aprovados'}
+                                </button>
+                              </div>
+                              {metaErro && <span className="camp-hint" style={{ color: 'var(--danger)' }}>{metaErro}</span>}
+                            </div>
+                            {metaModelo && (
+                              <>
+                                <div className="camp-msg-bubble">{metaModelo.corpo}</div>
+                                {metaParams.map((valor, i) => (
+                                  <label className="camp-field" key={i}>
+                                    <span>{`Variável {{${i + 1}}}`}</span>
+                                    <input
+                                      value={valor}
+                                      onChange={(e) => setMetaParams((ps) => ps.map((v, j) => (j === i ? e.target.value : v)))}
+                                      placeholder="{{name}}, {{categoria}}, {{site}} ou um texto fixo"
+                                    />
+                                  </label>
+                                ))}
+                                <p className="camp-hint">
+                                  Para brasileiros, use um modelo em português (pt_BR). Para americanos, um em inglês (en_US).
+                                  Follow-up não sai pela API oficial sem resposta do cliente, porque também exigiria modelo.
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        {!campanhaSoMeta && (
+                        <>
                         <label className="camp-field">
-                          <span>Mensagem da campanha</span>
+                          <span>{campanhaUsaMeta ? 'Mensagem para os números do WhatsApp Web' : 'Mensagem da campanha'}</span>
                           <textarea
                             value={templateText}
                             onChange={(e) => setTemplateText(e.target.value)}
@@ -4608,6 +4772,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                               .replace(/\{\{website\}\}/gi, 'site.com.br')}
                           </div>
                         </div>
+                        </>
+                        )}
                       </div>
                     )}
 

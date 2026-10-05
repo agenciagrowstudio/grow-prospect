@@ -65,6 +65,8 @@ contextBridge.exposeInMainWorld("whatsappAPI", {
     ipcRenderer.invoke("whatsapp-switch-connection", { connectionId }),
   forceResync: (connectionId) =>
     ipcRenderer.invoke("whatsapp-force-resync", { connectionId }),
+  metaTemplates: (connectionId) =>
+    ipcRenderer.invoke("whatsapp-meta-templates", { connectionId }),
   onStatus: (callback) => {
     const listener = (_, data) => callback(data);
     ipcRenderer.on("whatsapp-status-changed", listener);

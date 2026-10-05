@@ -526,6 +526,15 @@ function sanitizeCampaignData(data) {
         : null,
       workingHours,
     },
+    metaTemplate: input.metaTemplate?.nome
+      ? {
+          nome: limitString(input.metaTemplate.nome, 120, "").replace(/[^a-z0-9_]/gi, ""),
+          idioma: limitString(input.metaTemplate.idioma, 12, "pt_BR").replace(/[^a-z_]/gi, ""),
+          parametros: (Array.isArray(input.metaTemplate.parametros) ? input.metaTemplate.parametros : [])
+            .slice(0, 10)
+            .map((p) => limitString(p, 300, "")),
+        }
+      : null,
     followUp: normalizeFollowUp({
       enabled: !!input.followUp?.enabled,
       steps: (Array.isArray(input.followUp?.steps) ? input.followUp.steps : []).map((step) => ({
@@ -1001,9 +1010,11 @@ async function autoReconnectSessions() {
         return false;
       }
       const fullPath = path.join(sessionsDir, d);
+      // Baileys guarda creds.json; a API oficial guarda meta-config.json.
       return (
         fs.statSync(fullPath).isDirectory() &&
-        fs.existsSync(path.join(fullPath, "whatsapp-auth", "creds.json"))
+        (fs.existsSync(path.join(fullPath, "whatsapp-auth", "creds.json")) ||
+          fs.existsSync(path.join(fullPath, "whatsapp-auth", "meta-config.json")))
       );
     });
   } catch (e) {
@@ -1025,8 +1036,9 @@ async function autoReconnectSessions() {
         msg: "Reconectando sessão salva...",
       });
 
+      const tipo = fs.existsSync(path.join(sessionPath, "whatsapp-auth", "creds.json")) ? "baileys" : "meta";
       const provider = WhatsAppProviderFactory(
-        "baileys",
+        tipo,
         {},
         (status, data) => sendWaStatus(status, { ...(data || {}), connectionId: dirName }),
         (event) => onChatEvent({ ...event, connectionId: dirName }),
@@ -1859,9 +1871,17 @@ ipcMain.handle("whatsapp-connect", async (_, { provider: type, config }) => {
     const existing = whatsappProviders.get(connectionId);
     if (existing) await existing.disconnect().catch(() => {});
 
+    // Credenciais da API oficial: só os três campos, sem espaço em volta.
+    const safeConfig = type === "meta"
+      ? {
+          phoneNumberId: limitString(config?.phoneNumberId, 40, "").replace(/\D/g, ""),
+          accessToken: limitString(config?.accessToken, 1000, "").trim(),
+          wabaId: limitString(config?.wabaId, 40, "").replace(/\D/g, ""),
+        }
+      : config;
     provider = WhatsAppProviderFactory(
       type,
-      config,
+      safeConfig,
       (status, data) => sendWaStatus(status, { ...(data || {}), connectionId }),
       (event) => onChatEvent({ ...event, connectionId }),
       connectionPath,
@@ -1967,6 +1987,20 @@ ipcMain.handle("whatsapp-switch-connection", async (_, { connectionId }) => {
     return { success: true, activeConnectionId: activeWhatsAppId, connections: listWhatsAppConnections() };
   } catch (e) {
     return { success: false, error: e.message };
+  }
+});
+
+// Modelos aprovados da conta na Meta, para a campanha escolher.
+ipcMain.handle("whatsapp-meta-templates", async (_, { connectionId } = {}) => {
+  try {
+    const id = connectionId ? assertConnectionId(connectionId) : activeWhatsAppId;
+    const provider = id ? whatsappProviders.get(id) : null;
+    if (!provider || typeof provider.listTemplates !== "function") {
+      throw new Error("Escolha um número conectado pela API oficial.");
+    }
+    return { success: true, modelos: await provider.listTemplates() };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
 

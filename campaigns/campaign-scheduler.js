@@ -328,12 +328,22 @@ class CampaignScheduler {
           throw new Error('Destinatário sem telefone/grupo');
         }
 
+        // API oficial da Meta: a primeira mensagem só sai como modelo aprovado,
+        // e follow-up sem resposta do cliente também cairia nessa regra.
+        const apiOficial = typeof provider.sendTemplate === 'function';
+        if (apiOficial && pick.followUp) {
+          throw new Error('API oficial: follow-up sem resposta do cliente exige modelo aprovado. Passo pulado.');
+        }
+        if (apiOficial && !campaign.metaTemplate?.nome) {
+          throw new Error('Campanha na API oficial precisa de um modelo aprovado pela Meta.');
+        }
+
         let mediaContent = null;
-        if (media && media.filePath) {
+        if (!apiOficial && media && media.filePath) {
           mediaContent = await this._prepareMediaContent(media, typeof content === 'object' ? content : { text: content });
         }
 
-        if (!mediaContent && !String(textPreview || '').trim()) {
+        if (!apiOficial && !mediaContent && !String(textPreview || '').trim()) {
           throw new Error('Mensagem vazia após aplicar o template (verifique {{variáveis}})');
         }
 
@@ -342,7 +352,18 @@ class CampaignScheduler {
         );
 
         let result = null;
-        if (mediaContent) {
+        if (apiOficial) {
+          const modelo = campaign.metaTemplate;
+          result = await provider.sendTemplate(destination, {
+            nome: modelo.nome,
+            idioma: modelo.idioma,
+            parametros: (modelo.parametros || []).map((p) => {
+              const valor = interpolate(String(p || ''), lead);
+              // Variável sem valor no lead: a Meta recusa parâmetro vazio.
+              return /\{\{\w+\}\}/.test(valor) || !valor.trim() ? '-' : valor;
+            }),
+          });
+        } else if (mediaContent) {
           result = await provider.sendMedia(destination, mediaContent);
         } else {
           result = await provider.sendMessage(destination, content);
