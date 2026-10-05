@@ -85,6 +85,7 @@ contextBridge.exposeInMainWorld("emailAPI", {
   pause: (id) => ipcRenderer.invoke("email-campaign-pause", { id }),
   remove: (id) => ipcRenderer.invoke("email-campaign-delete", { id }),
   checkReplies: () => ipcRenderer.invoke("email-check-replies"),
+  jaAbordados: (telefones, emails) => ipcRenderer.invoke("contatos-ja-abordados", { telefones, emails }),
   onProgress: (callback) => {
     const listener = (_, data) => callback(data);
     ipcRenderer.on("email-progress", listener);

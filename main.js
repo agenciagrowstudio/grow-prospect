@@ -3128,6 +3128,21 @@ ipcMain.handle("email-campaign-delete", emailHandler(async ({ id }) => {
   emailCampanhas.excluir(String(id));
   return {};
 }));
+// Quem já foi abordado, em qualquer canal. A tela avisa antes de abordar de novo.
+ipcMain.handle("contatos-ja-abordados", async (_, { telefones, emails } = {}) => {
+  try {
+    const tels = (Array.isArray(telefones) ? telefones : []).slice(0, 10000).map((t) => limitString(t, 40, "")).filter(Boolean);
+    const mails = (Array.isArray(emails) ? emails : []).slice(0, 10000).map((e) => limitString(e, 300, "")).filter(Boolean);
+    return {
+      success: true,
+      porTelefone: campaignManager ? campaignManager.jaAbordados(tels) : {},
+      porEmail: emailCampanhas ? emailCampanhas.jaAbordados(mails) : {},
+    };
+  } catch (err) {
+    return { success: false, error: err.message, porTelefone: {}, porEmail: {} };
+  }
+});
+
 ipcMain.handle("email-check-replies", emailHandler(async () => emailCampanhas.lerRespostas()));
 
 ipcMain.handle("campaign-update", async (_, { id, updates }) => {

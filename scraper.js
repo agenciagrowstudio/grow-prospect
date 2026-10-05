@@ -3,6 +3,7 @@ const CONFIG = require('./config');
 const { extractBusinessData } = require('./utils/businessData');
 const { geocodeAddress, isValidCoord } = require('./utils/geocode');
 const { normalizeAddress } = require('./utils/address-normalizer');
+const { extraiEmails, ordenaEmails, linksDeContato, temEmailDoDominio } = require('./utils/emails-site');
 
 function checkCancelled(cancelToken) {
   if (cancelToken?.cancelled) {
@@ -221,32 +222,42 @@ async function gotoWithRetry(page, url, onProgress) {
   }
 }
 
+/**
+ * E-mail do site do lead: página inicial e, se ela não trouxer e-mail do
+ * próprio domínio, até duas páginas de contato ou "sobre". Devolve até três
+ * endereços, do melhor para o pior, separados por vírgula.
+ */
 async function scrapeEmails(browser, url, onProgress, cancelToken = null) {
   const page = await browser.newPage();
+  const lerPagina = async (endereco) => {
+    await page.goto(endereco, { timeout: CONFIG.PAGE_TIMEOUT, waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
+    return page.evaluate(() => ({
+      html: document.documentElement.outerHTML.slice(0, 600000),
+      texto: (document.body && document.body.innerText) || '',
+      links: [...document.querySelectorAll('a[href]')].slice(0, 400).map((a) => ({
+        href: a.getAttribute('href'),
+        texto: (a.textContent || '').trim().slice(0, 60),
+      })),
+    }));
+  };
   try {
     checkCancelled(cancelToken);
-    await page.goto(url, { timeout: CONFIG.PAGE_TIMEOUT, waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(2000);
-    checkCancelled(cancelToken);
-
-    const emails = await page.evaluate(() => {
-      const found = new Set();
-      document.querySelectorAll('a[href^="mailto:"]').forEach(a => {
-        const em = a.getAttribute('href').replace('mailto:', '').split('?')[0].trim();
-        if (em.includes('@')) found.add(em.toLowerCase());
-      });
-      const text = document.body.innerText;
-      const regex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-      let m;
-      while ((m = regex.exec(text)) !== null) {
-        const em = m[0].toLowerCase();
-        if (!em.endsWith('.png') && !em.endsWith('.jpg') && !em.includes('example.com')) found.add(em);
+    const inicio = await lerPagina(url);
+    let emails = extraiEmails(inicio);
+    if (!temEmailDoDominio(emails, url)) {
+      for (const contato of linksDeContato(inicio.links, url, 2)) {
+        checkCancelled(cancelToken);
+        try {
+          emails = emails.concat(extraiEmails(await lerPagina(contato)));
+        } catch (e) {
+          if (e.code === 'SCRAPE_CANCELLED') throw e;
+        }
+        if (temEmailDoDominio(emails, url)) break;
       }
-      return [...found].slice(0, 5);
-    });
-
+    }
     await page.close();
-    return emails.join(', ');
+    return ordenaEmails(emails, url).slice(0, 3).join(', ');
   } catch (e) {
     await page.close().catch(() => {});
     if (e.code === 'SCRAPE_CANCELLED') throw e;

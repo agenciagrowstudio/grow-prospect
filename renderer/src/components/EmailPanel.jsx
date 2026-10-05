@@ -71,7 +71,13 @@ function rotuloStatus(c) {
 function lerLeadsComEmail() {
   return readLocalArray('sigma_leads')
     .filter((l) => /\S+@\S+\.\S+/.test(String(l?.email || '')))
-    .map((l, i) => ({ ...l, _chave: String(l.id ?? `${l.name}-${i}`), _publico: publicoDoLead(l) }));
+    // O scraper grava até três e-mails, do melhor para o pior; vale o primeiro.
+    .map((l, i) => ({
+      ...l,
+      email: String(l.email).split(/[\s,;]+/).find((e) => e.includes('@')) || l.email,
+      _chave: String(l.id ?? `${l.name}-${i}`),
+      _publico: publicoDoLead(l),
+    }));
 }
 
 export default function EmailPanel() {
@@ -331,6 +337,21 @@ function NovaCampanha({ onCancelar, onCriar, ocupado }) {
   const [followUpAtivo, setFollowUpAtivo] = useState(false);
   const [dias, setDias] = useState([3, 7]);
   const [intervaloS, setIntervaloS] = useState(90);
+  const [abordados, setAbordados] = useState({});
+
+  // Quem já recebeu e-mail ou WhatsApp em outra campanha, para não abordar de novo sem querer.
+  useEffect(() => {
+    if (!leads.length || !window.emailAPI?.jaAbordados) return;
+    window.emailAPI.jaAbordados(leads.map((l) => l.phone).filter(Boolean), leads.map((l) => l.email)).then((r) => {
+      if (!r?.success) return;
+      const mapa = {};
+      for (const l of leads) {
+        const hit = r.porEmail[String(l.email).toLowerCase()] || (l.phone && r.porTelefone[l.phone]);
+        if (hit) mapa[l._chave] = hit;
+      }
+      setAbordados(mapa);
+    });
+  }, [leads]);
 
   const contagem = useMemo(() => {
     const n = { todos: leads.length, br: 0, brus: 0, us: 0 };
@@ -345,6 +366,12 @@ function NovaCampanha({ onCancelar, onCriar, ocupado }) {
   }, [leads, filtro, busca]);
 
   const escolhidos = leads.filter((l) => selecionados.has(l._chave));
+  const escolhidosJaAbordados = escolhidos.filter((l) => abordados[l._chave]);
+  const tirarAbordados = () => setSelecionados((prev) => {
+    const prox = new Set(prev);
+    escolhidosJaAbordados.forEach((l) => prox.delete(l._chave));
+    return prox;
+  });
   const publicosEscolhidos = PUBLICOS.filter((p) => escolhidos.some((l) => l._publico === p.id));
   const abaAtual = publicosEscolhidos.some((p) => p.id === aba) ? aba : publicosEscolhidos[0]?.id || 'br';
   const modelo = modelos[abaAtual];
@@ -417,11 +444,30 @@ function NovaCampanha({ onCancelar, onCriar, ocupado }) {
                   <input type="checkbox" checked={selecionados.has(l._chave)} onChange={() => alterna(l._chave)} />
                   <span className="email-lead-nome">{l.name}</span>
                   <span className="email-lead-mail">{l.email}</span>
-                  <span className={`email-pub pub-${l._publico}`}>{PUBLICOS.find((p) => p.id === l._publico)?.curto}</span>
+                  <span className="email-lead-selos">
+                    {abordados[l._chave] && (
+                      <span
+                        className={`email-abordado${abordados[l._chave].bloqueado ? ' bloqueado' : ''}`}
+                        title={abordados[l._chave].campanha ? `${abordados[l._chave].canal === 'email' ? 'E-mail' : 'WhatsApp'} em "${abordados[l._chave].campanha}", ${new Date(abordados[l._chave].quando).toLocaleDateString('pt-BR')}` : ''}
+                      >
+                        {abordados[l._chave].bloqueado ? 'Pediu para sair' : abordados[l._chave].respondeu ? 'Já respondeu' : 'Já abordado'}
+                      </span>
+                    )}
+                    <span className={`email-pub pub-${l._publico}`}>{PUBLICOS.find((p) => p.id === l._publico)?.curto}</span>
+                  </span>
                 </label>
               ))}
               {visiveis.length > 300 && <p className="email-vazio">Mostrando 300 de {visiveis.length}. Use a busca, ou "Selecionar" para pegar todos.</p>}
             </div>
+            {escolhidosJaAbordados.length > 0 && (
+              <div className="ja-abordados">
+                <span>
+                  <b>{escolhidosJaAbordados.length}</b> dos escolhidos já {escolhidosJaAbordados.length === 1 ? 'foi abordado' : 'foram abordados'} em outra campanha.
+                  Quem pediu para sair nunca recebe, mesmo se ficar na lista.
+                </span>
+                <button type="button" className="btn btn-sm" onClick={tirarAbordados}>Tirar da seleção</button>
+              </div>
+            )}
             <span className="cfg-dica">
               Lead dos EUA só entra como brasileiro com sinal brasileiro alto. Rode a qualificação na Base de Leads para melhorar a separação.
             </span>

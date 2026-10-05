@@ -121,6 +121,29 @@ class CampaignManager {
     return campaign;
   }
 
+  /**
+   * Telefones que já receberam abordagem em alguma campanha, com a mais
+   * recente. Lead pendente ou que falhou não conta: ele nunca recebeu nada.
+   */
+  jaAbordados(telefones = []) {
+    const resultado = {};
+    for (const tel of telefones) {
+      let melhor = null;
+      for (const key of this._phoneKeys(tel)) {
+        for (const { campaignId, leadIndex } of this._phoneIndex.get(key) || []) {
+          const campanha = this.store.get(campaignId);
+          const lead = campanha?.leads?.[leadIndex];
+          if (!lead?.sentAt || ['pending', 'failed'].includes(lead.status)) continue;
+          if (!melhor || lead.sentAt > melhor.quando) {
+            melhor = { canal: 'whatsapp', campanha: campanha.name, quando: lead.sentAt, respondeu: !!lead.repliedAt };
+          }
+        }
+      }
+      if (melhor) resultado[tel] = melhor;
+    }
+    return resultado;
+  }
+
   update(id, updates) {
     const campaign = this.store.update(id, updates);
     this._rebuildMessageIndex();

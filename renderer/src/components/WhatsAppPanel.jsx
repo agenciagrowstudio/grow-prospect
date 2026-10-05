@@ -231,6 +231,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   const [editingCampaignId, setEditingCampaignId] = useState(null);
   const [newCampaignName, setNewCampaignName] = useState('');
   const [campaignRecipients, setCampaignRecipients] = useState([]);
+  // Destinatários que já receberam abordagem em outra campanha (WhatsApp ou e-mail).
+  const [jaAbordados, setJaAbordados] = useState({});
   const [customNumberInput, setCustomNumberInput] = useState('');
   const [customNameInput, setCustomNameInput] = useState('');
   const [recipientSearch, setRecipientSearch] = useState('');
@@ -2624,6 +2626,30 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     setMetaParams(m ? Array.from({ length: m.variaveis }, (_, i) => (i === 0 ? '{{name}}' : '')) : []);
   };
 
+  useEffect(() => {
+    if (!isCreatingCampaign || editingCampaignId || !window.emailAPI?.jaAbordados) return undefined;
+    const pessoas = campaignRecipients.filter((r) => !r.isGroup);
+    if (!pessoas.length) {
+      setJaAbordados({});
+      return undefined;
+    }
+    const timer = setTimeout(async () => {
+      const r = await window.emailAPI.jaAbordados(pessoas.map((p) => p.phone), pessoas.map((p) => p.email).filter(Boolean));
+      if (!r?.success) return;
+      const mapa = {};
+      for (const p of pessoas) {
+        const hit = r.porTelefone[p.phone] || (p.email && r.porEmail[String(p.email).split(/[\s,;]+/)[0].toLowerCase()]);
+        if (hit) mapa[p.leadId || p.phone] = hit;
+      }
+      setJaAbordados(mapa);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [campaignRecipients, isCreatingCampaign, editingCampaignId]);
+
+  const tirarJaAbordados = () => {
+    setCampaignRecipients((lista) => lista.filter((r) => !jaAbordados[r.leadId || r.phone]));
+  };
+
   const canWizardNext = () => {
     if (editingCampaignId) return true;
     if (campaignWizardStep === 0) return campaignRecipients.length > 0;
@@ -4692,6 +4718,15 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                           <b>{campaignRecipients.length} destinatário{campaignRecipients.length === 1 ? '' : 's'} único{campaignRecipients.length === 1 ? '' : 's'}</b>
                           <span> · nenhum finalizado</span>
                         </div>
+                        {Object.keys(jaAbordados).length > 0 && (
+                          <div className="ja-abordados">
+                            <span>
+                              <b>{Object.keys(jaAbordados).length}</b> já {Object.keys(jaAbordados).length === 1 ? 'foi abordado' : 'foram abordados'} em outra campanha
+                              {Object.values(jaAbordados).some((h) => h.respondeu) ? ', alguns já responderam' : ''}.
+                            </span>
+                            <button type="button" className="btn btn-sm" onClick={tirarJaAbordados}>Tirar da lista</button>
+                          </div>
+                        )}
                         {connectedSessions.length === 0 && (
                           <div className="camp-alert">
                             Nenhum número conectado. A campanha será salva como rascunho até você parear um WhatsApp.

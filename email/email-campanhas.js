@@ -12,6 +12,7 @@ const path = require('path');
 const { DailyQuota } = require('../campaigns/daily-quota');
 const { resolveVar, resolveSpintax } = require('../campaigns/template-engine');
 const { PUBLICOS, publicoDoLead, rodape, PALAVRAS_DESCADASTRO } = require('./publico');
+const { primeiroEmail } = require('../utils/emails-site');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const COTA_ID = 'gmail';
@@ -110,7 +111,8 @@ class EmailCampanhas {
     const vistos = new Set();
     const leads = [];
     for (const l of Array.isArray(dados.leads) ? dados.leads.slice(0, 5000) : []) {
-      const email = String(l.email || '').trim().toLowerCase();
+      // O scraper grava até três e-mails, do melhor para o pior; vale o primeiro.
+      const email = primeiroEmail(l.email);
       if (!emailValido(email) || vistos.has(email)) continue;
       vistos.add(email);
       leads.push({
@@ -150,6 +152,25 @@ class EmailCampanhas {
     };
     this._gravar();
     return this.resumo(this.campanhas[id]);
+  }
+
+  /** E-mails que já receberam abordagem, com a mais recente, e quem está na supressão. */
+  jaAbordados(emails = []) {
+    const resultado = {};
+    const alvo = new Set(emails.map((e) => primeiroEmail(e)).filter(Boolean));
+    for (const c of Object.values(this.campanhas)) {
+      for (const l of c.leads) {
+        if (!alvo.has(l.email) || !l.sentAt) continue;
+        const atual = resultado[l.email];
+        if (!atual || l.sentAt > atual.quando) {
+          resultado[l.email] = { canal: 'email', campanha: c.nome, quando: l.sentAt, respondeu: !!l.repliedAt };
+        }
+      }
+    }
+    for (const e of alvo) {
+      if (this.supressao.has(e)) resultado[e] = { ...(resultado[e] || { canal: 'email' }), bloqueado: true };
+    }
+    return resultado;
   }
 
   listar() {

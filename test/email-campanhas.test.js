@@ -88,6 +88,13 @@ describe('campanha de e-mail', () => {
     assert.equal(motor.listar()[0].motivoEspera, 'limite_24h');
   });
 
+  it('lead com vários e-mails no campo entra com o primeiro, em vez de sumir', () => {
+    const { motor } = montar(dir, { t: SEG_10H });
+    const c = motor.criar({ modelos, leads: [{ email: 'Contato@Loja.com.br, outro@x.com', pais: 'BR' }] });
+    assert.equal(c.total, 1);
+    assert.equal(motor.obter(c.id).leads[0].email, 'contato@loja.com.br');
+  });
+
   it('não envia fora do horário nem no fim de semana', async () => {
     const sabado = new Date(2026, 9, 10, 10, 0, 0).getTime();
     const { motor, enviados } = montar(dir, { t: sabado });
