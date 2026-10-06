@@ -71,6 +71,7 @@ const { EmailSettings } = require("./email/email-settings");
 const { EmailCampanhas } = require("./email/email-campanhas");
 const gmail = require("./email/gmail");
 const { sugereBairros } = require("./utils/bairros");
+const { imagemCidadeComCache, criaCacheEmArquivo } = require("./utils/imagem-cidade");
 const { scrapePorAreas } = require("./utils/scrape-por-areas");
 
 const defaultWhatsAppSettings = {
@@ -1274,6 +1275,24 @@ ipcMain.handle("metrics-settings-set", async (_, patch = {}) => {
 });
 
 // ─── START SCRAPE ──────────────────────────
+// Foto de destaque da cidade (Wikipédia) para o banner da lista de leads.
+let cacheImagensCidade = null;
+ipcMain.handle("imagem-cidade", async (_, { cidade, uf, pais } = {}) => {
+  try {
+    if (!cacheImagensCidade) {
+      cacheImagensCidade = criaCacheEmArquivo(path.join(app.getPath("userData"), "imagens-cidades.json"));
+    }
+    const imagem = await imagemCidadeComCache({
+      cidade: limitString(cidade, 120, ""),
+      uf: limitString(uf, 4, ""),
+      pais: resolvePais(pais).sigla,
+    }, cacheImagensCidade);
+    return { success: true, imagem };
+  } catch (err) {
+    return { success: false, error: err.message, imagem: null };
+  }
+});
+
 ipcMain.handle("sugerir-bairros", async (_, { cidade, pais } = {}) => {
   try {
     const r = await sugereBairros(limitString(cidade, 200, ""), resolvePais(pais), {

@@ -1,28 +1,19 @@
 import React from 'react';
 import {
   Star, StarHalf, MessageCircle, Instagram, Mail, Globe, MapPin, Flame, Thermometer, Snowflake,
-  MonitorSmartphone, CalendarCheck, Store, Megaphone, Clapperboard,
 } from 'lucide-react';
 import AvatarLead from './AvatarLead';
-import SeloNota from './SeloNota';
 
 /**
- * Card do lead na lista do mapa.
+ * Card do lead na lista do mapa, no formato de vitrine: foto grande à
+ * esquerda e, à direita, nota do Google, nome, endereço, serviços para
+ * oferecer e a qualificação. Embaixo, os canais de contato.
  *
- * Três blocos, na ordem em que a decisão acontece: vale abordar (estrelas e
- * temperatura), o que oferecer (serviços da Grow+) e por onde falar (canais).
  * Canal que o lead não tem fica apagado em vez de sumir: a ausência também é
  * informação, e o site que falta é justamente o que se vende.
  */
 
 const ICONE_TEMPERATURA = { quente: Flame, morno: Thermometer, frio: Snowflake };
-const ICONE_SERVICO = {
-  site: MonitorSmartphone,
-  sistema: CalendarCheck,
-  google: Store,
-  redes: Megaphone,
-  conteudo: Clapperboard,
-};
 
 function Estrelas({ valor }) {
   const cheias = Math.floor(valor);
@@ -30,16 +21,16 @@ function Estrelas({ valor }) {
   return (
     <span className="cl-estrelas" aria-hidden="true">
       {Array.from({ length: 5 }, (_, i) => {
-        if (i < cheias) return <Star key={i} size={13} strokeWidth={0} fill="currentColor" />;
+        if (i < cheias) return <Star key={i} size={12} strokeWidth={0} fill="currentColor" />;
         if (i === cheias && meia) {
           return (
             <span key={i} className="cl-estrela-meia">
-              <Star size={13} strokeWidth={1.5} className="vazia" />
-              <StarHalf size={13} strokeWidth={0} fill="currentColor" />
+              <Star size={12} strokeWidth={1.5} className="vazia" />
+              <StarHalf size={12} strokeWidth={0} fill="currentColor" />
             </span>
           );
         }
-        return <Star key={i} size={13} strokeWidth={1.5} className="vazia" />;
+        return <Star key={i} size={12} strokeWidth={1.5} className="vazia" />;
       })}
     </span>
   );
@@ -58,9 +49,13 @@ function Canal({ ativo, Icone, rotulo, rotuloAusente, onAbrir, tom }) {
         if (ativo) onAbrir();
       }}
     >
-      <Icone size={15} strokeWidth={1.75} aria-hidden="true" />
+      <Icone size={14} strokeWidth={1.75} aria-hidden="true" />
     </button>
   );
+}
+
+function fmt(n) {
+  return Number(n).toFixed(1).replace('.', ',');
 }
 
 export default function CardLead({
@@ -71,6 +66,7 @@ export default function CardLead({
   const categoria = lead.category || lead.cat || 'Geral';
   const IconeTemp = ICONE_TEMPERATURA[q.temperatura.id];
   const abrir = (url) => window.open(url, '_blank', 'noopener');
+  const { nota, avaliacoes } = q.google;
 
   return (
     <div
@@ -88,44 +84,40 @@ export default function CardLead({
         }
       }}
     >
-      <div className="cl-topo">
-        <AvatarLead lead={lead} size={56} />
-        <div className="cl-texto">
-          <div className="cl-linha-nome">
-            <b className="cl-nome">{nome}</b>
-            <span className={`cl-temp cl-temp-${q.temperatura.id}`} title={`${q.temperatura.rotulo}: ${q.temperatura.funil}`}>
-              <IconeTemp size={12} strokeWidth={2} aria-hidden="true" />
-              {q.temperatura.rotulo}
-            </span>
-          </div>
-          <span className="cl-sub">
-            {categoria}
-            {local ? <> · <MapPin size={11} strokeWidth={1.5} aria-hidden="true" /> {local}</> : null}
-          </span>
-          <div className="cl-notas">
-            <span className="cl-qualif" title={`Qualificação ${q.nota}/100, pelos ${q.origem}`}>
-              <Estrelas valor={q.estrelas} />
-              <b>{q.estrelas.toFixed(1).replace('.', ',')}</b>
-              <span className="cl-funil">{q.temperatura.funil}</span>
-            </span>
-            <SeloNota nota={q.google.nota} avaliacoes={q.google.avaliacoes} size="sm" />
-          </div>
-        </div>
+      <div className="cl-foto">
+        <AvatarLead lead={lead} size={88} />
       </div>
 
-      {q.servicos.length > 0 && (
-        <div className="cl-servicos" aria-label="Serviços para oferecer">
-          {q.servicos.map((s) => {
-            const Icone = ICONE_SERVICO[s.id];
-            return (
-              <span key={s.id} className={`cl-servico cl-servico-${s.id}`}>
-                <Icone size={12} strokeWidth={1.75} aria-hidden="true" />
-                {s.rotulo}
-              </span>
-            );
-          })}
+      <div className="cl-corpo">
+        <div className="cl-l1">
+          <span className="cl-google" title={nota ? `Google: ${fmt(nota)} em ${avaliacoes} avaliações` : 'Sem nota no Google'}>
+            <Star size={12} strokeWidth={0} fill="currentColor" aria-hidden="true" />
+            {nota ? fmt(nota) : 'sem nota'}
+            {avaliacoes > 0 && <small>({avaliacoes})</small>}
+          </span>
+          <span className={`cl-temp cl-temp-${q.temperatura.id}`} title={`${q.temperatura.rotulo}: ${q.temperatura.funil}`}>
+            <IconeTemp size={11} strokeWidth={2} aria-hidden="true" />
+            {q.temperatura.rotulo}
+          </span>
         </div>
-      )}
+
+        <b className="cl-nome">{nome}</b>
+        <span className="cl-sub">{local ? `${categoria} · ${local}` : categoria}</span>
+
+        {q.servicos.length > 0 && (
+          <span className="cl-detalhes" aria-label="Serviços para oferecer">
+            {q.servicos.map((s) => (
+              <span key={s.id} className={`cl-det cl-servico-${s.id}`}>{s.rotulo}</span>
+            ))}
+          </span>
+        )}
+
+        <span className="cl-qualif" title={`Qualificação ${q.nota}/100, pelos ${q.origem}`}>
+          <Estrelas valor={q.estrelas} />
+          <b>{fmt(q.estrelas)}</b>
+          <span className="cl-funil">{q.temperatura.funil}</span>
+        </span>
+      </div>
 
       <div className="cl-rodape">
         <div className="cl-canais">
@@ -148,7 +140,7 @@ export default function CardLead({
               onMapa();
             }}
           >
-            <MapPin size={15} strokeWidth={1.75} aria-hidden="true" />
+            <MapPin size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
       </div>

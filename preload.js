@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   startScrape: (query, maxResults, queryId, pais, divisao) =>
     ipcRenderer.invoke("start-scrape", { query, maxResults, queryId, pais, divisao }),
   sugerirBairros: (cidade, pais) => ipcRenderer.invoke("sugerir-bairros", { cidade, pais }),
+  imagemCidade: (cidade, uf, pais) => ipcRenderer.invoke("imagem-cidade", { cidade, uf, pais }),
   onBairrosProgress: (callback) => {
     const listener = (_, data) => callback(data);
     ipcRenderer.on("bairros-progress", listener);

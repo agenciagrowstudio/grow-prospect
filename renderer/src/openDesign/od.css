@@ -1199,39 +1199,42 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
   --canal-email:var(--pal-azul-forte); --canal-site:var(--pal-roxo);
 }
 
-/* Card do lead */
-.cl-card{gap:10px;padding:14px}
+/* Card do lead, formato vitrine: foto à esquerda, informação à direita */
+.cl-card{display:grid;grid-template-columns:96px minmax(0,1fr);column-gap:12px;row-gap:10px;padding:10px;border-radius:18px;align-items:start}
 .cl-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.cl-topo{display:flex;gap:12px;align-items:flex-start;min-width:0}
-.cl-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.cl-linha-nome{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.cl-foto{width:96px;height:96px;border-radius:14px;overflow:hidden;background:var(--surface-warm)}
+.cl-foto .av-lead{width:100%!important;height:100%!important;border-radius:14px!important}
+.cl-foto .av-lead img{width:100%;height:100%;object-fit:cover}
+.cl-corpo{min-width:0;display:flex;flex-direction:column;gap:3px;padding-top:2px}
+.cl-l1{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cl-google{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--pal-tinta)}
+.cl-google svg{color:var(--estrela)}
+.cl-google small{font-weight:500;color:var(--muted)}
 .cl-nome{font-size:14.5px;font-weight:700;letter-spacing:-.2px;color:var(--fg);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.cl-sub{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:3px;flex-wrap:wrap}
-.cl-notas{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
-.cl-qualif{display:inline-flex;align-items:center;gap:5px;font-size:12px}
-.cl-qualif b{color:var(--pal-tinta);font-weight:700}
-.cl-funil{color:var(--muted)}
-.cl-estrelas{display:inline-flex;gap:1px;color:var(--estrela)}
-.cl-estrelas .vazia{color:var(--pal-borda)}
-.cl-estrela-meia{position:relative;display:inline-flex}
-.cl-estrela-meia > :last-child{position:absolute;left:0;top:0}
-.cl-temp{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill)}
-.cl-temp-quente{background:var(--temp-quente);color:#fff}
-.cl-temp-morno{background:var(--temp-morno);color:var(--pal-tinta)}
-.cl-temp-frio{background:var(--temp-frio);color:#fff}
-.cl-servicos{display:flex;gap:6px;flex-wrap:wrap}
-.cl-servico{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:var(--radius-pill);color:var(--pal-tinta);--c:var(--accent);background:color-mix(in srgb,var(--c) 13%,#fff)}
-.cl-servico svg{color:var(--c)}
+.cl-sub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Serviços como a linha "2 quartos · 58 m2" da referência, com bolinha de cor. */
+.cl-detalhes{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px;color:var(--pal-tinta);margin-top:2px}
+.cl-det{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.cl-det::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
 .cl-servico-site{--c:var(--svc-site)}
 .cl-servico-sistema{--c:var(--svc-sistema)}
 .cl-servico-google{--c:var(--svc-google)}
 .cl-servico-redes{--c:var(--svc-redes)}
 .cl-servico-conteudo{--c:var(--svc-conteudo)}
-/* Ícone amarelo some no fundo claro: escurece para laranja. */
-.cl-servico-conteudo svg{color:var(--pal-laranja)}
-.cl-rodape{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--border-soft)}
+.cl-qualif{display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-top:3px}
+.cl-qualif b{color:var(--pal-tinta);font-weight:700}
+.cl-funil{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl-estrelas{display:inline-flex;gap:1px;color:var(--estrela)}
+.cl-estrelas .vazia{color:var(--pal-borda)}
+.cl-estrela-meia{position:relative;display:inline-flex}
+.cl-estrela-meia > :last-child{position:absolute;left:0;top:0}
+.cl-temp{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-pill)}
+.cl-temp-quente{background:var(--temp-quente);color:#fff}
+.cl-temp-morno{background:var(--temp-morno);color:var(--pal-tinta)}
+.cl-temp-frio{background:var(--temp-frio);color:#fff}
+.cl-rodape{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;border-top:1px solid var(--border-soft)}
 .cl-canais,.cl-acoes{display:flex;align-items:center;gap:6px}
-.cl-canal{width:32px;height:32px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:background var(--motion-fast,150ms),border-color var(--motion-fast,150ms)}
+.cl-canal{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:background var(--motion-fast,150ms)}
 .cl-canal:hover:not(:disabled){background:var(--surface-warm)}
 .cl-canal-whatsapp{color:var(--canal-whatsapp)}
 .cl-canal-instagram{color:var(--canal-instagram)}
@@ -1241,19 +1244,21 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 .cl-canal.ausente{opacity:.32;cursor:default;border-style:dashed}
 .lead-card[aria-current="true"] .cl-canal{background:#fff}
 
-/* Cabeçalho da lista com mini mapa */
-.cr-cabecalho{display:flex;gap:12px;align-items:center;margin:8px 12px 2px;padding:10px;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.05),0 6px 16px rgba(16,24,40,.05)}
-.cr-mapa{width:84px;height:84px;flex:none;border-radius:11px;overflow:hidden;background:var(--surface-warm);border:1px solid var(--border)}
-.cr-mapa .leaflet-container{background:var(--surface-warm)}
-.cr-texto{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.cr-titulo{font-size:17px;font-weight:700;letter-spacing:-.4px;color:var(--fg);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cr-sub{font-size:12px;color:var(--muted)}
-.cr-temps{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-.cr-temp{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:var(--radius-pill)}
-.cr-temp small{font-weight:500;font-size:11px}
+/* Banner da lista: foto da cidade com véu escuro e texto branco */
+.cr-banner{position:relative;margin:8px 12px 4px;height:132px;border-radius:18px;overflow:hidden;background:var(--pal-roxo-escuro);box-shadow:0 6px 18px rgba(16,24,40,.12);isolation:isolate}
+.cr-foto,.cr-fundo-mapa{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.cr-fundo-mapa .leaflet-container,.cr-fundo-mapa{background:var(--surface-warm)}
+.cr-veu{position:absolute;inset:0;z-index:1;background:linear-gradient(100deg,rgba(15,12,30,.82) 0%,rgba(15,12,30,.55) 48%,rgba(15,12,30,.12) 100%)}
+.cr-conteudo{position:absolute;left:16px;top:14px;right:16px;z-index:2;display:flex;flex-direction:column;gap:2px;color:#fff}
+.cr-rotulo{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;letter-spacing:.02em;opacity:.9}
+.cr-titulo{font-size:26px;font-weight:800;letter-spacing:-.8px;line-height:1.05;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-total{font-size:12px;opacity:.85}
+.cr-temps{position:absolute;left:16px;bottom:12px;z-index:2;display:flex;gap:6px}
+.cr-temp{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--radius-pill);box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .cr-temp-quente{background:var(--temp-quente);color:#fff}
 .cr-temp-morno{background:var(--temp-morno);color:var(--pal-tinta)}
 .cr-temp-frio{background:var(--temp-frio);color:#fff}
+.cr-credito{position:absolute;right:10px;bottom:8px;z-index:2;font-size:10px;color:rgba(255,255,255,.75)}
 
 /* Públicos do e-mail na mesma paleta */
 .email-pub.pub-br{color:var(--pal-tinta);background:color-mix(in srgb,var(--pal-verde) 18%,#fff)}

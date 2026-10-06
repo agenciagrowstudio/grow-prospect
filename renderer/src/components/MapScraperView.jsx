@@ -730,6 +730,8 @@ export default function MapScraperView({
     });
     return {
       titulo,
+      uf,
+      pais: String(amostra.pais || 'BR').toUpperCase(),
       subtitulo: [titulo ? 'Cidade' : (contagem.size > 1 ? `${contagem.size} cidades` : ''), uf, pais].filter(Boolean).join(' · '),
       resumo: resumoTemperaturas(qs),
       pontos,
@@ -1248,6 +1250,8 @@ export default function MapScraperView({
         <div id="feedCount" role="status">
           <CabecalhoRegiao
             titulo={regiao.titulo}
+            uf={regiao.uf}
+            pais={regiao.pais}
             subtitulo={regiao.subtitulo}
             total={visibleLeads.length}
             resumo={regiao.resumo}
