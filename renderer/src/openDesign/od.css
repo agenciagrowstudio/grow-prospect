@@ -1259,3 +1259,15 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 .email-pub.pub-br{color:var(--pal-tinta);background:color-mix(in srgb,var(--pal-verde) 18%,#fff)}
 .email-pub.pub-brus{color:var(--pal-tinta);background:color-mix(in srgb,var(--pal-azul) 18%,#fff)}
 .email-pub.pub-us{color:var(--pal-tinta);background:color-mix(in srgb,var(--pal-laranja) 20%,#fff)}
+
+/* Pinos do mapa na cor da temperatura */
+.lp.lp-quente{background:var(--temp-quente)}
+.lp.lp-morno{background:var(--temp-morno)}
+.lp.lp-frio{background:var(--temp-frio)}
+.lp-pop-temp{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:var(--radius-pill);margin-right:4px}
+.lp-pop-quente{background:var(--temp-quente);color:#fff}
+.lp-pop-morno{background:var(--temp-morno);color:var(--pal-tinta)}
+.lp-pop-frio{background:var(--temp-frio);color:#fff}
+/* Selecionado: borda escura, visível sobre vermelho, laranja e azul. */
+.lp.sel{border-color:var(--pal-tinta)}
+.lp.ping::after{border-color:var(--pal-tinta)}

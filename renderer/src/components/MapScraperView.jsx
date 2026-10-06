@@ -577,11 +577,15 @@ export default function MapScraperView({
       const rating = getLeadRating(lead);
       const reviews = getLeadReviews(lead);
       const hood = getLeadBairro(lead) || getLeadCity(lead);
+      // Pino na cor da temperatura, igual ao card e ao mini mapa.
+      const temp = (qualificacoes.get(lead) || qualificaLead(lead)).temperatura;
 
       const marker = L.marker([loc.lat, loc.lng], {
+        // Quente por cima dos outros quando os pinos se sobrepõem.
+        zIndexOffset: temp.id === 'quente' ? 500 : temp.id === 'morno' ? 250 : 0,
         icon: L.divIcon({
           className: '',
-          html: `<div class="lp${isSel ? ' sel' : ''}"></div>`,
+          html: `<div class="lp lp-${temp.id}${isSel ? ' sel' : ''}"></div>`,
           iconSize: [30, 30],
           iconAnchor: [15, 15],
           popupAnchor: [0, -15],
@@ -589,11 +593,14 @@ export default function MapScraperView({
         title: name,
       });
 
+      // Nome e categoria vêm do Maps: escapados antes de virar HTML do popup.
+      const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       marker.bindPopup(`
         <div class="lp-pop">
-          <b>${name}</b>
-          <div class="m">${hood ? `${hood} · ` : ''}★ ${rating} (${reviews})</div>
-          <div class="m">${phone || cat}</div>
+          <b>${esc(name)}</b>
+          <div class="m"><span class="lp-pop-temp lp-pop-${temp.id}">${temp.rotulo}</span> ${esc(temp.funil)}</div>
+          <div class="m">${hood ? `${esc(hood)} · ` : ''}★ ${esc(rating)} (${esc(reviews)})</div>
+          <div class="m">${esc(phone || cat)}</div>
           <button type="button" data-lead-key="${leadId}">Ver no feed</button>
         </div>
       `);
@@ -612,7 +619,7 @@ export default function MapScraperView({
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
       } catch {}
     }
-  }, [visibleLeads, selectedLeadId]);
+  }, [visibleLeads, selectedLeadId, qualificacoes]);
 
   // Efeito para delegar clique do botão "Ver no feed" dentro do popup Leaflet
   useEffect(() => {
