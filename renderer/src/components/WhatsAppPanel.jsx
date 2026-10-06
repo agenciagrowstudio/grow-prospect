@@ -38,6 +38,7 @@ import {
   Play as PlayIcon,
 } from 'lucide-react';
 import TriggersManagerModal from './TriggersManagerModal';
+import { mascaraTelefone } from '../telefone';
 import ChatVoicePlayer from './ChatVoicePlayer';
 
 /** Isola crash de um player de áudio para não derrubar o chat inteiro */
@@ -2446,7 +2447,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     const unique = [...new Set(ids)];
     return unique.map((id) => {
       const cn = connections.find((x) => x.id === id);
-      return { id, label: cn?.phoneNumber || id.slice(0, 10) };
+      return { id, label: mascaraTelefone(cn?.phoneNumber) || id.slice(0, 10) };
     });
   };
 
@@ -3932,7 +3933,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
             >
               <span className="dot" id="waAcctDot" aria-hidden="true" />
               <span id="waConnTxt">
-                {connections.find((c) => c.id === activeConnectionId)?.phoneNumber || connections[0]?.phoneNumber || '+55 21 90000-0001'}
+                {mascaraTelefone(connections.find((c) => c.id === activeConnectionId)?.phoneNumber || connections[0]?.phoneNumber) || 'Conectar WhatsApp'}
               </span>
               <span className="caret" aria-hidden="true">▾</span>
             </button>
@@ -3964,7 +3965,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                       setIsAcctMenuOpen(false);
                     }}
                   >
-                    {connection.phoneNumber || connection.id}
+                    {mascaraTelefone(connection.phoneNumber) || connection.id}
                   </button>
                 ))}
                 {connections.length > 0 && <div className="wa-menu-sep" />}
@@ -4239,7 +4240,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                 ) : connections.map((connection) => (
                   <div key={connection.id} className={`acct-row ${connection.status === 'connected' ? '' : 'off'}`}>
                     <span className="dot" aria-hidden="true" />
-                    <b>{connection.phoneNumber || connection.id}{connection.id === activeConnectionId ? ' · ativo' : ''}</b>
+                    <b>{mascaraTelefone(connection.phoneNumber) || connection.id}{connection.id === activeConnectionId ? ' · ativo' : ''}</b>
                     {connection.id !== activeConnectionId && <button type="button" onClick={() => handleSwitchConnection(connection.id)}>Ativar</button>}
                     <button type="button" onClick={() => handleRemoveConnection(connection.id)}>Remover</button>
                   </div>
@@ -4403,7 +4404,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                         <span className={`wa-presence-dot ${connected ? 'on' : 'off'}`} title={connected ? 'Conectado' : 'Desconectado'} />
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <strong style={{ fontSize: '13px' }}>{c.phoneNumber || c.id}</strong>
+                            <strong style={{ fontSize: '13px' }}>{mascaraTelefone(c.phoneNumber) || c.id}</strong>
                             {isActive && <span className="wa-active-badge">Ativo</span>}
                             {connected && <span className="wa-connected-badge">Conectado</span>}
                           </div>
@@ -4921,7 +4922,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                               <strong>Números:</strong>{' '}
                               {campaignConnectionIds.map((id) => {
                                 const c = connections.find((x) => x.id === id);
-                                return c?.phoneNumber || id;
+                                return mascaraTelefone(c?.phoneNumber) || id;
                               }).join(' · ') || 'Rascunho — conecte antes de iniciar'}
                             </li>
                             <li><strong>Destinatários:</strong> {campaignRecipients.length}</li>
@@ -4931,7 +4932,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                                 {campaignConnectionIds.map((id, i) => {
                                   const c = connections.find((x) => x.id === id);
                                   const n = campaignRecipients.filter((_, idx) => idx % campaignConnectionIds.length === i).length;
-                                  return `${c?.phoneNumber || id}: ${n}`;
+                                  return `${mascaraTelefone(c?.phoneNumber) || id}: ${n}`;
                                 }).join(' · ')}
                               </li>
                             )}
@@ -5801,7 +5802,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                         : (settings.campaigns?.dailyLimit || 10);
                       return (
                         <span key={id} className="camp-phone-chip">
-                          {cn?.phoneNumber || id.slice(0, 8)}: {used}/{lim}
+                          {mascaraTelefone(cn?.phoneNumber) || id.slice(0, 8)}: {used}/{lim}
                         </span>
                       );
                     })}
@@ -6021,7 +6022,7 @@ function CampaignMonitorView({ campaign, onBack, connections = [] }) {
   const phoneLabel = (id) => {
     if (!id) return '—';
     const cn = (connections || []).find((c) => c.id === id);
-    return cn?.phoneNumber || String(id).slice(0, 12);
+    return mascaraTelefone(cn?.phoneNumber) || String(id).slice(0, 12);
   };
   const statusLabel =
     campaign?.status === 'paused' && campaign?.pauseReason === 'daily_limit'

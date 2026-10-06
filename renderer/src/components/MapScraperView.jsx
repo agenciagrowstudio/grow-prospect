@@ -22,9 +22,9 @@ import {
   Navigation,
   MessageCircle
 } from 'lucide-react';
-import AvatarLead from './AvatarLead';
-import SeloNota from './SeloNota';
-import ChipsCanais from './ChipsCanais';
+import CardLead from './CardLead';
+import CabecalhoRegiao from './CabecalhoRegiao';
+import { qualificaLead, resumoTemperaturas, lerAnalisesSalvas } from '../qualificacaoLead';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -346,6 +346,14 @@ export default function MapScraperView({
   }, [activeExtraction?.id]);
 
   // Lista de leads visíveis filtrada
+  // Nota de qualificação de cada lead; a do Lead Scoring vale mais quando existe.
+  const qualificacoes = useMemo(() => {
+    const analises = lerAnalisesSalvas();
+    const mapa = new Map();
+    leads.forEach((lead) => mapa.set(lead, qualificaLead(lead, analises[lead.id])));
+    return mapa;
+  }, [leads]);
+
   const visibleLeads = useMemo(() => {
     const nq = norm(feedSearch.trim());
 
@@ -695,6 +703,32 @@ export default function MapScraperView({
   };
 
   // Preparar WhatsApp
+  // Cabeçalho da lista: cidade que mais aparece no recorte e as temperaturas.
+  const regiao = useMemo(() => {
+    const contagem = new Map();
+    visibleLeads.forEach((l) => {
+      const c = getLeadCity(l);
+      if (c) contagem.set(c, (contagem.get(c) || 0) + 1);
+    });
+    const [cidade] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0] || [];
+    const titulo = listCidade || cidade || '';
+    const amostra = visibleLeads.find((l) => getLeadCity(l) === titulo) || visibleLeads[0] || {};
+    const pais = String(amostra.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil';
+    const uf = getLeadState(amostra);
+    const qs = visibleLeads.map((l) => qualificacoes.get(l) || qualificaLead(l));
+    const pontos = [];
+    visibleLeads.forEach((l, i) => {
+      const loc = getExactLeadLocation(l);
+      if (loc) pontos.push({ lat: loc.lat, lng: loc.lng, temp: qs[i].temperatura.id });
+    });
+    return {
+      titulo,
+      subtitulo: [titulo ? 'Cidade' : (contagem.size > 1 ? `${contagem.size} cidades` : ''), uf, pais].filter(Boolean).join(' · '),
+      resumo: resumoTemperaturas(qs),
+      pontos,
+    };
+  }, [visibleLeads, qualificacoes, listCidade]);
+
   const handleWhatsAppLead = (lead) => {
     const name = getLeadName(lead);
     const phone = getLeadPhone(lead);
@@ -1204,8 +1238,14 @@ export default function MapScraperView({
           </div>
         )}
 
-        <div style={{ padding: '8px 12px 0', fontSize: 12, color: 'var(--muted)' }} id="feedCount" role="status">
-          {visibleLeads.length} lead{visibleLeads.length === 1 ? '' : 's'}
+        <div id="feedCount" role="status">
+          <CabecalhoRegiao
+            titulo={regiao.titulo}
+            subtitulo={regiao.subtitulo}
+            total={visibleLeads.length}
+            resumo={regiao.resumo}
+            pontos={regiao.pontos}
+          />
         </div>
 
         {/* Lista de Lead Cards */}
@@ -1245,99 +1285,19 @@ export default function MapScraperView({
               }
 
               return (
-                <button
+                <CardLead
                   key={leadId}
-                  ref={(el) => (leadCardRefs.current[leadId] = el)}
-                  type="button"
-                  className="lead-card"
-                  style={{ animationDelay: `${Math.min(pos * 40, 240)}ms` }}
-                  aria-current={isSelected ? 'true' : 'false'}
-                  data-od-id={`lead-card-${pos}`}
-                  onClick={() => handleSpotlightLead(lead, leadId, loc?.lat, loc?.lng, true)}
-                >
-                  <div className="lead-card-corpo">
-                    <AvatarLead lead={lead} size={44} />
-                    <div className="lead-card-texto">
-                      <b className="lead-nome">{name}</b>
-                      <span className="lead-cat">{getLeadCat(lead)}</span>
-                      {(hood || city) && (
-                        <span className="lead-local">
-                          <MapPin size={11} strokeWidth={1.5} aria-hidden="true" />
-                          {`${hood || city}${uf ? ` · ${uf}` : ''}`}
-                        </span>
-                      )}
-                    </div>
-                    <SeloNota nota={rating} avaliacoes={reviews} size="sm" />
-                  </div>
-
-                  <ChipsCanais lead={lead} limite={3} className="lead-canais" />
-
-                  <div className="lead-actions">
-                    {phone && (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title="Enviar mensagem via WhatsApp"
-                        aria-label="Enviar mensagem via WhatsApp"
-                        style={{ width: 32, height: 32, minHeight: 32, borderRadius: 8 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleWhatsAppLead(lead);
-                        }}
-                      >
-                        <MessageCircle size={15} strokeWidth={2} style={{ color: 'var(--accent)' }} aria-hidden="true" />
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Ver no mapa"
-                      aria-label="Ver no mapa"
-                      style={{ width: 32, height: 32, minHeight: 32, borderRadius: 8 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSpotlightLead(lead, leadId, loc?.lat, loc?.lng, true);
-                      }}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                        style={{ width: 15, height: 15 }}
-                      >
-                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                        <circle cx="12" cy="10" r="3" />
-                      </svg>
-                    </button>
-
-                    {ig && (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title={`Abrir Instagram de ${name}`}
-                        aria-label={`Abrir Instagram de ${name}`}
-                        style={{ width: 32, height: 32, minHeight: 32, borderRadius: 8 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(`https://instagram.com/${ig.replace('@', '')}`, '_blank', 'noopener');
-                        }}
-                      >
-                        <Instagram size={15} strokeWidth={2} style={{ color: '#E056A0' }} aria-hidden="true" />
-                      </button>
-                    )}
-
-                    {straightDist && (
-                      <span className="dist" title="Distância em linha reta">
-                        {straightDist}
-                      </span>
-                    )}
-                  </div>
-                </button>
+                  lead={lead}
+                  qualificacao={qualificacoes.get(lead) || qualificaLead(lead)}
+                  selecionado={isSelected}
+                  local={(hood || city) ? `${hood || city}${uf ? ` · ${uf}` : ''}` : ''}
+                  distancia={straightDist}
+                  atraso={Math.min(pos * 40, 240)}
+                  refCard={(el) => (leadCardRefs.current[leadId] = el)}
+                  onSelecionar={() => handleSpotlightLead(lead, leadId, loc?.lat, loc?.lng, true)}
+                  onWhatsApp={() => handleWhatsAppLead(lead)}
+                  onMapa={() => handleSpotlightLead(lead, leadId, loc?.lat, loc?.lng, true)}
+                />
               );
             })
           )}

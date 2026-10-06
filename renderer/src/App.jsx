@@ -34,6 +34,7 @@ import OnboardingTour from './components/OnboardingTour';
 import { NotificationProvider, useNotifications } from './components/NotificationCenter';
 import UpdateBanner from './components/UpdateBanner';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
+import { mascaraTelefone } from './telefone';
 
 function organizeStoredLeads() {
   const raw = readLocalArray('sigma_leads');
@@ -496,7 +497,7 @@ function AppInner() {
                 <MessageCircle size={17} />
               </span>
               <span className="hdr-perfil-txt">
-                <b>{waPhone ? `+${waPhone}` : 'WhatsApp'}</b>
+                <b>{waPhone ? mascaraTelefone(waPhone) : 'WhatsApp'}</b>
                 <span>{waStatus === 'connected' ? 'Conectado' : 'Desconectado'}</span>
               </span>
             </button>
