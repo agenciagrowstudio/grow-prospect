@@ -16,5 +16,7 @@ nul
 *.png
 !assets/*.png
 !assets/*.ico
+# Ícones da interface fazem parte do código: sem eles o build quebra.
+!renderer/src/assets/**/*.png
 renderer/mr*.png
 *.lnk
