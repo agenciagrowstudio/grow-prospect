@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Flame, Thermometer, Snowflake, MapPin } from 'lucide-react';
+import { Thermometer, Snowflake, MapPin } from 'lucide-react';
+import IconePng from './IconePng';
+import { ICONES } from '../assets/icones';
 
 /**
  * Banner da lista: foto da cidade, nome, quantos leads e quantos estão
@@ -11,7 +13,7 @@ import { Flame, Thermometer, Snowflake, MapPin } from 'lucide-react';
  * dá contexto de relance.
  */
 
-const COR = { quente: '#C32824', morno: '#FF8500', frio: '#0E6BEC' };
+const COR = { quente: '#C32824', morno: '#FF9D00', frio: '#0E6BEC' };
 
 function MapaDeFundo({ pontos }) {
   const ref = useRef(null);
@@ -88,7 +90,7 @@ export default function CabecalhoRegiao({ titulo, uf, pais, subtitulo, total, re
 
       <div className="cr-temps">
         <span className="cr-temp cr-temp-quente" title="Quentes: abordar agora">
-          <Flame size={12} strokeWidth={2} aria-hidden="true" /> {resumo.quente}
+          <IconePng src={ICONES.quente} size={13} /> {resumo.quente}
         </span>
         <span className="cr-temp cr-temp-morno" title="Mornos: nutrir">
           <Thermometer size={12} strokeWidth={2} aria-hidden="true" /> {resumo.morno}

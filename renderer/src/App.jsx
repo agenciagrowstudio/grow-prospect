@@ -35,6 +35,8 @@ import { NotificationProvider, useNotifications } from './components/Notificatio
 import UpdateBanner from './components/UpdateBanner';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
 import { mascaraTelefone } from './telefone';
+import IconePng from './components/IconePng';
+import { ICONES } from './assets/icones';
 
 function organizeStoredLeads() {
   const raw = readLocalArray('sigma_leads');
@@ -464,7 +466,7 @@ function AppInner() {
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => navigate('dashboard')}
           >
-            <BarChart3 className="ico" size={18} aria-hidden="true" />
+            <IconePng className="ico" src={ICONES.dashboard} size={20} />
             <span className="nav-label-text">Dashboard</span><span className="nav-kbd">7</span>
           </button>
         </nav>

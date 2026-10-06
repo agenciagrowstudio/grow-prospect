@@ -1,7 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Star, Mail, Globe, MapPin, Flame, Thermometer, Snowflake, ChevronDown } from 'lucide-react';
-import { siWhatsapp, siInstagram } from 'simple-icons';
+import {
+  Mail, MapPin, Thermometer, Snowflake, ChevronDown,
+  CalendarCheck, Store, Megaphone, Clapperboard,
+} from 'lucide-react';
 import AvatarLead from './AvatarLead';
+import IconePng, { ImagemPng } from './IconePng';
+import { ICONES } from '../assets/icones';
 
 /**
  * Card do lead na lista do mapa, no formato de vitrine: foto grande à
@@ -13,20 +17,22 @@ import AvatarLead from './AvatarLead';
  * tem fica cinza claro, para a ausência continuar visível.
  */
 
-const ICONE_TEMPERATURA = { quente: Flame, morno: Thermometer, frio: Snowflake };
+const IconeQuente = ({ size }) => <IconePng src={ICONES.quente} size={size + 1} />;
+const IconeSiteServico = ({ size }) => <IconePng src={ICONES.site} size={size + 3} />;
+const ICONE_TEMPERATURA = { quente: IconeQuente, morno: Thermometer, frio: Snowflake };
+const ICONE_SERVICO = {
+  site: IconeSiteServico,
+  sistema: CalendarCheck,
+  google: Store,
+  redes: Megaphone,
+  conteudo: Clapperboard,
+};
 
-function LogoMarca({ icone, size = 15 }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
-      <path d={icone.path} />
-    </svg>
-  );
-}
-
-const LogoWhatsApp = (p) => <LogoMarca icone={siWhatsapp} {...p} />;
-const LogoInstagram = (p) => <LogoMarca icone={siInstagram} {...p} />;
+const LogoWhatsApp = ({ size }) => <IconePng src={ICONES.whatsapp} size={size + 3} />;
+const LogoInstagram = ({ size }) => <IconePng src={ICONES.instagram} size={size + 3} />;
+const LogoGoogle = ({ size }) => <ImagemPng src={ICONES.google} size={size + 3} />;
 const IconeMail = ({ size }) => <Mail size={size} strokeWidth={1.75} aria-hidden="true" />;
-const IconeSite = ({ size }) => <Globe size={size} strokeWidth={1.75} aria-hidden="true" />;
+const IconeSite = ({ size }) => <IconePng src={ICONES.site} size={size + 3} />;
 
 function Canal({ ativo, Icone, rotulo, rotuloAusente, onAbrir, tom }) {
   return (
@@ -97,7 +103,14 @@ function BadgeServicos({ servicos }) {
         onKeyDown={(e) => e.stopPropagation()}
       >
         <span className="cl-pilha" aria-hidden="true">
-          {servicos.map((s) => <i key={s.id} className={`cl-servico-${s.id}`} />)}
+          {servicos.map((s) => {
+            const Icone = ICONE_SERVICO[s.id];
+            return (
+              <span key={s.id} className={`cl-ic cl-servico-${s.id}`}>
+                <Icone size={12} strokeWidth={2.2} />
+              </span>
+            );
+          })}
         </span>
         Serviços
         <small>{servicos.length}</small>
@@ -107,12 +120,15 @@ function BadgeServicos({ servicos }) {
         <div className="cl-servicos-lista" role="dialog" aria-label="Serviços para oferecer" onClick={(e) => e.stopPropagation()}>
           <b>Pode oferecer</b>
           <ul>
-            {servicos.map((s) => (
-              <li key={s.id} className={`cl-servico-${s.id}`}>
-                <i aria-hidden="true" />
-                <span><strong>{s.rotulo}</strong>{s.motivo}</span>
-              </li>
-            ))}
+            {servicos.map((s) => {
+              const Icone = ICONE_SERVICO[s.id];
+              return (
+                <li key={s.id} className={`cl-servico-${s.id}`}>
+                  <span className="cl-ic" aria-hidden="true"><Icone size={14} strokeWidth={1.9} /></span>
+                  <span><strong>{s.rotulo}</strong>{s.motivo}</span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -157,12 +173,12 @@ export default function CardLead({
       <div className="cl-corpo">
         <div className="cl-l1">
           <span className="cl-google" title={nota ? `Google: ${fmt(nota)} em ${avaliacoes} avaliações` : 'Sem nota no Google'}>
-            <Star size={12} strokeWidth={0} fill="currentColor" aria-hidden="true" />
+            <LogoGoogle size={13} />
             {nota ? fmt(nota) : 'sem nota'}
             {avaliacoes > 0 && <small>({avaliacoes})</small>}
           </span>
           <span className={`cl-temp cl-temp-${q.temperatura.id}`} title={`${q.temperatura.rotulo}: ${q.temperatura.funil}`}>
-            <IconeTemp size={11} strokeWidth={2} aria-hidden="true" />
+            <IconeTemp size={11} strokeWidth={2} />
             {q.temperatura.rotulo}
           </span>
         </div>
