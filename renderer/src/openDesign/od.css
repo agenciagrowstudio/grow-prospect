@@ -145,7 +145,7 @@ button{font-family:inherit}
 .map-progress .progress-txt{min-width:38px;text-align:right}
 #filterDrawer.map-filter{display:none;position:absolute;top:60px;left:12px;z-index:1000;width:min(600px,calc(100% - 24px));background:#fff;border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--elev-raised);padding:14px;gap:12px}
 #filterDrawer.map-filter.on{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
-.feed-dock{width:320px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff}
+.feed-dock{width:380px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff}
 .feed-dock .feed-list{flex:1;min-height:0}
 .lp{position:relative;width:30px;height:30px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 2px 8px rgba(13,13,13,.3);transition:transform var(--motion-fast) var(--ease-standard)}
 .lp-pop{font-family:var(--font-body);font-size:13px;min-width:180px}
@@ -1195,66 +1195,86 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
   --estrela:var(--pal-amarelo);
   --svc-site:var(--pal-azul); --svc-sistema:var(--pal-roxo); --svc-google:var(--pal-verde-forte);
   --svc-redes:var(--pal-rosa-forte); --svc-conteudo:var(--pal-amarelo);
-  --canal-whatsapp:var(--pal-verde-forte); --canal-instagram:var(--pal-rosa-forte);
+  /* WhatsApp: verde-petróleo oficial da marca, que passa de 3:1 sobre branco (o verde claro não passa). */
+  --canal-whatsapp:#128C7E; --canal-instagram:#FF0069; --canal-ausente:#C9C9C9;
   --canal-email:var(--pal-azul-forte); --canal-site:var(--pal-roxo);
 }
 
 /* Card do lead, formato vitrine: foto à esquerda, informação à direita */
-.cl-card{display:grid;grid-template-columns:96px minmax(0,1fr);column-gap:12px;row-gap:10px;padding:10px;border-radius:18px;align-items:start}
+.cl-card{display:grid;grid-template-columns:96px minmax(0,1fr);column-gap:12px;row-gap:10px;padding:10px;border-radius:10px;align-items:start;position:relative}
 .cl-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.cl-foto{width:96px;height:96px;border-radius:14px;overflow:hidden;background:var(--surface-warm)}
-.cl-foto .av-lead{width:100%!important;height:100%!important;border-radius:14px!important}
+/* Card com a lista de serviços aberta fica por cima dos vizinhos. */
+.cl-card:has(.cl-servicos-lista){z-index:20}
+.cl-foto{width:96px;height:96px;border-radius:8px;overflow:hidden;background:var(--surface-warm)}
+.cl-foto .av-lead{width:100%!important;height:100%!important;border-radius:8px!important}
 .cl-foto .av-lead img{width:100%;height:100%;object-fit:cover}
-.cl-corpo{min-width:0;display:flex;flex-direction:column;gap:3px;padding-top:2px}
+.cl-corpo{min-width:0;display:flex;flex-direction:column;gap:4px;padding-top:2px}
 .cl-l1{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cl-google{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--pal-tinta)}
 .cl-google svg{color:var(--estrela)}
 .cl-google small{font-weight:500;color:var(--muted)}
 .cl-nome{font-size:14.5px;font-weight:700;letter-spacing:-.2px;color:var(--fg);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cl-sub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Serviços como a linha "2 quartos · 58 m2" da referência, com bolinha de cor. */
-.cl-detalhes{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px;color:var(--pal-tinta);margin-top:2px}
-.cl-det{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.cl-det::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.cl-temp{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.cl-temp-quente{background:var(--temp-quente);color:#fff}
+.cl-temp-morno{background:var(--temp-morno);color:var(--pal-tinta)}
+.cl-temp-frio{background:var(--temp-frio);color:#fff}
+
+/* Tom de cada serviço */
 .cl-servico-site{--c:var(--svc-site)}
 .cl-servico-sistema{--c:var(--svc-sistema)}
 .cl-servico-google{--c:var(--svc-google)}
 .cl-servico-redes{--c:var(--svc-redes)}
 .cl-servico-conteudo{--c:var(--svc-conteudo)}
-.cl-qualif{display:inline-flex;align-items:center;gap:5px;font-size:12px;margin-top:3px}
-.cl-qualif b{color:var(--pal-tinta);font-weight:700}
-.cl-funil{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cl-estrelas{display:inline-flex;gap:1px;color:var(--estrela)}
-.cl-estrelas .vazia{color:var(--pal-borda)}
-.cl-estrela-meia{position:relative;display:inline-flex}
-.cl-estrela-meia > :last-child{position:absolute;left:0;top:0}
-.cl-temp{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-pill)}
-.cl-temp-quente{background:var(--temp-quente);color:#fff}
-.cl-temp-morno{background:var(--temp-morno);color:var(--pal-tinta)}
-.cl-temp-frio{background:var(--temp-frio);color:#fff}
+
+/* Badge "Serviços": bolinhas quase uma em cima da outra */
+.cl-servicos-badge{position:relative;align-self:flex-start;margin-top:2px}
+.cl-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 5px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--pal-tinta);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+.cl-badge:hover{background:var(--surface-warm)}
+.cl-badge small{font-size:10.5px;font-weight:700;color:var(--muted)}
+.cl-badge svg{color:var(--muted);transition:transform var(--motion-fast,150ms)}
+.cl-badge[aria-expanded="true"] svg{transform:rotate(180deg)}
+.cl-pilha{display:inline-flex;align-items:center;padding-left:4px}
+.cl-pilha i{width:11px;height:11px;border-radius:50%;background:var(--c);border:2px solid #fff;margin-left:-5px;box-sizing:content-box}
+.cl-servicos-lista{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:236px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 28px rgba(16,24,40,.16);padding:10px 12px;cursor:default}
+.cl-servicos-lista > b{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.cl-servicos-lista ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.cl-servicos-lista li{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.35;color:var(--muted)}
+.cl-servicos-lista li i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--c);margin-top:4px}
+.cl-servicos-lista li strong{display:block;color:var(--pal-tinta);font-weight:700}
+
+/* Linha da qualificação: degradê do frio ao quente, preenchido até a nota */
+.cl-barra-bloco{display:flex;align-items:center;gap:8px;margin-top:3px}
+.cl-barra{flex:1;height:6px;border-radius:3px;background:#ededed;overflow:hidden}
+.cl-barra span{display:block;height:100%;border-radius:3px;background-image:linear-gradient(90deg,var(--temp-frio) 0%,var(--pal-azul) 25%,var(--pal-amarelo) 50%,var(--temp-morno) 65%,var(--temp-quente) 100%);background-repeat:no-repeat}
+.cl-barra-legenda{display:inline-flex;align-items:baseline;gap:5px;font-size:11.5px;white-space:nowrap}
+.cl-barra-legenda b{color:var(--pal-tinta);font-weight:800}
+.cl-barra-legenda span{color:var(--muted)}
+
+/* Contato */
 .cl-rodape{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;border-top:1px solid var(--border-soft)}
 .cl-canais,.cl-acoes{display:flex;align-items:center;gap:6px}
-.cl-canal{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:background var(--motion-fast,150ms)}
+.cl-canal{width:30px;height:30px;display:grid;place-items:center;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:background var(--motion-fast,150ms)}
 .cl-canal:hover:not(:disabled){background:var(--surface-warm)}
 .cl-canal-whatsapp{color:var(--canal-whatsapp)}
 .cl-canal-instagram{color:var(--canal-instagram)}
 .cl-canal-email{color:var(--canal-email)}
 .cl-canal-site{color:var(--canal-site)}
-/* Canal que o lead não tem: apagado, para a ausência continuar visível. */
-.cl-canal.ausente{opacity:.32;cursor:default;border-style:dashed}
-.lead-card[aria-current="true"] .cl-canal{background:#fff}
+/* Canal que o lead não tem: cinza claro, sem cor de marca. */
+.cl-canal.ausente{color:var(--canal-ausente);background:var(--surface-warm);border-color:#ededed;cursor:default}
+.lead-card[aria-current="true"] .cl-canal:not(.ausente){background:#fff}
 
 /* Banner da lista: foto da cidade com véu escuro e texto branco */
-.cr-banner{position:relative;margin:8px 12px 4px;height:132px;border-radius:18px;overflow:hidden;background:var(--pal-roxo-escuro);box-shadow:0 6px 18px rgba(16,24,40,.12);isolation:isolate}
+.cr-banner{position:relative;margin:8px 12px 4px;height:132px;border-radius:10px;overflow:hidden;background:var(--pal-roxo-escuro);box-shadow:0 6px 18px rgba(16,24,40,.12);isolation:isolate}
 .cr-foto,.cr-fundo-mapa{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .cr-fundo-mapa .leaflet-container,.cr-fundo-mapa{background:var(--surface-warm)}
 .cr-veu{position:absolute;inset:0;z-index:1;background:linear-gradient(100deg,rgba(15,12,30,.82) 0%,rgba(15,12,30,.55) 48%,rgba(15,12,30,.12) 100%)}
 .cr-conteudo{position:absolute;left:16px;top:14px;right:16px;z-index:2;display:flex;flex-direction:column;gap:2px;color:#fff}
 .cr-rotulo{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;letter-spacing:.02em;opacity:.9}
-.cr-titulo{font-size:26px;font-weight:800;letter-spacing:-.8px;line-height:1.05;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-titulo{font-size:26px;font-weight:600;letter-spacing:-.6px;line-height:1.05;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cr-total{font-size:12px;opacity:.85}
 .cr-temps{position:absolute;left:16px;bottom:12px;z-index:2;display:flex;gap:6px}
-.cr-temp{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--radius-pill);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.cr-temp{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .cr-temp-quente{background:var(--temp-quente);color:#fff}
 .cr-temp-morno{background:var(--temp-morno);color:var(--pal-tinta)}
 .cr-temp-frio{background:var(--temp-frio);color:#fff}
@@ -1276,3 +1296,8 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 /* Selecionado: borda escura, visível sobre vermelho, laranja e azul. */
 .lp.sel{border-color:var(--pal-tinta)}
 .lp.ping::after{border-color:var(--pal-tinta)}
+/* A lista abre na largura do card (a coluna do texto é estreita demais).
+   top:auto deixa a lista logo abaixo do badge, onde quer que ele esteja. */
+.cl-corpo{position:relative}
+.cl-servicos-badge{position:static}
+.cl-servicos-lista{top:auto;margin-top:6px;left:-108px;right:0;width:auto}

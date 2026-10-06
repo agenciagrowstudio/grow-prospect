@@ -11,11 +11,11 @@
  */
 
 const SERVICOS = {
-  site: { id: 'site', rotulo: 'Site' },
-  sistema: { id: 'sistema', rotulo: 'Sistema' },
-  google: { id: 'google', rotulo: 'Google Negócio' },
-  redes: { id: 'redes', rotulo: 'Gestão de redes' },
-  conteudo: { id: 'conteudo', rotulo: 'Conteúdo' },
+  site: { id: 'site', rotulo: 'Site', motivo: 'Não tem site próprio.' },
+  sistema: { id: 'sistema', rotulo: 'Sistema', motivo: 'Ramo que vive de agenda ou pedido.' },
+  google: { id: 'google', rotulo: 'Google Negócio', motivo: 'Nota abaixo de 4,5 ou menos de 50 avaliações.' },
+  redes: { id: 'redes', rotulo: 'Gestão de redes', motivo: 'Não tem Instagram.' },
+  conteudo: { id: 'conteudo', rotulo: 'Conteúdo', motivo: 'Tem Instagram para alimentar.' },
 };
 
 // Negócio que vive de agenda ou pedido: o sistema resolve dor real.

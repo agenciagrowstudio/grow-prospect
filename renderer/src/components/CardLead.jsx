@@ -1,7 +1,6 @@
-import React from 'react';
-import {
-  Star, StarHalf, MessageCircle, Instagram, Mail, Globe, MapPin, Flame, Thermometer, Snowflake,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Star, Mail, Globe, MapPin, Flame, Thermometer, Snowflake, ChevronDown } from 'lucide-react';
+import { siWhatsapp, siInstagram } from 'simple-icons';
 import AvatarLead from './AvatarLead';
 
 /**
@@ -9,32 +8,25 @@ import AvatarLead from './AvatarLead';
  * esquerda e, à direita, nota do Google, nome, endereço, serviços para
  * oferecer e a qualificação. Embaixo, os canais de contato.
  *
- * Canal que o lead não tem fica apagado em vez de sumir: a ausência também é
- * informação, e o site que falta é justamente o que se vende.
+ * WhatsApp e Instagram usam o logo oficial da marca (Simple Icons): o Lucide
+ * não tem WhatsApp, e o usuário pediu os ícones exatos. Canal que o lead não
+ * tem fica cinza claro, para a ausência continuar visível.
  */
 
 const ICONE_TEMPERATURA = { quente: Flame, morno: Thermometer, frio: Snowflake };
 
-function Estrelas({ valor }) {
-  const cheias = Math.floor(valor);
-  const meia = valor - cheias >= 0.5;
+function LogoMarca({ icone, size = 15 }) {
   return (
-    <span className="cl-estrelas" aria-hidden="true">
-      {Array.from({ length: 5 }, (_, i) => {
-        if (i < cheias) return <Star key={i} size={12} strokeWidth={0} fill="currentColor" />;
-        if (i === cheias && meia) {
-          return (
-            <span key={i} className="cl-estrela-meia">
-              <Star size={12} strokeWidth={1.5} className="vazia" />
-              <StarHalf size={12} strokeWidth={0} fill="currentColor" />
-            </span>
-          );
-        }
-        return <Star key={i} size={12} strokeWidth={1.5} className="vazia" />;
-      })}
-    </span>
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
+      <path d={icone.path} />
+    </svg>
   );
 }
+
+const LogoWhatsApp = (p) => <LogoMarca icone={siWhatsapp} {...p} />;
+const LogoInstagram = (p) => <LogoMarca icone={siInstagram} {...p} />;
+const IconeMail = ({ size }) => <Mail size={size} strokeWidth={1.75} aria-hidden="true" />;
+const IconeSite = ({ size }) => <Globe size={size} strokeWidth={1.75} aria-hidden="true" />;
 
 function Canal({ ativo, Icone, rotulo, rotuloAusente, onAbrir, tom }) {
   return (
@@ -49,8 +41,82 @@ function Canal({ ativo, Icone, rotulo, rotuloAusente, onAbrir, tom }) {
         if (ativo) onAbrir();
       }}
     >
-      <Icone size={14} strokeWidth={1.75} aria-hidden="true" />
+      <Icone size={15} />
     </button>
+  );
+}
+
+/**
+ * Linha da qualificação: preenche de 0 a 100, com o degradê do frio ao quente
+ * fixo na largura toda. Assim a cor da ponta é a cor do estado atual.
+ */
+function BarraQualificacao({ q }) {
+  const nota = Math.max(2, q.nota);
+  return (
+    <div className="cl-barra-bloco" title={`Qualificação ${q.nota}/100, pelos ${q.origem}`}>
+      <div className="cl-barra" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={q.nota} aria-label="Qualificação Grow+">
+        <span style={{ width: `${nota}%`, backgroundSize: `${10000 / nota}% 100%` }} />
+      </div>
+      <span className="cl-barra-legenda">
+        <b>{q.nota}</b>
+        <span>{q.temperatura.funil}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Badge "Serviços": bolinhas sobrepostas; o clique abre a lista com o motivo de cada um. */
+function BadgeServicos({ servicos }) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    const fora = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
+    const esc = (e) => { if (e.key === 'Escape') setAberto(false); };
+    document.addEventListener('mousedown', fora);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', fora);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [aberto]);
+
+  if (!servicos.length) return null;
+
+  return (
+    <div className="cl-servicos-badge" ref={ref}>
+      <button
+        type="button"
+        className="cl-badge"
+        aria-expanded={aberto}
+        onClick={(e) => {
+          e.stopPropagation();
+          setAberto((v) => !v);
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <span className="cl-pilha" aria-hidden="true">
+          {servicos.map((s) => <i key={s.id} className={`cl-servico-${s.id}`} />)}
+        </span>
+        Serviços
+        <small>{servicos.length}</small>
+        <ChevronDown size={12} strokeWidth={2} aria-hidden="true" />
+      </button>
+      {aberto && (
+        <div className="cl-servicos-lista" role="dialog" aria-label="Serviços para oferecer" onClick={(e) => e.stopPropagation()}>
+          <b>Pode oferecer</b>
+          <ul>
+            {servicos.map((s) => (
+              <li key={s.id} className={`cl-servico-${s.id}`}>
+                <i aria-hidden="true" />
+                <span><strong>{s.rotulo}</strong>{s.motivo}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -104,28 +170,17 @@ export default function CardLead({
         <b className="cl-nome">{nome}</b>
         <span className="cl-sub">{local ? `${categoria} · ${local}` : categoria}</span>
 
-        {q.servicos.length > 0 && (
-          <span className="cl-detalhes" aria-label="Serviços para oferecer">
-            {q.servicos.map((s) => (
-              <span key={s.id} className={`cl-det cl-servico-${s.id}`}>{s.rotulo}</span>
-            ))}
-          </span>
-        )}
-
-        <span className="cl-qualif" title={`Qualificação ${q.nota}/100, pelos ${q.origem}`}>
-          <Estrelas valor={q.estrelas} />
-          <b>{fmt(q.estrelas)}</b>
-          <span className="cl-funil">{q.temperatura.funil}</span>
-        </span>
+        <BadgeServicos servicos={q.servicos} />
+        <BarraQualificacao q={q} />
       </div>
 
       <div className="cl-rodape">
         <div className="cl-canais">
-          <Canal tom="whatsapp" ativo={!!q.canais.whatsapp} Icone={MessageCircle} rotulo="Abrir no WhatsApp" rotuloAusente="Sem WhatsApp" onAbrir={onWhatsApp} />
-          <Canal tom="instagram" ativo={!!q.canais.instagram} Icone={Instagram} rotulo="Abrir Instagram" rotuloAusente="Sem Instagram"
+          <Canal tom="whatsapp" ativo={!!q.canais.whatsapp} Icone={LogoWhatsApp} rotulo="Abrir no WhatsApp" rotuloAusente="Sem WhatsApp" onAbrir={onWhatsApp} />
+          <Canal tom="instagram" ativo={!!q.canais.instagram} Icone={LogoInstagram} rotulo="Abrir Instagram" rotuloAusente="Sem Instagram"
             onAbrir={() => abrir(/^https?:/i.test(q.canais.instagram) ? q.canais.instagram : `https://instagram.com/${q.canais.instagram.replace('@', '')}`)} />
-          <Canal tom="email" ativo={!!q.canais.email} Icone={Mail} rotulo={`E-mail: ${q.canais.email}`} rotuloAusente="Sem e-mail" onAbrir={() => abrir(`mailto:${q.canais.email}`)} />
-          <Canal tom="site" ativo={!!q.canais.site} Icone={Globe} rotulo="Abrir site" rotuloAusente="Sem site"
+          <Canal tom="email" ativo={!!q.canais.email} Icone={IconeMail} rotulo={`E-mail: ${q.canais.email}`} rotuloAusente="Sem e-mail" onAbrir={() => abrir(`mailto:${q.canais.email}`)} />
+          <Canal tom="site" ativo={!!q.canais.site} Icone={IconeSite} rotulo="Abrir site" rotuloAusente="Sem site"
             onAbrir={() => abrir(/^https?:/i.test(q.canais.site) ? q.canais.site : `https://${q.canais.site}`)} />
         </div>
         <div className="cl-acoes">
@@ -140,7 +195,7 @@ export default function CardLead({
               onMapa();
             }}
           >
-            <MapPin size={14} strokeWidth={1.75} aria-hidden="true" />
+            <MapPin size={15} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
       </div>
