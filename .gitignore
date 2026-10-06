@@ -17,3 +17,4 @@ nul
 !assets/*.png
 !assets/*.ico
 renderer/mr*.png
+*.lnk
