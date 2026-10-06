@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, MapPinned, Loader } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, MapPinned, Loader, Search } from 'lucide-react';
 import MapaPreviaLocal from './MapaPreviaLocal';
+import MapaRaio from './MapaRaio';
+import {
+  lerLocalColado, paisDaCoordenada, paisDoTexto, buscaLocais, ROTULO_TIPO, ROTULO_PAIS,
+} from '../localBusca';
 
 const NICHOS_BR = [
   'Dentistas', 'Clínica odontológica', 'Ortodontista', 'Odontologia', 'Aparelho ortodôntico',
@@ -44,7 +48,6 @@ const ESTADOS_BR = [
   ['Sergipe', 'SE'], ['Tocantins', 'TO'], ['Distrito Federal', 'DF']
 ].map(([n, uf]) => ({ n, uf, estado: true }));
 
-const POP_CITIES_BR = ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Brasília', 'Curitiba', 'Porto Alegre', 'Salvador', 'Recife', 'Fortaleza', 'Goiânia'];
 
 /**
  * Nichos e cidades da prospeccao de brasileiros nos Estados Unidos.
@@ -96,37 +99,74 @@ const ESTADOS_US = [
   ['Washington', 'WA'], ['Utah', 'UT'], ['Ohio', 'OH'], ['Michigan', 'MI'],
 ].map(([n, uf]) => ({ n, uf, estado: true }));
 
-const POP_CITIES_US = ['Framingham', 'Pompano Beach', 'Orlando', 'Newark', 'Danbury', 'Marietta', 'Boston', 'Miami'];
 
-const CATALOGO = {
-  BR: { nichos: NICHOS_BR, cidades: CIDADES_BR, estados: ESTADOS_BR, populares: POP_CITIES_BR, rotuloEstado: 'Estado', rotuloCidade: 'Municipio' },
-  US: { nichos: NICHOS_US, cidades: CIDADES_US, estados: ESTADOS_US, populares: POP_CITIES_US, rotuloEstado: 'Estado', rotuloCidade: 'Cidade' },
-};
+// Nichos dos dois públicos numa lista só: o país sai do local, não de um seletor.
+const NICHOS = [...new Set([...NICHOS_BR, ...NICHOS_US])];
+
+// Catálogo local para sugestão instantânea, antes da resposta do mapa.
+const CATALOGO_LOCAL = [
+  ...CIDADES_BR.map((c) => ({ ...c, pais: 'BR' })),
+  ...ESTADOS_BR.map((c) => ({ ...c, pais: 'BR' })),
+  ...CIDADES_US.map((c) => ({ ...c, pais: 'US' })),
+  ...ESTADOS_US.map((c) => ({ ...c, pais: 'US' })),
+];
+
+const POPULARES = [
+  ['São Paulo', 'SP', 'BR'], ['Rio de Janeiro', 'RJ', 'BR'], ['Belo Horizonte', 'MG', 'BR'],
+  ['Orlando', 'FL', 'US'], ['Boston', 'MA', 'US'], ['Framingham', 'MA', 'US'], ['Miami', 'FL', 'US'], ['Newark', 'NJ', 'US'],
+];
+
+const RAIOS = [5, 10, 30, 50];
 
 function norm(s) {
-  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function doCatalogo(c) {
+  return {
+    nome: c.n,
+    detalhe: c.uf,
+    cidade: c.estado ? '' : c.n,
+    uf: c.uf,
+    pais: c.pais,
+    tipo: c.estado ? 'estado' : 'cidade',
+    chave: `cat-${c.pais}-${c.n}-${c.uf}`,
+  };
+}
+
+/** Texto que vai para a busca do Maps quando não é por raio. */
+function textoDoLocal(local) {
+  if (!local) return '';
+  if (local.tipo === 'estado') return local.nome;
+  if (local.tipo === 'bairro') return [local.nome, local.cidade, local.uf].filter(Boolean).join(', ');
+  return [local.cidade || local.nome, local.uf].filter(Boolean).join(', ');
+}
+
+function rotuloDoLocal(local) {
+  if (!local) return '';
+  if (local.tipo === 'ponto') return `${local.lat.toFixed(4)}, ${local.lng.toFixed(4)}`;
+  return [local.nome, local.detalhe].filter(Boolean).join(', ');
 }
 
 export default function NewExtractionModal({
   isOpen,
   onClose,
   onStartExtraction,
-  onAddToQueue,
   isProcessing
 }) {
   const [step, setStep] = useState(1);
-  // O pais escolhido troca nichos, cidades e o filtro da geocodificacao.
-  const [pais, setPais] = useState('BR');
   const [nicho, setNicho] = useState('');
   const [nichoError, setNichoError] = useState(false);
   const [nichoSuggestions, setNichoSuggestions] = useState([]);
   const [showNichoList, setShowNichoList] = useState(false);
 
-  const [cidadeObj, setCidadeObj] = useState(null);
-  const [cidadeInput, setCidadeInput] = useState('');
-  const [cidadeError, setCidadeError] = useState(false);
-  const [locSuggestions, setLocSuggestions] = useState([]);
-  const [showLocList, setShowLocList] = useState(false);
+  const [busca, setBusca] = useState('');
+  const [local, setLocal] = useState(null);
+  const [sugestoes, setSugestoes] = useState([]);
+  const [mostraSugestoes, setMostraSugestoes] = useState(false);
+  const [localizando, setLocalizando] = useState(false);
+  const [erroLocal, setErroLocal] = useState('');
+  const [raio, setRaio] = useState('inteiro');
 
   const [bairroInput, setBairroInput] = useState('');
   const [bairros, setBairros] = useState([]);
@@ -134,29 +174,59 @@ export default function NewExtractionModal({
   const [erroSugestao, setErroSugestao] = useState('');
 
   const carViewRef = useRef(null);
+  const pedidoRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
       setStep(1);
       setNicho('');
       setNichoError(false);
-      setCidadeObj(null);
-      setCidadeInput('');
-      setCidadeError(false);
+      setBusca('');
+      setLocal(null);
+      setSugestoes([]);
+      setErroLocal('');
+      setRaio('inteiro');
       setBairroInput('');
       setBairros([]);
-      setPais('BR');
     }
   }, [isOpen]);
 
+  // Sugestões do mapa, com espera curta para não consultar a cada letra.
+  useEffect(() => {
+    if (!isOpen || step !== 2) return undefined;
+    const texto = busca.trim();
+    if (local || texto.length < 3 || lerLocalColado(texto)) return undefined;
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const remotas = await buscaLocais(texto, { signal: ctrl.signal });
+        setSugestoes((atuais) => {
+          const vistos = new Set(atuais.map((s) => norm(`${s.nome}|${s.uf}`)));
+          return [...atuais, ...remotas.filter((s) => !vistos.has(norm(`${s.nome}|${s.uf}`)))].slice(0, 8);
+        });
+        setMostraSugestoes(true);
+      } catch { /* sem internet: fica a lista local */ }
+    }, 450);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [busca, local, isOpen, step]);
+
   if (!isOpen) return null;
 
-  const cat = CATALOGO[pais] || CATALOGO.BR;
+  const pais = local?.pais || paisDoTexto(busca);
+  const podeInteiro = !local || ['cidade', 'estado', 'bairro'].includes(local.tipo);
+  const raioKm = raio === 'inteiro' ? null : raio;
+  const dividePorBairro = raio === 'inteiro' && (!local || local.tipo === 'cidade');
+  // Nos EUA o Google entende melhor serviço em inglês; nicho "brasileiro"
+  // continua em português de propósito, porque é assim que se acha a comunidade.
+  const nichoEmPortugues = /[ãõçáéíóúâêô]|\b(limpeza|faxina|restaurante|salao|construcao|advogad|dentista|pintor|mudanca|oficina|padaria)/i.test(nicho)
+    && !/brasil|brazil/i.test(nicho);
+  const avisoIdioma = pais === 'US' && nichoEmPortugues;
+  const rotuloInteiro = local?.tipo === 'estado' ? 'Estado inteiro' : local?.tipo === 'bairro' ? 'Bairro inteiro' : 'Cidade inteira';
 
   const wzTitles = {
     1: 'Qual nicho você quer pesquisar?',
-    2: pais === 'US' ? 'Em qual cidade dos Estados Unidos?' : 'Em qual cidade?',
-    3: pais === 'US' ? 'Quais bairros ou regiões?' : 'Quais bairros?'
+    2: 'Onde?',
+    3: dividePorBairro ? 'Quer dividir por bairros?' : 'Revise e inicie',
   };
 
   const handleNichoChange = (val) => {
@@ -170,7 +240,7 @@ export default function NewExtractionModal({
     }
     const pre = [];
     const mid = [];
-    cat.nichos.forEach((t) => {
+    NICHOS.forEach((t) => {
       const nt = norm(t);
       if (nt.indexOf(nq) === 0) pre.push(t);
       else if (nt.indexOf(nq) >= 0) mid.push(t);
@@ -180,21 +250,6 @@ export default function NewExtractionModal({
     setShowNichoList(results.length > 0);
   };
 
-  const trocaPais = (sigla) => {
-    if (sigla === pais) return;
-    setPais(sigla);
-    // Cidade de um pais nao existe no outro, e bairro muito menos. Os dois
-    // voltam ao inicio. O nicho fica: se o usuario digitou, foi de proposito,
-    // e nome em portugues e justamente o que acha negocio brasileiro la.
-    setCidadeObj(null);
-    setCidadeInput('');
-    setCidadeError(false);
-    setLocSuggestions([]);
-    setShowLocList(false);
-    setBairros([]);
-    setBairroInput('');
-  };
-
   const pickNicho = (val) => {
     setNicho(val);
     setNichoError(false);
@@ -202,19 +257,67 @@ export default function NewExtractionModal({
     setStep(2);
   };
 
-  const handleLocChange = (val) => {
-    setCidadeInput(val);
-    setCidadeObj(null);
-    setCidadeError(false);
-    const nq = norm(val).trim();
-    if (!nq) {
-      setLocSuggestions([]);
-      setShowLocList(false);
+  const escolheLocal = (item) => {
+    setLocal(item);
+    setBusca(rotuloDoLocal(item));
+    setMostraSugestoes(false);
+    setErroLocal('');
+    // Bairro e endereço pedem raio; cidade e estado começam inteiros.
+    if (['ponto', 'lugar'].includes(item.tipo)) setRaio((r) => (r === 'inteiro' ? 10 : r));
+    else setRaio('inteiro');
+  };
+
+  // Item do catálogo local não tem coordenada: pergunta ao mapa antes de usar.
+  const escolheSugestao = async (item) => {
+    if (Number.isFinite(item.lat)) {
+      escolheLocal(item);
       return;
     }
-    const all = cat.cidades.concat(cat.estados);
+    setLocalizando(true);
+    setMostraSugestoes(false);
+    setBusca(rotuloDoLocal(item));
+    const pedido = Symbol('pedido');
+    pedidoRef.current = pedido;
+    try {
+      const achados = await buscaLocais(`${item.nome}, ${item.uf}, ${item.pais === 'US' ? 'USA' : 'Brasil'}`);
+      if (pedidoRef.current !== pedido) return;
+      const melhor = achados.find((a) => a.pais === item.pais) || achados[0];
+      escolheLocal(melhor ? { ...item, lat: melhor.lat, lng: melhor.lng } : item);
+    } catch {
+      escolheLocal(item);
+    } finally {
+      setLocalizando(false);
+    }
+  };
+
+  const handleBuscaChange = (val) => {
+    setBusca(val);
+    setLocal(null);
+    setErroLocal('');
+    pedidoRef.current = null;
+    const ponto = lerLocalColado(val);
+    if (ponto) {
+      escolheLocal({
+        ...ponto,
+        nome: 'Ponto colado',
+        detalhe: '',
+        cidade: '',
+        uf: '',
+        tipo: 'ponto',
+        pais: paisDaCoordenada(ponto.lat, ponto.lng) || paisDoTexto(val),
+        chave: 'ponto',
+      });
+      setBusca(val);
+      return;
+    }
+    const nq = norm(val).trim();
+    if (!nq) {
+      setSugestoes([]);
+      setMostraSugestoes(false);
+      return;
+    }
     const scored = [];
-    all.forEach((c) => {
+    CATALOGO_LOCAL.forEach((c) => {
       const nn = norm(c.n);
       let s = -1;
       if (nn === nq) s = 0;
@@ -225,16 +328,9 @@ export default function NewExtractionModal({
       scored.push({ c, s });
     });
     scored.sort((a, b) => a.s - b.s || a.c.n.localeCompare(b.c.n, 'pt-BR'));
-    const results = scored.slice(0, 7).map((r) => r.c);
-    setLocSuggestions(results);
-    setShowLocList(results.length > 0);
-  };
-
-  const pickLoc = (item) => {
-    setCidadeObj(item);
-    setCidadeInput(item.estado ? `${item.n} · Estado` : `${item.n} — ${item.uf}`);
-    setCidadeError(false);
-    setShowLocList(false);
+    const locais = scored.slice(0, 4).map((r) => doCatalogo(r.c));
+    setSugestoes(locais);
+    setMostraSugestoes(locais.length > 0);
   };
 
   const addBairro = () => {
@@ -253,12 +349,11 @@ export default function NewExtractionModal({
   // Lê os bairros da cidade no OpenStreetMap e junta com os já digitados.
   const sugerirBairros = async () => {
     if (sugerindo || !window.electronAPI?.sugerirBairros) return;
-    const city = cidadeObj ? (cidadeObj.estado ? cidadeObj.n : `${cidadeObj.n}, ${cidadeObj.uf}`) : cidadeInput;
     setErroSugestao('');
     setSugerindo({ atual: 0, total: 0 });
     const off = window.electronAPI.onBairrosProgress?.((p) => setSugerindo(p));
     try {
-      const r = await window.electronAPI.sugerirBairros(city, pais);
+      const r = await window.electronAPI.sugerirBairros(textoDoLocal(local) || busca, pais);
       if (!r?.success) throw new Error(r?.error || 'Não foi possível consultar o mapa.');
       if (!r.bairros.length) {
         setErroSugestao('O mapa não tem bairros marcados para essa cidade. A busca vai cobrir a cidade inteira.');
@@ -276,11 +371,6 @@ export default function NewExtractionModal({
     }
   };
 
-  const cidadeLabel = () => {
-    if (!cidadeObj) return cidadeInput;
-    return cidadeObj.estado ? `${cidadeObj.n} · Estado` : `${cidadeObj.n} — ${cidadeObj.uf}`;
-  };
-
   const handleNext = () => {
     if (isProcessing) return;
     if (step === 1) {
@@ -293,24 +383,34 @@ export default function NewExtractionModal({
       return;
     }
     if (step === 2) {
-      if (!cidadeInput.trim() && !cidadeObj) {
-        setCidadeError(true);
+      if (localizando) return;
+      // Digitou e não escolheu: usa a primeira sugestão, se houver.
+      if (!local && sugestoes.length) {
+        escolheSugestao(sugestoes[0]);
         return;
       }
-      setCidadeError(false);
+      if (!local && busca.trim().length < 2) {
+        setErroLocal('Diga onde buscar: cidade, bairro, endereço, coordenadas ou link do Google Maps.');
+        return;
+      }
+      if (raioKm && !local) {
+        setErroLocal('Para buscar por raio, escolha um local da lista ou cole um ponto.');
+        return;
+      }
       setStep(3);
       return;
     }
-    // Step 3 - Start extraction!
-    const neigh = bairros.length > 0 ? bairros.join(', ') : '';
-    const city = cidadeObj ? (cidadeObj.estado ? cidadeObj.n : `${cidadeObj.n}, ${cidadeObj.uf}`) : cidadeInput;
+    // Etapa 3: inicia.
+    const usaRaio = Boolean(raioKm && local);
     onStartExtraction?.({
       niche: nicho.trim(),
-      neigh,
-      bairros,
-      city,
+      neigh: dividePorBairro && bairros.length ? bairros.join(', ') : '',
+      bairros: dividePorBairro ? bairros : [],
+      city: usaRaio ? '' : (textoDoLocal(local) || busca.trim()),
       pais,
-      limit: 1000
+      limit: 1000,
+      area: usaRaio ? { lat: local.lat, lng: local.lng, raioKm } : null,
+      localLabel: rotuloDoLocal(local) || busca.trim(),
     });
     onClose();
   };
@@ -334,35 +434,15 @@ export default function NewExtractionModal({
             <i className={step >= 3 ? 'on' : ''} />
           </div>
 
-          {/* STEP 1: NICHO */}
+          {/* ETAPA 1: NICHO */}
           {step === 1 && (
             <div className="wz-step">
-              {/* Vem antes do nicho porque a lista de nichos depende dele. */}
-              <div className="wz-pais" role="group" aria-label="Onde prospectar">
-                <button
-                  type="button"
-                  className={`wz-pais-btn${pais === 'BR' ? ' on' : ''}`}
-                  aria-pressed={pais === 'BR'}
-                  onClick={() => trocaPais('BR')}
-                >
-                  Brasil
-                </button>
-                <button
-                  type="button"
-                  className={`wz-pais-btn${pais === 'US' ? ' on' : ''}`}
-                  aria-pressed={pais === 'US'}
-                  onClick={() => trocaPais('US')}
-                >
-                  Brasileiros nos EUA
-                </button>
-              </div>
-
               <div className={`field ${nichoError ? 'invalid' : ''}`}>
                 <label htmlFor="wzNicho">Nicho</label>
                 <div className="ac-wrap">
                   <input
                     id="wzNicho"
-                    placeholder={pais === 'US' ? 'Ex.: restaurante brasileiro, limpeza, despachante' : 'Ex.: dentistas, advogados, pizzarias'}
+                    placeholder="Ex.: dentistas, limpeza residencial, restaurante brasileiro"
                     autoComplete="off"
                     value={nicho}
                     onChange={(e) => handleNichoChange(e.target.value)}
@@ -377,12 +457,7 @@ export default function NewExtractionModal({
                   {showNichoList && nichoSuggestions.length > 0 && (
                     <div className="ac-list" role="listbox">
                       {nichoSuggestions.map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          className="ac-item"
-                          onClick={() => pickNicho(item)}
-                        >
+                        <button key={item} type="button" className="ac-item" onClick={() => pickNicho(item)}>
                           <span><span>{item}</span></span>
                         </button>
                       ))}
@@ -402,13 +477,8 @@ export default function NewExtractionModal({
                   <ChevronLeft size={16} strokeWidth={1.5} />
                 </button>
                 <div className="car-view" ref={carViewRef} role="list">
-                  {cat.nichos.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      className="chip"
-                      onClick={() => pickNicho(t)}
-                    >
+                  {NICHOS.map((t) => (
+                    <button key={t} type="button" className="chip" onClick={() => pickNicho(t)}>
                       {t}
                     </button>
                   ))}
@@ -425,143 +495,205 @@ export default function NewExtractionModal({
             </div>
           )}
 
-          {/* STEP 2: CIDADE */}
+          {/* ETAPA 2: ONDE */}
           {step === 2 && (
             <div className="wz-step wz-2col">
-             <div className="wz-2col-form">
-              <div className={`field ${cidadeError ? 'invalid' : ''}`}>
-                <label htmlFor="wzCidade">Cidade ou estado</label>
-                <div className="ac-wrap">
-                  <input
-                    id="wzCidade"
-                    placeholder={pais === 'US' ? 'Ex.: Framingham, Pompano Beach, Newark' : 'Ex.: Rio de Janeiro, São Paulo, Curitiba'}
-                    autoComplete="off"
-                    value={cidadeInput}
-                    onChange={(e) => handleLocChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleNext();
-                      }
-                    }}
-                    autoFocus
-                  />
-                  {showLocList && locSuggestions.length > 0 && (
-                    <div className="ac-list" role="listbox">
-                      {locSuggestions.map((c) => (
-                        <button
-                          key={`${c.n}-${c.uf}`}
-                          type="button"
-                          className="ac-item"
-                          onClick={() => {
-                            pickLoc(c);
-                            setStep(3);
-                          }}
-                        >
-                          <span>
-                            <span>{c.n} — {c.uf}</span>
-                            <small>{c.estado ? cat.rotuloEstado : cat.rotuloCidade}</small>
-                          </span>
-                          <span className="t">{c.estado ? cat.rotuloEstado : cat.rotuloCidade}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {cidadeError && <span className="field-err" style={{ display: 'block' }}>Escolha uma localização para continuar.</span>}
-              </div>
-
-              <div className="ex-chips" style={{ marginTop: '12px' }}>
-                {cat.populares.map((name) => {
-                  const hit = cat.cidades.find((c) => c.n === name);
-                  if (!hit) return null;
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      className="chip"
-                      onClick={() => {
-                        pickLoc(hit);
-                        setStep(3);
+              <div className="wz-2col-form">
+                <div className={`field ${erroLocal ? 'invalid' : ''}`}>
+                  <label htmlFor="wzOnde">Cidade, bairro, endereço ou ponto</label>
+                  <div className="ac-wrap">
+                    <span className="onde-icone" aria-hidden="true">
+                      {localizando ? <Loader size={16} strokeWidth={1.75} className="cfg-girando" /> : <Search size={16} strokeWidth={1.75} />}
+                    </span>
+                    <input
+                      id="wzOnde"
+                      className="onde-input"
+                      placeholder="Ex.: Orlando, FL · Copacabana · cole um link do Google Maps"
+                      autoComplete="off"
+                      value={busca}
+                      onChange={(e) => handleBuscaChange(e.target.value)}
+                      onFocus={() => sugestoes.length && !local && setMostraSugestoes(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleNext();
+                        }
                       }}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
-              </div>
-             </div>
+                      autoFocus
+                    />
+                    {mostraSugestoes && sugestoes.length > 0 && (
+                      <div className="ac-list" role="listbox">
+                        {sugestoes.map((s) => (
+                          <button key={s.chave} type="button" className="ac-item" onClick={() => escolheSugestao(s)}>
+                            <span className={`onde-bandeira onde-${s.pais}`}>{ROTULO_PAIS[s.pais]}</span>
+                            <span>
+                              <span>{s.nome}</span>
+                              {s.detalhe && <small>{s.detalhe}</small>}
+                            </span>
+                            <span className="t">{ROTULO_TIPO[s.tipo]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {erroLocal
+                    ? <span className="field-err" style={{ display: 'block' }}>{erroLocal}</span>
+                    : <span className="cfg-dica">Aceita coordenadas ("28.538, -81.379") ou link de um lugar no Google Maps. O país é reconhecido sozinho.</span>}
+                </div>
 
-              {/* Confere o lugar antes de gastar uma extracao. */}
-              <MapaPreviaLocal pais={pais} local={cidadeObj} textoLivre={cidadeInput} bairros={[]} />
+                {!local && (
+                  <div className="ex-chips" style={{ marginTop: '4px' }}>
+                    {POPULARES.map(([n, uf, p]) => (
+                      <button
+                        key={`${n}-${uf}`}
+                        type="button"
+                        className="chip"
+                        onClick={() => escolheSugestao(doCatalogo({ n, uf, pais: p, estado: false }))}
+                      >
+                        {n} <small className="chip-pais">{ROTULO_PAIS[p]}</small>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {local && (
+                  <div className="onde-escolhido">
+                    <span className={`onde-bandeira onde-${local.pais}`}>{ROTULO_PAIS[local.pais]}</span>
+                    <span><b>{rotuloDoLocal(local)}</b><small>{ROTULO_TIPO[local.tipo]}</small></span>
+                  </div>
+                )}
+
+                <div className="field" style={{ marginTop: 14 }}>
+                  <label>Área da busca</label>
+                  <div className="wz-raios" role="group" aria-label="Área da busca">
+                    <button
+                      type="button"
+                      className={`chip${raio === 'inteiro' ? ' on' : ''}`}
+                      aria-pressed={raio === 'inteiro'}
+                      disabled={!podeInteiro}
+                      onClick={() => setRaio('inteiro')}
+                    >
+                      {rotuloInteiro}
+                    </button>
+                    {RAIOS.map((km) => (
+                      <button
+                        key={km}
+                        type="button"
+                        className={`chip${raio === km ? ' on' : ''}`}
+                        aria-pressed={raio === km}
+                        onClick={() => setRaio(km)}
+                      >
+                        {km} km
+                      </button>
+                    ))}
+                  </div>
+                  <span className="cfg-dica">
+                    {raioKm
+                      ? `Busca em volta do ponto e descarta o que ficar a mais de ${raioKm} km.`
+                      : 'Busca pelo nome do lugar. Na próxima etapa dá para dividir a cidade por bairros.'}
+                  </span>
+                </div>
+              </div>
+
+              <MapaRaio local={Number.isFinite(local?.lat) ? local : null} raioKm={raioKm} />
             </div>
           )}
 
-          {/* STEP 3: BAIRROS */}
-          {step === 3 && (
+          {/* ETAPA 3: BAIRROS (cidade inteira) OU REVISÃO (raio) */}
+          {step === 3 && dividePorBairro && (
             <div className="wz-step wz-2col">
-             <div className="wz-2col-form">
-              <div className="field">
-                <label htmlFor="wzBairro">
-                  {pais === 'US'
-                    ? 'Bairros ou regiões (opcional: em branco busca a cidade inteira)'
-                    : 'Bairros (opcional: em branco busca o município inteiro)'}
-                </label>
-                <div className="hood-add">
-                  <input
-                    id="wzBairro"
-                    placeholder={pais === 'US' ? 'Ex.: Downtown, Saxonville, Nobscot' : 'Ex.: Copacabana, Pinheiros, Centro'}
-                    autoComplete="off"
-                    value={bairroInput}
-                    onChange={(e) => setBairroInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addBairro();
-                      }
-                    }}
-                    autoFocus
-                  />
-                  <button type="button" className="btn btn-sm" onClick={addBairro}>
-                    <Plus size={15} strokeWidth={1.5} />
-                    Adicionar
-                  </button>
-                </div>
-                <button type="button" className="btn btn-sm btn-ghost hood-sugerir" onClick={sugerirBairros} disabled={!!sugerindo}>
-                  {sugerindo ? <Loader size={15} strokeWidth={1.5} className="cfg-girando" /> : <MapPinned size={15} strokeWidth={1.5} />}
-                  {sugerindo
-                    ? `Lendo o mapa${sugerindo.total ? ` (${sugerindo.atual}/${sugerindo.total})` : ''}…`
-                    : 'Sugerir bairros da cidade'}
-                </button>
-                <span className="cfg-dica">
-                  {sugerindo
-                    ? 'Leva cerca de 40 segundos. Na próxima vez, para a mesma cidade, é na hora.'
-                    : 'Cada bairro vira uma busca separada, e os resultados são somados sem repetição. É assim que se passa do limite de cerca de 120 resultados por busca do Google Maps.'}
-                </span>
-                {erroSugestao && <span className="field-err" style={{ display: 'block' }}>{erroSugestao}</span>}
-              </div>
-
-              <div className="hood-list hood-list-rolavel">
-                {bairros.map((h, idx) => (
-                  <div key={h} className="hood-row">
-                    <span>{h}</span>
-                    <button type="button" onClick={() => removeBairro(idx)} aria-label={`Remover ${h}`}>
-                      <X size={14} strokeWidth={1.5} />
+              <div className="wz-2col-form">
+                <div className="field">
+                  <label htmlFor="wzBairro">Bairros (opcional: em branco busca a cidade inteira)</label>
+                  <div className="hood-add">
+                    <input
+                      id="wzBairro"
+                      placeholder={pais === 'US' ? 'Ex.: Downtown, Conway, Lake Nona' : 'Ex.: Copacabana, Pinheiros, Centro'}
+                      autoComplete="off"
+                      value={bairroInput}
+                      onChange={(e) => setBairroInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addBairro();
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <button type="button" className="btn btn-sm" onClick={addBairro}>
+                      <Plus size={15} strokeWidth={1.5} />
+                      Adicionar
                     </button>
                   </div>
-                ))}
-              </div>
-             </div>
+                  <button type="button" className="btn btn-sm btn-ghost hood-sugerir" onClick={sugerirBairros} disabled={!!sugerindo}>
+                    {sugerindo ? <Loader size={15} strokeWidth={1.5} className="cfg-girando" /> : <MapPinned size={15} strokeWidth={1.5} />}
+                    {sugerindo
+                      ? `Lendo o mapa${sugerindo.total ? ` (${sugerindo.atual}/${sugerindo.total})` : ''}…`
+                      : 'Sugerir bairros da cidade'}
+                  </button>
+                  <span className="cfg-dica">
+                    {sugerindo
+                      ? 'Leva cerca de 40 segundos. Na próxima vez, para a mesma cidade, é na hora.'
+                      : 'Cada bairro vira uma busca separada, e os resultados são somados sem repetição. É assim que se passa do limite de cerca de 120 resultados por busca do Google Maps.'}
+                  </span>
+                  {erroSugestao && <span className="field-err" style={{ display: 'block' }}>{erroSugestao}</span>}
+                </div>
 
-              {/* Com bairros na lista o mapa enquadra todos; sem nenhum, mostra
-                  o municipio inteiro, que e exatamente o que sera extraido. */}
-              <MapaPreviaLocal pais={pais} local={cidadeObj} textoLivre={cidadeInput} bairros={bairros} />
+                <div className="hood-list hood-list-rolavel">
+                  {bairros.map((h, idx) => (
+                    <div key={h} className="hood-row">
+                      <span>{h}</span>
+                      <button type="button" onClick={() => removeBairro(idx)} aria-label={`Remover ${h}`}>
+                        <X size={14} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <MapaPreviaLocal
+                pais={pais}
+                local={local ? { n: local.cidade || local.nome, uf: local.uf, estado: false } : null}
+                textoLivre={busca}
+                bairros={bairros}
+              />
 
               <div className="wz-review wz-2col-full">
                 <b>{nicho || '—'}</b>
-                <span> · {cidadeLabel()} · {bairros.length ? `${bairros.length} bairro(s), ${bairros.length} busca(s)` : (pais === 'US' ? 'cidade inteira' : 'município inteiro')}</span>
-                {pais === 'US' && <span className="wz-review-pais"> · Estados Unidos</span>}
+                <span> · {rotuloDoLocal(local) || busca} · {bairros.length ? `${bairros.length} bairro(s), ${bairros.length} busca(s)` : 'cidade inteira'}</span>
+                <span className="wz-review-pais"> · {ROTULO_PAIS[pais]}</span>
+                {avisoIdioma && (
+                  <div className="wz-aviso" style={{ marginTop: 8 }}>
+                    <b>Dica para os EUA:</b> o nicho em inglês traz mais resultados da área (ex.: "house cleaning").
+                    Para negócio brasileiro, mantenha em português.
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+
+          {step === 3 && !dividePorBairro && (
+            <div className="wz-step wz-2col">
+              <div className="wz-2col-form">
+                <ul className="wz-resumo">
+                  <li><span>Nicho</span><b>{nicho}</b></li>
+                  <li><span>Onde</span><b>{rotuloDoLocal(local) || busca}</b></li>
+                  <li><span>Área</span><b>{raioKm ? `Raio de ${raioKm} km` : rotuloInteiro}</b></li>
+                  <li><span>País</span><b>{ROTULO_PAIS[pais]}</b></li>
+                </ul>
+                {avisoIdioma && (
+                  <div className="wz-aviso">
+                    <b>Dica para os EUA:</b> o nicho em inglês traz mais resultados da área (ex.: "house cleaning" em vez de
+                    "limpeza residencial"). Para achar negócio brasileiro, mantenha em português, como "restaurante brasileiro".
+                  </div>
+                )}
+                <span className="cfg-dica">
+                  {raioKm
+                    ? 'O Google Maps devolve no máximo uns 120 resultados por busca. Para áreas grandes, prefira a cidade dividida por bairros.'
+                    : 'Confira e clique em Iniciar extração.'}
+                </span>
+              </div>
+              <MapaRaio local={Number.isFinite(local?.lat) ? local : null} raioKm={raioKm} />
             </div>
           )}
         </div>
@@ -576,7 +708,7 @@ export default function NewExtractionModal({
               Voltar
             </button>
           )}
-          <button type="button" className="btn btn-primary" disabled={isProcessing} onClick={handleNext}>
+          <button type="button" className="btn btn-primary" disabled={isProcessing || (step === 2 && localizando)} onClick={handleNext}>
             {isProcessing ? 'Extração em andamento…' : (step === 3 ? 'Iniciar extração' : 'Continuar')}
           </button>
         </div>

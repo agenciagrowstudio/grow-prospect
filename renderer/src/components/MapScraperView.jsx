@@ -34,6 +34,7 @@ import {
   normalizeLeadAddress,
   normalizeLeadCollection,
   readLocalArray,
+  localDoEndereco,
 } from '../leadData';
 import { useNotifications } from './NotificationCenter';
 
@@ -92,7 +93,25 @@ function parseCanonicalGoogleCoordinates(url = '') {
   return isValidCoordinatePair(lat, lng) ? { lat, lng } : null;
 }
 
+/**
+ * Empresa que atende por região, sem endereço, às vezes vem do Google com a
+ * coordenada igual ao centro do mapa da busca (ex.: o centro do Texas numa
+ * busca em Orlando). É o Google dizendo que não sabe onde ela fica; sem pino
+ * é mais honesto que um pino no lugar errado.
+ */
+function coordenadaDeRegiao(lead = {}) {
+  if (lead.coordSource === 'area') return true;
+  if (String(lead.address || '').trim()) return false;
+  let url = String(lead.googleMapsUrl || lead.mapsUrl || '');
+  try { url = decodeURIComponent(url); } catch {}
+  const centro = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),/);
+  const lugar = url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (!centro || !lugar) return false;
+  return Math.abs(Number(centro[1]) - Number(lugar[1])) < 1e-4 && Math.abs(Number(centro[2]) - Number(lugar[2])) < 1e-4;
+}
+
 function getExactLeadLocation(lead = {}) {
+  if (coordenadaDeRegiao(lead)) return null;
   const canonicalCoords = parseCanonicalGoogleCoordinates(
     lead.googleMapsUrl || lead.mapsUrl || lead.google_maps_url || ''
   );
@@ -163,9 +182,10 @@ function getLeadPhone(l) { return l.phone || l.tel || ''; }
 function getLeadEmail(l) { return l.email || l.mail || ''; }
 function getLeadWebsite(l) { return l.website || l.site || ''; }
 function getLeadIg(l) { return l.instagram || l.ig || ''; }
-function getLeadBairro(l) { return l.neighborhood || l.bairro || l.hood || ''; }
-function getLeadCity(l) { return l.city || l.cidade || ''; }
-function getLeadState(l) { return l.state || l.uf || ''; }
+// A extração grava só o endereço inteiro; cidade, estado e bairro saem dele.
+function getLeadBairro(l) { return l.neighborhood || l.bairro || l.hood || localDoEndereco(l.address).bairro; }
+function getLeadCity(l) { return l.city || l.cidade || localDoEndereco(l.address).cidade; }
+function getLeadState(l) { return l.state || l.uf || localDoEndereco(l.address).uf; }
 function getLeadRating(l) { return l.rating != null ? l.rating : (l.rn != null ? l.rn : 0); }
 function getLeadReviews(l) { return l.reviews != null ? l.reviews : (l.reviewCount != null ? l.reviewCount : (l.rc != null ? l.rc : 0)); }
 function getLeadScore(l) { return l.score != null ? l.score : (l.s != null ? l.s : 0); }
@@ -180,6 +200,20 @@ export default function MapScraperView({
 
   const [leads, setLeads] = useState(() => normalizeLeadCollection(readLocalArray('sigma_leads')));
   const [searches, setSearches] = useState(() => getExtractionSearches(readLocalArray('sigma_searches')));
+  // Busca mostrada na lista e no mapa. '' = todas. Começa na escolhida da
+  // última vez; sem escolha salva, na busca mais recente.
+  const [buscaAtiva, setBuscaAtivaEstado] = useState(() => {
+    const lista = getExtractionSearches(readLocalArray('sigma_searches'));
+    let salva = null;
+    try { salva = localStorage.getItem('sigma_busca_ativa'); } catch {}
+    if (salva === '' || (salva && lista.some((s) => String(s.id) === salva))) return salva;
+    return lista[0]?.id ? String(lista[0].id) : '';
+  });
+  const setBuscaAtiva = useCallback((id) => {
+    setBuscaAtivaEstado(id);
+    try { localStorage.setItem('sigma_busca_ativa', id); } catch {}
+  }, []);
+  const buscaMaisNovaRef = useRef(getExtractionSearches(readLocalArray('sigma_searches'))[0]?.id || null);
 
   // Estado de processamento
   const [isProcessing, setIsProcessing] = useState(false);
@@ -312,7 +346,13 @@ export default function MapScraperView({
       const rawLeads = readLocalArray('sigma_leads');
       setLeads(normalizeLeadCollection(rawLeads));
       repairDirtyStoredAddresses(rawLeads);
-      setSearches(getExtractionSearches(readLocalArray('sigma_searches')));
+      const lista = getExtractionSearches(readLocalArray('sigma_searches'));
+      setSearches(lista);
+      const maisNova = lista[0]?.id || null;
+      if (maisNova && maisNova !== buscaMaisNovaRef.current) {
+        buscaMaisNovaRef.current = maisNova;
+        setBuscaAtiva(String(maisNova));
+      }
     };
     refreshStoredData();
     window.addEventListener('sigma:leads-updated', refreshStoredData);
@@ -367,6 +407,8 @@ export default function MapScraperView({
       const uf = getLeadState(lead);
       const score = getLeadScore(lead);
 
+      if (buscaAtiva && String(lead.searchId || '') !== buscaAtiva) return false;
+
       // Filter Drawer
       if (filterCat && cat !== filterCat) return false;
       if (filterScore > 0 && score < filterScore) return false;
@@ -402,7 +444,18 @@ export default function MapScraperView({
     listUf,
     listCidade,
     listBairro,
+    buscaAtiva,
   ]);
+
+  // Quantos leads cada busca tem, para o seletor.
+  const leadsPorBusca = useMemo(() => {
+    const m = new Map();
+    leads.forEach((l) => {
+      const k = String(l.searchId || '');
+      m.set(k, (m.get(k) || 0) + 1);
+    });
+    return m;
+  }, [leads]);
 
   // Contagem de filtros ativos do feed
   const activeListFiltersCount = useMemo(() => {
@@ -717,11 +770,15 @@ export default function MapScraperView({
       const c = getLeadCity(l);
       if (c) contagem.set(c, (contagem.get(c) || 0) + 1);
     });
-    const [cidade] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0] || [];
-    const titulo = listCidade || cidade || '';
+    const [cidade, qtd = 0] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0] || [];
+    // Recorte misturado: dizer "Várias cidades" é melhor que eleger uma.
+    const domina = cidade && qtd / Math.max(1, visibleLeads.length) >= 0.6;
+    const varias = !listCidade && !domina && contagem.size > 1;
+    const titulo = listCidade || (varias ? 'Várias cidades' : (cidade || ''));
     const amostra = visibleLeads.find((l) => getLeadCity(l) === titulo) || visibleLeads[0] || {};
-    const pais = String(amostra.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil';
-    const uf = getLeadState(amostra);
+    const paises = new Set(visibleLeads.map((l) => (String(l.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil')));
+    const pais = paises.size > 1 ? 'Brasil e EUA' : (String(amostra.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil');
+    const uf = varias ? '' : getLeadState(amostra);
     const qs = visibleLeads.map((l) => qualificacoes.get(l) || qualificaLead(l));
     const pontos = [];
     visibleLeads.forEach((l, i) => {
@@ -730,9 +787,10 @@ export default function MapScraperView({
     });
     return {
       titulo,
+      cidadeFoto: varias ? '' : titulo,
       uf,
       pais: String(amostra.pais || 'BR').toUpperCase(),
-      subtitulo: [titulo ? 'Cidade' : (contagem.size > 1 ? `${contagem.size} cidades` : ''), uf, pais].filter(Boolean).join(' · '),
+      subtitulo: [varias ? `${contagem.size} cidades` : (titulo ? 'Cidade' : ''), uf, pais].filter(Boolean).join(' · '),
       resumo: resumoTemperaturas(qs),
       pontos,
     };
@@ -1171,6 +1229,20 @@ export default function MapScraperView({
         </div>
 
         {/* Popover de Filtros da Lista */}
+        {searches.length > 0 && (
+          <div className="feed-busca">
+            <label htmlFor="feedBusca">Busca</label>
+            <select id="feedBusca" value={buscaAtiva} onChange={(e) => setBuscaAtiva(e.target.value)}>
+              <option value="">Todas as buscas ({leads.length})</option>
+              {searches.map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  {(s.label || s.query || 'Busca').replace(/ · /g, ', ')} ({leadsPorBusca.get(String(s.id)) || 0})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {isListPopOpen && (
           <div className="list-pop open" id="listPop">
             <div className="field">
@@ -1250,6 +1322,7 @@ export default function MapScraperView({
         <div id="feedCount" role="status">
           <CabecalhoRegiao
             titulo={regiao.titulo}
+            cidadeFoto={regiao.cidadeFoto}
             uf={regiao.uf}
             pais={regiao.pais}
             subtitulo={regiao.subtitulo}

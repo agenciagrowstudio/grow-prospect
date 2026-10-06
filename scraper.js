@@ -3,6 +3,7 @@ const CONFIG = require('./config');
 const { extractBusinessData } = require('./utils/businessData');
 const { geocodeAddress, isValidCoord } = require('./utils/geocode');
 const { normalizeAddress } = require('./utils/address-normalizer');
+const { urlBuscaNaArea } = require('./utils/area-busca');
 const { extraiEmails, ordenaEmails, linksDeContato, temEmailDoDominio } = require('./utils/emails-site');
 
 function checkCancelled(cancelToken) {
@@ -13,7 +14,12 @@ function checkCancelled(cancelToken) {
   }
 }
 
-async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = console.log, cancelToken = null, pais = 'BR') {
+/**
+ * @param {{ area?: { lat: number, lng: number, raioKm: number } }} [opcoes]
+ *   Com área, a busca abre centrada no ponto e o Maps devolve o que está na
+ *   janela; o filtro fino por distância fica para quem chamou.
+ */
+async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = console.log, cancelToken = null, pais = 'BR', opcoes = {}) {
   onProgress('Launching browser...');
   let browser;
   const launchAttempts = [
@@ -59,7 +65,10 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
 
     const encodedQuery = encodeURIComponent(searchQuery);
     checkCancelled(cancelToken);
-    await gotoWithRetry(page, `https://www.google.com/maps/search/${encodedQuery}`, onProgress);
+    const urlBusca = opcoes.area
+      ? urlBuscaNaArea(searchQuery, opcoes.area)
+      : `https://www.google.com/maps/search/${encodedQuery}`;
+    await gotoWithRetry(page, urlBusca, onProgress);
     await page.waitForTimeout(CONFIG.INITIAL_WAIT);
     checkCancelled(cancelToken);
 
@@ -108,6 +117,18 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
           const retry = await extractBusinessData(page);
           retry.address = normalizeAddress(retry.address);
           if (retry.latitude && retry.coordSource !== 'none') place = retry;
+        }
+        // Empresa que atende por região, sem endereço, às vezes vem com a
+        // coordenada igual ao centro do mapa da busca: o Google não sabe onde
+        // ela fica. Melhor sem coordenada que com o centro do estado.
+        const centro = String(place.googleMapsUrl || page.url() || '').match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),/);
+        const noCentro = centro
+          && Math.abs(Number(centro[1]) - Number(place.latitude)) < 1e-4
+          && Math.abs(Number(centro[2]) - Number(place.longitude)) < 1e-4;
+        if (!place.address && noCentro) {
+          place.latitude = '';
+          place.longitude = '';
+          place.coordSource = 'area';
         }
 
         if (place.name) {

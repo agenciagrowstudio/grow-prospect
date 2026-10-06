@@ -209,7 +209,7 @@ function AppInner() {
   const handleMaximize = () => window.electronAPI?.winMaximize();
   const handleClose = () => window.electronAPI?.winClose();
 
-  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit }) => {
+  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '' }) => {
     if (activeExtraction) {
       addNotification({
         type: 'info',
@@ -222,15 +222,15 @@ function AppInner() {
     setActiveTab('scraper');
     // Com muitos bairros o texto ficaria enorme na notificação e no histórico.
     const local = bairros.length > 2 ? `${bairros.length} bairros` : neigh;
-    const qstr = [niche, bairros.length > 1 ? '' : neigh, city].filter(Boolean).join(' ').trim();
+    // Por raio, o Maps abre centrado no ponto: a busca leva só o nicho.
+    const qstr = area ? niche : [niche, bairros.length > 1 ? '' : neigh, city].filter(Boolean).join(' ').trim();
+    const ondeTexto = area ? `${area.raioKm} km de ${localLabel}` : [local, city].filter(Boolean).join(', ');
     const searchId = `scrape_${Date.now()}`;
     addNotification({
       type: 'info',
       category: 'scraper',
       title: 'Iniciando Extração',
-      message: pais === 'US'
-        ? `Buscando ${niche} em ${city} (Estados Unidos)...`
-        : `Buscando ${niche} em ${local ? `${local}, ` : ''}${city}...`
+      message: `Buscando ${niche} em ${ondeTexto}${pais === 'US' ? ' (EUA)' : ''}...`
     });
 
     if (!window.electronAPI || typeof window.electronAPI.startScrape !== 'function') {
@@ -242,7 +242,7 @@ function AppInner() {
     try {
       // Dois ou mais bairros: uma busca por bairro, somadas no processo principal.
       const divisao = bairros.length > 1 ? { nicho: niche, cidade: city, areas: bairros } : null;
-      const res = await window.electronAPI.startScrape(qstr, limit, searchId, pais, divisao);
+      const res = await window.electronAPI.startScrape(qstr, limit, searchId, pais, divisao, area);
       if (!res?.success) {
         if (res?.cancelled) {
           addNotification({ type: 'info', category: 'scraper', title: 'Extração cancelada', message: 'Nenhum resultado parcial foi adicionado à base.' });
@@ -264,7 +264,7 @@ function AppInner() {
         {
           id: searchId,
           query: qstr,
-          label: `${niche}${local ? ` · ${local}` : ''}${city ? ` · ${city}` : ''}${pais === 'US' ? ' · EUA' : ''}`,
+          label: `${niche} · ${ondeTexto}${pais === 'US' ? ' · EUA' : ''}`,
           source: 'maps',
           pais,
           timestamp: Date.now(),

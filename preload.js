@@ -5,8 +5,8 @@ const { contextBridge, ipcRenderer, webFrame } = require("electron");
 webFrame.setZoomFactor(1);
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  startScrape: (query, maxResults, queryId, pais, divisao) =>
-    ipcRenderer.invoke("start-scrape", { query, maxResults, queryId, pais, divisao }),
+  startScrape: (query, maxResults, queryId, pais, divisao, area) =>
+    ipcRenderer.invoke("start-scrape", { query, maxResults, queryId, pais, divisao, area }),
   sugerirBairros: (cidade, pais) => ipcRenderer.invoke("sugerir-bairros", { cidade, pais }),
   imagemCidade: (cidade, uf, pais) => ipcRenderer.invoke("imagem-cidade", { cidade, uf, pais }),
   onBairrosProgress: (callback) => {

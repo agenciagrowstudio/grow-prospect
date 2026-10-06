@@ -149,3 +149,36 @@ export function getLeadStats(leads = []) {
 export function getSearchLeadCount(leads = [], searchId) {
   return leads.filter((lead) => String(lead?.searchId ?? '') === String(searchId ?? '')).length;
 }
+
+/**
+ * Cidade, estado e bairro a partir do endereço completo do Google Maps.
+ *
+ * A extração grava só o endereço inteiro; sem isto, a lista não sabe em que
+ * cidade o lead está. Dois formatos:
+ *   EUA:    "3603 Conway Rd, Orlando, FL 32812, Estados Unidos"
+ *   Brasil: "R. Barata Ribeiro, 100 - Copacabana, Rio de Janeiro - RJ, 22040-002"
+ */
+export function localDoEndereco(endereco = '') {
+  const partes = String(endereco || '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !/^(estados unidos|united states|usa|eua|brasil|brazil)$/i.test(p));
+  if (!partes.length) return { cidade: '', uf: '', bairro: '' };
+
+  // EUA: "FL 32812" ou só "FL", com a cidade na parte anterior.
+  const iUs = partes.findIndex((p) => /^[A-Z]{2}(\s+\d{5}(-\d{4})?)?$/.test(p));
+  if (iUs > 0) {
+    return { cidade: partes[iUs - 1], uf: partes[iUs].slice(0, 2), bairro: '' };
+  }
+
+  // Brasil: "Rio de Janeiro - RJ"; o bairro vem depois do último " - " da parte anterior.
+  const iBr = partes.findIndex((p) => /\s-\s[A-Z]{2}$/.test(p));
+  if (iBr >= 0) {
+    const [cidade, uf] = partes[iBr].split(/\s-\s(?=[A-Z]{2}$)/);
+    const anterior = partes[iBr - 1] || '';
+    const bairro = anterior.includes(' - ') ? anterior.split(' - ').pop() : '';
+    return { cidade: cidade.trim(), uf, bairro: bairro.trim() };
+  }
+  return { cidade: '', uf: '', bairro: '' };
+}

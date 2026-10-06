@@ -67,8 +67,9 @@ function useImagemCidade(cidade, uf, pais) {
   return imagem;
 }
 
-export default function CabecalhoRegiao({ titulo, uf, pais, subtitulo, total, resumo, pontos }) {
-  const imagem = useImagemCidade(titulo, uf, pais);
+export default function CabecalhoRegiao({ titulo, cidadeFoto, uf, pais, subtitulo, total, resumo, pontos }) {
+  // Foto só quando o recorte é uma cidade; "Várias cidades" fica com o mapa.
+  const imagem = useImagemCidade(cidadeFoto ?? titulo, uf, pais);
   const [falhou, setFalhou] = useState(false);
   useEffect(() => setFalhou(false), [imagem?.url]);
   const comFoto = imagem?.url && !falhou;

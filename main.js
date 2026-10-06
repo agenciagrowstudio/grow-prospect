@@ -73,6 +73,7 @@ const gmail = require("./email/gmail");
 const { sugereBairros } = require("./utils/bairros");
 const { imagemCidadeComCache, criaCacheEmArquivo } = require("./utils/imagem-cidade");
 const { scrapePorAreas } = require("./utils/scrape-por-areas");
+const { areaValida, filtraPorRaio } = require("./utils/area-busca");
 
 const defaultWhatsAppSettings = {
   notifications: {
@@ -1304,7 +1305,7 @@ ipcMain.handle("sugerir-bairros", async (_, { cidade, pais } = {}) => {
   }
 });
 
-ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais, divisao }) => {
+ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais, divisao, area }) => {
   const cleanQuery = limitString(query, MAX_QUERY_LENGTH).trim();
   // O pais decide o filtro da geocodificacao. resolvePais nunca devolve
   // nulo, entao entrada estranha do renderer cai no Brasil.
@@ -1328,6 +1329,8 @@ ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais, div
         message: text,
       });
     };
+    // Busca por raio em volta de um ponto (ex.: 30 km de um endereço colado).
+    const raio = areaValida(area);
     const areas = Array.isArray(divisao?.areas)
       ? [...new Set(divisao.areas.map((a) => limitString(a, 80, "").trim()).filter(Boolean))].slice(0, 60)
       : [];
@@ -1341,7 +1344,7 @@ ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais, div
           cancelToken,
           pais: paisExtracao,
         })
-      : await scrapeGoogleMaps(cleanQuery, cleanMaxResults, onScrapeProgress, cancelToken, paisExtracao);
+      : await scrapeGoogleMaps(cleanQuery, cleanMaxResults, onScrapeProgress, cancelToken, paisExtracao, { area: raio });
     if (!result || result.success === false) {
       const error = new Error(result?.error || "Não foi possível concluir a busca no Google Maps.");
       error.warnings = Array.isArray(result?.warnings) ? result.warnings : [];
@@ -1351,6 +1354,14 @@ ipcMain.handle("start-scrape", async (_, { query, maxResults, queryId, pais, div
       ? result.data.map((item) => ({ ...item, address: normalizeAddress(item?.address) }))
       : [];
     if (!data.length) throw new Error("Nenhum negócio foi encontrado para esta busca. Tente ajustar nicho ou localização.");
+
+    // Busca por raio: o Maps devolve a janela do mapa; aqui fica só o círculo.
+    if (raio) {
+      const { dentro, fora } = filtraPorRaio(data, raio);
+      data = dentro;
+      if (fora) emitProgress({ status: "running", current: null, total: cleanMaxResults, message: `${fora} resultado(s) fora do raio de ${raio.raioKm} km descartado(s).` });
+      if (!data.length) throw new Error(`Nenhum negócio dentro de ${raio.raioKm} km. Tente um raio maior.`);
+    }
 
     // Deduplicate by name+address
     const seen = new Set();
