@@ -40,8 +40,8 @@ function Dashboard() {
   const totalSerieDash = useMemo(() => totalSerie(serieDash), [serieDash]);
   const coverage = total ? Math.round(((phoneCount + webCount + igCount) / (total*3))*100) : 0;
 
-  // sparkline mock baseado em buscas
-  const sparkVals = recentSearches.length ? recentSearches.map(s=> getSearchLeadCount(leads, s.id)).slice(0,5).reverse() : [2,5,3,8,6];
+  // Minigráfico das últimas buscas; sem busca, linha zerada em vez de inventada.
+  const sparkVals = recentSearches.length ? recentSearches.map(s=> getSearchLeadCount(leads, s.id)).slice(0,5).reverse() : [0,0,0,0,0];
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16, maxWidth:1120, width:'100%' }}>

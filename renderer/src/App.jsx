@@ -308,6 +308,8 @@ function AppInner() {
               addLog={(msg) => console.log(msg)}
               onOpenNewExtraction={() => setIsNewExtractionOpen(true)}
               activeExtraction={activeExtraction}
+              waStatus={waStatus}
+              onNavigate={navigate}
             />
           </ErrorBoundaryLite>
         );
@@ -366,6 +368,8 @@ function AppInner() {
             addLog={(msg) => console.log(msg)}
             onOpenNewExtraction={() => setIsNewExtractionOpen(true)}
             activeExtraction={activeExtraction}
+            waStatus={waStatus}
+            onNavigate={navigate}
           />
         );
     }

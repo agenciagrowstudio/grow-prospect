@@ -347,8 +347,10 @@ function pickInternalUrls(links, finalUrl, maxPages) {
       parsed.hash = "";
       parsed.search = "";
       return parsed.href;
-    }))
-    .filter((u) => u !== finalUrl)];
+    }))]
+    // O filtro vai depois de virar lista: Set não tem .filter. Com o parêntese
+    // no lugar errado, toda análise de site quebrava e o site parecia fora do ar.
+    .filter((u) => u !== finalUrl);
   return clean.sort((a, b) => Number(priority.test(b)) - Number(priority.test(a))).slice(0, maxPages);
 }
 
@@ -472,4 +474,4 @@ function checkCancelled(cancelToken) {
   }
 }
 
-module.exports = { analyzeWebsite, normalizeUrl, parseHtmlDocument, fetchHtmlPage, emptySiteAnalysis };
+module.exports = { analyzeWebsite, normalizeUrl, parseHtmlDocument, fetchHtmlPage, emptySiteAnalysis, pickInternalUrls };

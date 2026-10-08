@@ -3497,12 +3497,30 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
       setChats((current) => current.some((chat) => chat.jid === nextChat.jid) ? current : [nextChat, ...current]);
       setIsNewChatOpen(false);
       await handleSelectChat(nextChat);
+      return true;
     } catch (error) {
       setNewChatError(error?.message || 'Não foi possível abrir esta conversa.');
+      return false;
     } finally {
       setNewChatBusy(false);
     }
   };
+
+  // Conversa pedida pelo botão de WhatsApp do card do lead (tela do mapa).
+  // Só abre com o WhatsApp conectado; se não der, mostra o erro na janela de
+  // nova conversa em vez de falhar calado.
+  useEffect(() => {
+    if (waStatus !== 'connected' || !window.chatAPI?.startChat) return;
+    let pedido = null;
+    try { pedido = JSON.parse(localStorage.getItem('sigma_wa_pending') || 'null'); } catch {}
+    if (!pedido?.tel) return;
+    try { localStorage.removeItem('sigma_wa_pending'); } catch {}
+    setWaTab('chats');
+    handleStartNewChat({ phone: pedido.tel, name: pedido.name || pedido.tel }).then((ok) => {
+      if (!ok) setIsNewChatOpen(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waStatus]);
 
   const forwardCandidates = useMemo(() => {
     const query = forwardSearch.trim().toLowerCase();

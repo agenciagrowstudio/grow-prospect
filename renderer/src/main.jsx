@@ -3,6 +3,13 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import '../styles.css';
 import './openDesign/od.css';
+import { limpaDadosDemo } from './limpezaDemo';
+
+// Antes de qualquer tela ler os dados: tira os exemplos que versões antigas gravaram.
+const removidosDemo = limpaDadosDemo();
+if (removidosDemo && Object.values(removidosDemo).some(Boolean)) {
+  console.info('[LIMPEZA] Dados de demonstração removidos:', removidosDemo);
+}
 
 // Modo Claro: tema unico. Nao existe paleta escura nem alternancia.
 try { document.documentElement.setAttribute('data-theme', 'light'); } catch {}

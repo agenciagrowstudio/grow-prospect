@@ -69,24 +69,17 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   // Load data from localStorage
   const [leads, setLeads] = useState(() => {
     const raw = readLocalArray('sigma_leads');
-    if (raw.length > 0) return normalizeLeadCollection(raw);
-    return [
-      { id: 'lead-1', name: 'Odonto Lume', category: 'Odontologia', neighborhood: 'Copacabana', city: 'Rio de Janeiro', state: 'RJ', rating: '4,8', reviews: 126, phone: '+55 21 98765-0142', website: 'odonto-lume.com.br', email: 'contato@odonto-lume.com.br', searchQuery: 'dentistas · Copacabana' },
-      { id: 'lead-2', name: 'Café Aurora', category: 'Cafeteria', neighborhood: 'Ipanema', city: 'Rio de Janeiro', state: 'RJ', rating: '4,6', reviews: 89, instagram: '@cafe.aurora', website: 'cafeaurora.com', searchQuery: 'cafés · Ipanema' },
-      { id: 'lead-3', name: 'Almeida Advocacia', category: 'Advocacia', neighborhood: 'Centro', city: 'Rio de Janeiro', state: 'RJ', rating: '4,9', reviews: 211, email: 'contato@almeidaadv.com.br', searchQuery: 'advogados · Centro' },
-      { id: 'lead-4', name: 'Studio Prisma', category: 'Design', neighborhood: 'Botafogo', city: 'Rio de Janeiro', state: 'RJ', rating: '4,7', reviews: 64, phone: '+55 21 97654-8890', website: 'studioprisma.design', searchQuery: 'designers · Botafogo' },
-    ];
+    // Base vazia começa vazia. Antes nasciam 4 empresas inventadas, que
+    // acabavam gravadas como leads de verdade.
+    return normalizeLeadCollection(raw);
   });
 
   const [groups, setGroups] = useState(() => {
     try {
       const g = JSON.parse(localStorage.getItem('sigma_groups') || 'null');
-      if (Array.isArray(g) && g.length > 0) return g;
+      if (Array.isArray(g)) return g;
     } catch {}
-    return [
-      { id: 'g1', name: 'Com WhatsApp', members: ['lead-1', 'lead-4'], created: new Date(2026, 8, 1, 9, 0).getTime() },
-      { id: 'g-demo', name: 'Teste Scoring — RJ', members: ['lead-1', 'lead-2', 'lead-3'], created: new Date(2026, 8, 2, 10, 0).getTime() }
-    ];
+    return [];
   });
 
   const [hist, setHist] = useState(() => {
@@ -94,15 +87,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
       const h = JSON.parse(localStorage.getItem('sigma_history') || 'null');
       if (h && typeof h === 'object') return h;
     } catch {}
-    return {
-      'lead-1': [
-        { k: 'sent', ts: new Date(2026, 8, 3, 14, 32).getTime(), text: 'Olá, tudo bem? Vi que o site da Odonto Lume está sem HTTPS — consigo resolver isso e ativar o botão de WhatsApp em 1 dia. Posso te mostrar?', wa: 'Grow+ · +55 21 90000-0001', camp: 'Lançamento Setembro' },
-        { k: 'reply', ts: new Date(2026, 8, 3, 15, 4).getTime(), text: 'Olá! Pode me explicar melhor?' }
-      ],
-      'lead-2': [
-        { k: 'sent', ts: new Date(2026, 8, 2, 10, 15).getTime(), text: 'Oi! Aqui é da Grow+. Percebi que o site do Café Aurora não tem botão de WhatsApp. Coloco isso no ar hoje. Quer ver?', wa: 'Grow+ · +55 21 90000-0001', camp: 'Cafés Zona Sul' }
-      ]
-    };
+    return {};
   });
 
   const [analysis, setAnalysis] = useState(() => {
@@ -110,24 +95,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
       const a = JSON.parse(localStorage.getItem('sigma_analysis') || 'null');
       if (a && typeof a === 'object') return a;
     } catch {}
-    return {
-      'lead-1': {
-        score: 92,
-        band: 'alta',
-        pos: ['Tem WhatsApp (+12)', 'Site ativo (+15)', 'Avaliação 4,8 (+15)', '126 avaliações (+12)', 'Já respondeu mensagem (+18)', 'Layout adaptável (+5)'],
-        neg: ['Site sem HTTPS — sinal negativo para buscadores'],
-        opp: ['Ativar HTTPS', 'Otimizar performance'],
-        ts: new Date(2026, 8, 2, 16, 20).getTime(),
-        provider: 'openrouter',
-        model: 'anthropic/claude-3.5-sonnet',
-        preset: 'sites',
-        sections: [
-          { t: 'SEO', items: ['Site sem HTTPS — sinal negativo para buscadores'] },
-          { t: 'Performance', items: ['Carregamento dentro do esperado'] },
-          { t: 'Conversão', items: ['Botão de WhatsApp presente', 'Telefone visível para contato'] }
-        ]
-      }
-    };
+    return {};
   });
 
   // State for visible columns

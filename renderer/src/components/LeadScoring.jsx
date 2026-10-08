@@ -53,7 +53,16 @@ function fmtShort(ts) {
 }
 
 // Heurística de Auditoria do Protótipo OpenDesign
-function auditLead(lead, preset = 'sites') {
+/**
+ * Monta a auditoria mostrada na tela.
+ *
+ * `site` é o que o motor do processo principal viu ao visitar o site do lead
+ * (HTTPS, celular, velocidade, botão de WhatsApp, pixel). Antes esta função
+ * presumia que tudo estava certo quando não sabia; agora o que não foi
+ * verificado aparece como "não verificado" e não ganha ponto. `motor` é o
+ * resultado inteiro do motor: a nota dele vale mais que a conta local.
+ */
+function auditLead(lead, preset = 'sites', site = null, motor = null) {
   const pos = [];
   const neg = [];
   const opp = [];
@@ -71,12 +80,13 @@ function auditLead(lead, preset = 'sites') {
   const hasIg = Boolean(lead.instagram || lead.ig);
   const hasMail = Boolean(lead.email || lead.mail);
   const rating = Number(lead.rating || lead.rn || 0);
-  const reviews = Number(lead.reviews || lead.reviewCount || lead.rc || 0);
+  const reviews = Number(lead.reviews || lead.reviewCount || lead.totalReviews || lead.rc || 0);
+  const siteNoAr = site?.digitalPresence ? site.digitalPresence.reachable === true : Boolean(site);
 
   add(hasPhone, 'Tem WhatsApp / Telefone', 12);
 
   if (hasSite) {
-    add(true, 'Site ativo', 15);
+    add(siteNoAr, siteNoAr ? 'Site no ar' : (site ? 'Site fora do ar ou inacessível' : 'Site (não verificado)'), 15);
   } else if (preset === 'sites') {
     add(true, 'Sem site — janela para venda de desenvolvimento', 14);
   } else {
@@ -88,11 +98,25 @@ function auditLead(lead, preset = 'sites') {
   add(rating >= 4.5, `Avaliação ${rating}${rating >= 4.5 ? '' : ' (abaixo de 4,5)'}`, 15);
   add(reviews >= 100, `${reviews} avaliações${reviews >= 100 ? '' : ' (abaixo de 100)'}`, 12);
 
-  const isMobileFriendly = lead.mobile !== false;
-  const hasHttps = lead.https !== false && (hasSite ? !lead.website?.startsWith('http://') : true);
+  // null = não verificado: não ganha ponto e não vira defeito inventado. Só
+  // vale o que o motor mediu num site que de fato abriu.
+  const sim = (v) => (siteNoAr && typeof v === 'boolean' ? v : null);
+  const isMobileFriendly = sim(site?.mobile?.isResponsive);
+  const hasHttps = hasSite
+    ? (sim(site?.hasHttps) ?? (/^http:\/\//i.test(String(lead.website || '')) ? false : null))
+    : null;
+  const tempo = Number(site?.performance?.loadTimeMs);
+  const rapido = Number.isFinite(tempo) && tempo > 0 ? tempo <= 3500 : null;
+  const botaoWhats = sim(site?.conversion?.hasWhatsappButton);
+  const temPixel = site?.tracking
+    ? Boolean(site.tracking.metaPixel || site.tracking.googleAdsConversion || site.tracking.tiktokPixel)
+    : null;
+  const rot = (v, ok, ruim, nv) => (v === null ? nv : v ? ok : ruim);
 
-  add(isMobileFriendly, 'Layout adaptável (Mobile)', 5);
-  add(hasHttps, 'HTTPS ativo', 5);
+  if (hasSite) {
+    add(isMobileFriendly === true, rot(isMobileFriendly, 'Layout adaptável (celular)', 'Layout não adaptável ao celular', 'Celular (não verificado)'), 5);
+    add(hasHttps === true, rot(hasHttps, 'HTTPS ativo', 'Site sem HTTPS', 'HTTPS (não verificado)'), 5);
+  }
 
   if (sc > 100) sc = 100;
 
@@ -105,14 +129,13 @@ function auditLead(lead, preset = 'sites') {
   };
 
   if (hasSite) {
-    S('SEO', [hasHttps ? 'HTTPS ativo' : 'Site sem HTTPS — sinal negativo para buscadores']);
-    S('Performance', [lead.fast !== false ? 'Carregamento dentro do esperado' : 'Carregamento lento detectado']);
-    S('Responsivo', [isMobileFriendly ? 'Layout adaptável para celular' : 'Layout não adaptável']);
-    const conv = [];
-    if (hasPhone) conv.push('Botão de WhatsApp evidente');
-    else conv.push('Sem CTA de WhatsApp visível');
-    S('Conversão', conv);
-    S('Hero e CTA', [hasPhone ? 'Proposta e contato identificáveis' : 'Hero sem contato evidente']);
+    S('SEO', [rot(hasHttps, 'HTTPS ativo', 'Site sem HTTPS: sinal negativo para buscadores', 'HTTPS não verificado')]);
+    S('Performance', [rot(rapido, `Carregou em ${Math.round(tempo / 100) / 10}s`, `Carregamento lento (${Math.round(tempo / 100) / 10}s)`, 'Velocidade não verificada')]);
+    S('Responsivo', [rot(isMobileFriendly, 'Layout adaptável para celular', 'Layout não adaptável', 'Celular não verificado')]);
+    S('Conversão', [
+      rot(botaoWhats, 'Botão de WhatsApp no site', 'Sem botão de WhatsApp no site', 'Botão de WhatsApp não verificado'),
+      rot(temPixel, 'Pixel de anúncios instalado', 'Sem pixel de anúncios', 'Pixel não verificado'),
+    ]);
   } else {
     S('Presença', ['Sem site oficial — presença baseada exclusivamente em mapas e redes']);
   }
@@ -130,11 +153,15 @@ function auditLead(lead, preset = 'sites') {
       : 'Pouco conteúdo indexável para motores de busca e IA'
   ]);
 
+  // Oportunidades da IA do motor, quando ela rodou, vêm primeiro.
+  (motor?.aiAnalysis?.principais_oportunidades || []).slice(0, 3).forEach((o) => opp.push(o));
   if (!hasPhone) opp.push('Adicionar CTA de WhatsApp');
   if (hasSite) {
-    if (!hasHttps) opp.push('Ativar HTTPS');
-    if (lead.fast === false) opp.push('Otimizar velocidade do site');
-    if (!isMobileFriendly) opp.push('Adaptar para dispositivos móveis');
+    if (hasHttps === false) opp.push('Ativar HTTPS');
+    if (rapido === false) opp.push('Otimizar velocidade do site');
+    if (isMobileFriendly === false) opp.push('Adaptar para dispositivos móveis');
+    if (botaoWhats === false) opp.push('Colocar botão de WhatsApp no site');
+    if (temPixel === false) opp.push('Instalar pixel para anúncios');
   } else if (preset === 'sites') {
     opp.push('Propor criação de site moderno e responsivo');
   }
@@ -142,9 +169,13 @@ function auditLead(lead, preset = 'sites') {
   if (rating < 4.5) opp.push('Trabalhar gestão de reputação e avaliações');
   if (reviews < 50) opp.push('Estratégia de captação de avaliações');
 
+  const notaMotor = Number(motor?.score?.value);
+  const nota = Number.isFinite(notaMotor) ? Math.round(notaMotor) : sc;
   return {
-    score: sc,
-    band: scBand(sc),
+    score: nota,
+    band: scBand(nota),
+    verificado: Boolean(site),
+    argumento: motor?.aiAnalysis?.argumento_principal_venda || '',
     pos,
     neg,
     opp: opp.slice(0, 5),
@@ -159,16 +190,8 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
   const [leads, setLeads] = useState(() => normalizeLeadCollection(readLocalArray('sigma_leads')));
   const [groups, setGroups] = useState(() => {
     const g = readLocalArray('sigma_groups');
-    if (g.length > 0) return g;
-    // Seed default demo groups if empty
-    const rawLeads = readLocalArray('sigma_leads');
-    const ids = rawLeads.map((l, i) => l.id || `lead-${i + 1}`);
-    const demo = [
-      { id: 'g1', name: 'Odontologia · Zona Sul', members: ids.slice(0, 2), color: '#0064E0' },
-      { id: 'g2', name: 'Academias e Fitness', members: ids.slice(2, 3), color: '#6366f1' }
-    ];
-    try { localStorage.setItem('sigma_groups', JSON.stringify(demo)); } catch {}
-    return demo;
+    // Sem grupos, a lista começa vazia. Antes nasciam dois grupos inventados.
+    return g;
   });
 
   // Grupo ativo
@@ -186,38 +209,9 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
   const [aiDraft, setAiDraft] = useState(() => readAiConfig());
   const [showKey, setShowKey] = useState(false);
 
-  // Banco de análises com seed inicial se vazio
-  const [analysisMap, setAnalysisMap] = useState(() => {
-    const current = readStoredAnalysis();
-    if (Object.keys(current).length > 0) return current;
-    // Seed demo analysis
-    const rawLeads = readLocalArray('sigma_leads');
-    const initial = {};
-    if (rawLeads.length > 0) {
-      const firstId = rawLeads[0].id || 'lead-1';
-      initial[firstId] = {
-        ...auditLead(rawLeads[0], 'sites'),
-        score: 82,
-        provider: 'openrouter',
-        model: 'anthropic/claude-3.5-sonnet',
-        preset: 'sites',
-        ts: Date.now() - 3600000 * 2,
-      };
-      if (rawLeads.length > 1) {
-        const secondId = rawLeads[1].id || 'lead-2';
-        initial[secondId] = {
-          ...auditLead(rawLeads[1], 'sites'),
-          score: 45,
-          provider: 'openrouter',
-          model: 'anthropic/claude-3.5-sonnet',
-          preset: 'sites',
-          ts: Date.now() - 3600000 * 4,
-        };
-      }
-    }
-    saveStoredAnalysis(initial);
-    return initial;
-  });
+  // Análises salvas. Antes, com o banco vazio, nasciam duas análises inventadas
+  // (notas 82 e 45, atribuídas a uma IA que nunca rodou).
+  const [analysisMap, setAnalysisMap] = useState(() => readStoredAnalysis());
 
   // Estado de execução do scoring
   const [isRunning, setIsRunning] = useState(false);
@@ -303,84 +297,90 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
 
   // Testar conexão de IA
   // Executar análise em lote
-  const handleRunScoring = () => {
+  /**
+   * Analisa um lead com o motor do processo principal: ele visita o site,
+   * mede HTTPS, celular, velocidade, botão de WhatsApp e pixel, e usa a IA
+   * configurada quando houver chave. Sem o motor (prévia no navegador), não
+   * inventa resultado: devolve null.
+   */
+  const analisarComMotor = async (lead) => {
+    if (!window.leadScoringAPI?.analyzeLead) return null;
+    const r = await window.leadScoringAPI.analyzeLead(lead, { pais: lead.pais });
+    if (!r?.success) throw new Error(r?.error || 'O motor de análise não respondeu.');
+    const resultado = auditLead(lead, aiConfig.preset, r.lead?.siteAnalysis || null, r.lead);
+    resultado.provider = r.lead?.aiAnalysis ? aiConfig.provider : 'regras';
+    resultado.model = r.lead?.aiAnalysis ? (aiConfig.model || 'padrão') : 'sem IA';
+    resultado.preset = aiConfig.preset;
+    return resultado;
+  };
+
+  const gravaAnalise = (leadId, resultado) => {
+    setAnalysisMap((prev) => {
+      const updated = { ...prev, [leadId]: resultado };
+      saveStoredAnalysis(updated);
+      return updated;
+    });
+  };
+
+  // Executar análise em lote, um lead por vez, com o motor real.
+  const handleRunScoring = async () => {
     if (isRunning) {
-      clearTimeout(runTimerRef.current);
-      setIsRunning(false);
-      setProgressText('Análise pausada');
+      runTimerRef.current = 'parar';
+      setProgressText('Parando depois do lead atual…');
+      return;
+    }
+    if (!groupLeads.length) return;
+    if (!window.leadScoringAPI?.analyzeLead) {
+      setProgressText('A análise de site só funciona no aplicativo de desktop.');
       return;
     }
 
-    if (!groupLeads.length) return;
-
     setIsRunning(true);
+    runTimerRef.current = null;
     const total = groupLeads.length;
-    setProgressCount({ current: 0, total });
-    setProgressText(`Analisando 1 de ${total}…`);
-
     const initialStates = {};
-    groupLeads.forEach((l) => {
-      initialStates[l.id] = 'wait';
-    });
+    groupLeads.forEach((l) => { initialStates[l.id] = 'wait'; });
     setRunStates(initialStates);
 
-    let idx = 0;
-    const processNext = () => {
-      if (idx >= total) {
-        setIsRunning(false);
-        setProgressText('Análise concluída!');
-        return;
+    for (let idx = 0; idx < total; idx++) {
+      if (runTimerRef.current === 'parar') {
+        setProgressText(`Análise pausada em ${idx} de ${total}.`);
+        break;
       }
-
       const lead = groupLeads[idx];
-      const leadId = lead.id;
-
-      setRunStates((prev) => ({ ...prev, [leadId]: 'run' }));
+      setRunStates((prev) => ({ ...prev, [lead.id]: 'run' }));
       setProgressCount({ current: idx + 1, total });
-      setProgressText(`Analisando ${idx + 1} de ${total} — ${lead.name || 'Empresa'}`);
-
-      runTimerRef.current = setTimeout(() => {
-        const auditResult = auditLead(lead, aiConfig.preset);
-        auditResult.provider = aiConfig.provider;
-        auditResult.model = aiConfig.model || 'padrão';
-        auditResult.preset = aiConfig.preset;
-
-        const nextState = auditResult.noSite ? 'nosite' : 'done';
-
-        setRunStates((prev) => ({ ...prev, [leadId]: nextState }));
-        setAnalysisMap((prev) => {
-          const updated = { ...prev, [leadId]: auditResult };
-          saveStoredAnalysis(updated);
-          return updated;
-        });
-
-        idx++;
-        processNext();
-      }, 500);
-    };
-
-    processNext();
+      setProgressText(`Analisando ${idx + 1} de ${total}: ${lead.name || 'Empresa'}`);
+      try {
+        const resultado = await analisarComMotor(lead);
+        gravaAnalise(lead.id, resultado);
+        setRunStates((prev) => ({ ...prev, [lead.id]: resultado.noSite ? 'nosite' : 'done' }));
+      } catch (e) {
+        setRunStates((prev) => ({ ...prev, [lead.id]: 'fail' }));
+        addLog?.(`[SCORING] ${lead.name || 'lead'}: ${e.message}`);
+      }
+      if (idx === total - 1) setProgressText('Análise concluída!');
+    }
+    setIsRunning(false);
   };
 
   // Reanalisar lead único
-  const handleRetrySingle = (lead) => {
+  const handleRetrySingle = async (lead) => {
     const leadId = lead.id;
     setRunStates((prev) => ({ ...prev, [leadId]: 'run' }));
-
-    setTimeout(() => {
-      const auditResult = auditLead(lead, aiConfig.preset);
-      auditResult.provider = aiConfig.provider;
-      auditResult.model = aiConfig.model || 'padrão';
-      auditResult.preset = aiConfig.preset;
-
-      const nextState = auditResult.noSite ? 'nosite' : 'done';
-      setRunStates((prev) => ({ ...prev, [leadId]: nextState }));
-      setAnalysisMap((prev) => {
-        const updated = { ...prev, [leadId]: auditResult };
-        saveStoredAnalysis(updated);
-        return updated;
-      });
-    }, 700);
+    try {
+      const resultado = await analisarComMotor(lead);
+      if (!resultado) {
+        setRunStates((prev) => ({ ...prev, [leadId]: 'fail' }));
+        setProgressText('A análise de site só funciona no aplicativo de desktop.');
+        return;
+      }
+      gravaAnalise(leadId, resultado);
+      setRunStates((prev) => ({ ...prev, [leadId]: resultado.noSite ? 'nosite' : 'done' }));
+    } catch (e) {
+      setRunStates((prev) => ({ ...prev, [leadId]: 'fail' }));
+      addLog?.(`[SCORING] ${lead.name || 'lead'}: ${e.message}`);
+    }
   };
 
   // Alternar seleção de linha

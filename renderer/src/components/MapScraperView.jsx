@@ -26,6 +26,7 @@ import {
 import CardLead from './CardLead';
 import CabecalhoRegiao from './CabecalhoRegiao';
 import { qualificaLead, resumoTemperaturas, lerAnalisesSalvas } from '../qualificacaoLead';
+import { digitosWhatsApp } from '../telefone';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -196,6 +197,8 @@ export default function MapScraperView({
   addLog,
   onOpenNewExtraction,
   activeExtraction,
+  waStatus,
+  onNavigate,
 }) {
   const { addNotification } = useNotifications();
 
@@ -809,14 +812,26 @@ export default function MapScraperView({
       });
       return;
     }
-    try {
-      localStorage.setItem('sigma_wa_pending', JSON.stringify({ name, tel: phone }));
-    } catch {}
+    const numero = digitosWhatsApp(phone, lead.pais);
+
+    // WhatsApp do app conectado: vai para a tela do WhatsApp com a conversa aberta.
+    if (waStatus === 'connected' && onNavigate) {
+      try {
+        localStorage.setItem('sigma_wa_pending', JSON.stringify({ name, tel: numero }));
+      } catch {}
+      onNavigate('whatsapp');
+      return;
+    }
+
+    // Desconectado: abre no WhatsApp do computador (aplicativo ou WhatsApp Web).
+    const url = `https://wa.me/${numero}`;
+    if (window.electronAPI?.openExternal) window.electronAPI.openExternal(url);
+    else window.open(url, '_blank', 'noopener');
     addNotification({
-      type: 'success',
+      type: 'info',
       category: 'whatsapp',
-      title: 'Conversa Preparada',
-      message: `${name} · ${phone} — continue no módulo WhatsApp.`
+      title: 'Abrindo no WhatsApp do computador',
+      message: `O WhatsApp do app está desconectado, então a conversa com ${name} abre no aplicativo do WhatsApp ou no WhatsApp Web.`,
     });
   };
 
