@@ -66,6 +66,10 @@ contextBridge.exposeInMainWorld("whatsappAPI", {
     ipcRenderer.invoke("whatsapp-switch-connection", { connectionId }),
   forceResync: (connectionId) =>
     ipcRenderer.invoke("whatsapp-force-resync", { connectionId }),
+  metaTemplatesAll: (connectionId) =>
+    ipcRenderer.invoke("whatsapp-meta-templates-all", { connectionId }),
+  metaCreateTemplate: (connectionId, modelo) =>
+    ipcRenderer.invoke("whatsapp-meta-create-template", { connectionId, modelo }),
   metaTemplates: (connectionId) =>
     ipcRenderer.invoke("whatsapp-meta-templates", { connectionId }),
   onStatus: (callback) => {

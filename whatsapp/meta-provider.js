@@ -1,5 +1,6 @@
 const { WhatsAppProvider } = require('./provider');
 const { AuthStore } = require('./auth-store');
+const { validaModelo, montaPedido, leModelo } = require('./meta-modelos');
 
 /**
  * WhatsApp pela API oficial da Meta (Cloud API).
@@ -72,6 +73,8 @@ function traduzErroMeta(json, status) {
   if (code === 190) return 'Token da Meta inválido ou expirado. Gere um token permanente de usuário do sistema.';
   if (code === 132001) return 'Modelo não encontrado ou não aprovado para esse idioma.';
   if (code === 132000) return 'O número de variáveis não bate com o modelo aprovado.';
+  if (e.error_subcode === 2388023 || /already exists/i.test(e.message || '')) return 'Já existe um modelo com esse nome e idioma. Use outro nome.';
+  if (e.error_subcode === 2388040 || /character limit/i.test(e.message || '')) return 'Algum campo passou do limite de caracteres da Meta.';
   if (code === 131026) return 'Esse número não tem WhatsApp ou não pode receber a mensagem.';
   if (code === 131056 || code === 130429) return 'Limite de envio da Meta atingido. Tente mais tarde.';
   return e.error_user_msg || e.message || `Erro da Meta (HTTP ${status})`;
@@ -189,6 +192,25 @@ class MetaProvider extends WhatsAppProvider {
       const variaveis = (corpo.match(/\{\{\d+\}\}/g) || []).length;
       return { nome: t.name, idioma: t.language, categoria: t.category, corpo, variaveis };
     });
+  }
+
+  /** Todos os modelos da conta, com a situação (aprovado, em análise, rejeitado). */
+  async listAllTemplates() {
+    if (!this.wabaId) throw new Error('Informe o ID da conta do WhatsApp Business (WABA) para ver os modelos.');
+    const json = await this._chamar(`${this.wabaId}/message_templates?limit=100&fields=name,language,category,status,rejected_reason,components`);
+    return (json.data || []).map(leModelo);
+  }
+
+  /** Cria o modelo e manda para a análise da Meta. Devolve a situação inicial. */
+  async createTemplate(modelo) {
+    if (!this.wabaId) throw new Error('Informe o ID da conta do WhatsApp Business (WABA) para criar modelos.');
+    const erros = validaModelo(modelo);
+    if (erros.length) throw new Error(erros.join(' '));
+    const json = await this._chamar(`${this.wabaId}/message_templates`, {
+      method: 'POST',
+      body: JSON.stringify(montaPedido(modelo)),
+    });
+    return { id: json.id, situacao: json.status || 'PENDING', categoria: json.category || modelo.categoria };
   }
 
   async sendMedia() {

@@ -2044,6 +2044,48 @@ ipcMain.handle("whatsapp-meta-templates", async (_, { connectionId } = {}) => {
   }
 });
 
+function provedorMeta(connectionId) {
+  const id = connectionId ? assertConnectionId(connectionId) : activeWhatsAppId;
+  const provider = id ? whatsappProviders.get(id) : null;
+  if (!provider || typeof provider.listAllTemplates !== "function") {
+    throw new Error("Escolha um número conectado pela API oficial.");
+  }
+  return provider;
+}
+
+// Todos os modelos da conta, com a situação de cada um.
+ipcMain.handle("whatsapp-meta-templates-all", async (_, { connectionId } = {}) => {
+  try {
+    return { success: true, modelos: await provedorMeta(connectionId).listAllTemplates() };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Cria um modelo e manda para a análise da Meta.
+ipcMain.handle("whatsapp-meta-create-template", async (_, { connectionId, modelo } = {}) => {
+  try {
+    const m = modelo && typeof modelo === "object" ? modelo : {};
+    const limpo = {
+      nome: limitString(m.nome, 512, ""),
+      categoria: limitString(m.categoria, 20, ""),
+      idioma: limitString(m.idioma, 10, ""),
+      cabecalho: limitString(m.cabecalho, 120, ""),
+      corpo: limitString(m.corpo, 1100, ""),
+      rodape: limitString(m.rodape, 120, ""),
+      exemplos: (Array.isArray(m.exemplos) ? m.exemplos : []).slice(0, 20).map((e) => limitString(e, 200, "")),
+      botoes: (Array.isArray(m.botoes) ? m.botoes : []).slice(0, 3).map((b) => ({
+        tipo: b?.tipo === "link" ? "link" : "resposta",
+        texto: limitString(b?.texto, 40, ""),
+        url: limitString(b?.url, 2000, ""),
+      })),
+    };
+    return { success: true, ...(await provedorMeta(connectionId).createTemplate(limpo)) };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // ─── FORCE RESYNC ─────────────────────────
 ipcMain.handle("whatsapp-force-resync", async (_, { connectionId } = {}) => {
   try {

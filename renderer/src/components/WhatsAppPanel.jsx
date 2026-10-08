@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import TriggersManagerModal from './TriggersManagerModal';
 import { mascaraTelefone } from '../telefone';
+import MetaModelos from './MetaModelos';
 import ChatVoicePlayer from './ChatVoicePlayer';
 
 /** Isola crash de um player de áudio para não derrubar o chat inteiro */
@@ -305,6 +306,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isMetaModalOpen, setIsMetaModalOpen] = useState(false);
+  // Janela de modelos da Meta: null fechada, senão { aba, connectionId }.
+  const [metaModelosJanela, setMetaModelosJanela] = useState(null);
   const [qrError, setQrError] = useState('');
   const [isSessionProfileOpen, setIsSessionProfileOpen] = useState(false);
   const [sessionProfile, setSessionProfile] = useState(() => {
@@ -3989,6 +3992,17 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                 {connections.length > 0 && <div className="wa-menu-sep" />}
                 <button type="button" onClick={openQrModal}>+ Adicionar WhatsApp</button>
                 <button type="button" onClick={openMetaModal}>+ API oficial (Meta)</button>
+                {connections.some((c) => c.provider === 'meta') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAcctMenuOpen(false);
+                      setMetaModelosJanela({ aba: 'lista', connectionId: connections.find((c) => c.provider === 'meta')?.id });
+                    }}
+                  >
+                    Modelos da Meta
+                  </button>
+                )}
                 <button type="button" onClick={() => { setIsConnectionsModalOpen(true); setIsAcctMenuOpen(false); }}>Gerenciar conexões</button>
               </div>
             )}
@@ -4194,6 +4208,18 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
             </div>
           </div>
         </div>
+      )}
+
+      {metaModelosJanela && (
+        <MetaModelos
+          connectionId={metaModelosJanela.connectionId}
+          abaInicial={metaModelosJanela.aba}
+          onFechar={() => {
+            setMetaModelosJanela(null);
+            // Saiu da janela durante a campanha: recarrega os aprovados.
+            if (isCreatingCampaign && campanhaUsaMeta) carregarModelosMeta();
+          }}
+        />
       )}
 
       {isMetaModalOpen && (
@@ -4776,6 +4802,16 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                                 </select>
                                 <button type="button" className="btn btn-secondary" onClick={carregarModelosMeta} disabled={metaCarregando}>
                                   {metaCarregando ? 'Carregando…' : 'Carregar modelos aprovados'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost"
+                                  onClick={() => setMetaModelosJanela({
+                                    aba: 'criar',
+                                    connectionId: campaignConnectionIds.find((cid) => conexaoDaCampanha(cid)?.provider === 'meta'),
+                                  })}
+                                >
+                                  Criar modelo
                                 </button>
                               </div>
                               {metaErro && <span className="camp-hint" style={{ color: 'var(--danger)' }}>{metaErro}</span>}
