@@ -16,6 +16,15 @@ $destinos = @(
     (Join-Path $raiz 'Prospector 2.0.lnk')
 )
 
+# Atalhos do nome antigo ("Grow+ Prospect") ficam apontando para um caminho que
+# não existe mais depois da troca de nome; saem daqui.
+foreach ($velho in @(
+    (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Grow+ Prospect.lnk'),
+    (Join-Path $raiz 'Grow+ Prospect.lnk')
+)) {
+    if ([System.IO.File]::Exists($velho)) { [System.IO.File]::Delete($velho) }
+}
+
 $shell = New-Object -ComObject WScript.Shell
 foreach ($destino in $destinos) {
     $atalho = $shell.CreateShortcut($destino)
