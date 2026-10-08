@@ -24,7 +24,7 @@ import Dashboard from './components/Dashboard';
 import LogoGrow from './components/LogoGrow';
 
 // Versao exibida no rodape do menu. Acompanha o package.json.
-const APP_VERSION = '1.1.6';
+const APP_VERSION = '2.0.0';
 import KanbanBoard from './components/KanbanBoard';
 import WhatsAppPanel from './components/WhatsAppPanel';
 import EmailPanel from './components/EmailPanel';

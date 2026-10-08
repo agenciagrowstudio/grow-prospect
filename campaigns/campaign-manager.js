@@ -30,7 +30,8 @@ class CampaignManager {
     if (!map) return 0;
     const limitCfg = DailyQuota.resolveLimitConfig(this.getCampaignSettings());
     const hasSlot = [...map.entries()].some(
-      ([id, p]) => this._providerReady(p) && this.dailyQuota.check(id, limitCfg).allowed,
+      ([id, p]) => this._providerReady(p)
+        && (typeof p?.sendTemplate === 'function' || this.dailyQuota.check(id, limitCfg).allowed),
     );
     if (!hasSlot) return 0;
     let resumed = 0;

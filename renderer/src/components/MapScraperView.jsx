@@ -20,7 +20,8 @@ import {
   FileSpreadsheet,
   X,
   Navigation,
-  MessageCircle
+  MessageCircle,
+  Layers
 } from 'lucide-react';
 import CardLead from './CardLead';
 import CabecalhoRegiao from './CabecalhoRegiao';
@@ -1078,7 +1079,95 @@ export default function MapScraperView({
               setIsFilterDrawerOpen(false);
             }}
           >
-            <MapPin size={15} strokeWidth={2} aria-hidden="true" />
+            <Layers size={16} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
+
+        {mapTileError && (
+          <div className="map-tile-error" role="alert">
+            <AlertCircle size={15} />
+            <span>{mapTileError}</span>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => {
+                setMapTileError('');
+                tileErrorsRef.current = 0;
+                tileLayerRef.current?.redraw?.();
+              }}
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
+
+        {/* Popover de Basemap */}
+        {isBasePopOpen && (
+          <div className="map-pop" id="basePop">
+            <button
+              type="button"
+              className="bopt"
+              aria-pressed={baseKey === 'padrao'}
+              onClick={() => { setBaseKey('padrao'); setIsBasePopOpen(false); }}
+            >
+              Padrão
+            </button>
+            <button
+              type="button"
+              className="bopt"
+              aria-pressed={baseKey === 'satelite'}
+              onClick={() => { setBaseKey('satelite'); setIsBasePopOpen(false); }}
+            >
+              Satélite
+            </button>
+            <button
+              type="button"
+              className="bopt"
+              aria-pressed={baseKey === 'terreno'}
+              onClick={() => { setBaseKey('terreno'); setIsBasePopOpen(false); }}
+            >
+              Terreno
+            </button>
+          </div>
+        )}
+
+        {/* Popover de Localização */}
+        {isLocPopOpen && (
+          <div className="map-pop" id="locPop" style={{ minWidth: 260, padding: 12 }}>
+            <div className="loc-title">Minha localização</div>
+            <div className="field" style={{ marginTop: 8 }}>
+              <div className="ac-wrap">
+                <input
+                  id="locAddr"
+                  placeholder="Digite seu endereço…"
+                  autoComplete="off"
+                  aria-label="Digite seu endereço"
+                  style={{ minHeight: 44 }}
+                  value={locAddrQuery}
+                  onChange={(e) => handleAddrSearchChange(e.target.value)}
+                />
+                {locSuggestions.length > 0 && (
+                  <div className="ac-list" role="listbox">
+                    {locSuggestions.map((item, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className="ac-item"
+                        onClick={() => handlePickAddress(item)}
+                      >
+                        <span title={item.full}>{item.label}</span>
+                        <span className="t">Endereço</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {isSearchingLoc && <span className="map-location-searching" role="status">Buscando endereço…</span>}
+              {locationError && <span className="field-err" role="alert">{locationError}</span>}
+            </div>
+
+            <button type="button" className="loc-auto" id="locAuto" onClick={handleUseMyLocation}>
+              <MapPin size={17} strokeWidth={2} color="#EA4335" aria-hidden="true" />
               Usar minha localização
             </button>
 

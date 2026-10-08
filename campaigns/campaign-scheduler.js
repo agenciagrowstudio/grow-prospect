@@ -63,6 +63,15 @@ class CampaignScheduler {
     return this.campaignManager?.dailyQuota || null;
   }
 
+  /**
+   * A cota de 24h existe para o WhatsApp Web não ser banido por volume. A API
+   * oficial da Meta não tem esse risco e tem o próprio limite (que ela
+   * devolve como erro), então não entra na cota.
+   */
+  _semCota(provider) {
+    return typeof provider?.sendTemplate === 'function';
+  }
+
   _ready(provider) {
     return provider && (
       typeof provider.isReady === 'function'
@@ -113,7 +122,7 @@ class CampaignScheduler {
       if (!connectionId || !map) return null;
       const provider = map.get(connectionId);
       if (!this._ready(provider)) return null;
-      if (quota) {
+      if (quota && !this._semCota(provider)) {
         const check = quota.check(connectionId, limitCfg);
         if (!check.allowed) return null;
       }
@@ -141,7 +150,7 @@ class CampaignScheduler {
       for (const idx of pendingIdxs) {
         for (const [cid, provider] of map.entries()) {
           if (!this._ready(provider)) continue;
-          if (quota) {
+          if (quota && !this._semCota(provider)) {
             const check = quota.check(cid, limitCfg);
             if (!check.allowed) continue;
           }
@@ -165,7 +174,7 @@ class CampaignScheduler {
     const allQuotaBlocked =
       !!quota &&
       !limitCfg.manualUnlimited &&
-      pool.every((id) => !quota.check(id, limitCfg).allowed);
+      pool.every((id) => !this._semCota(map.get(id)) && !quota.check(id, limitCfg).allowed);
     return {
       blocked: true,
       reason: allQuotaBlocked ? 'daily_limit' : 'no_provider',
@@ -390,7 +399,7 @@ class CampaignScheduler {
           }
           // Cota diária por número
           const quota = this._getDailyQuota();
-          if (quota) {
+          if (quota && !this._semCota(provider)) {
             const used = quota.recordSend(connectionId, 1, now);
             console.log(`[SCHEDULER] Cota ${connectionId}: ${used}${pick.limitCfg?.dailyLimit ? `/${pick.limitCfg.dailyLimit}` : ''}`);
           }
