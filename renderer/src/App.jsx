@@ -387,8 +387,8 @@ function AppInner() {
             <LogoGrow size={30} />
           </div>
           <div className="brand-text-col">
-            <span className="brand-name">Grow+</span>
-            <span className="brand-tag">PROSPECT</span>
+            <span className="brand-name">Prospector</span>
+            <span className="brand-tag">2.0</span>
           </div>
         </button>
 

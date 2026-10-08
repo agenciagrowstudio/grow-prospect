@@ -1,6 +1,6 @@
-﻿# Abre o Grow+ Prospect com a interface atualizada.
+﻿# Abre o Prospector 2.0 com a interface atualizada.
 #
-# Chamado pelo atalho "Grow+ Prospect". Faz três coisas, nessa ordem:
+# Chamado pelo atalho "Prospector 2.0". Faz três coisas, nessa ordem:
 #   1. Se o app já está aberto, avisa e para (abrir duas cópias brigam pela
 #      mesma sessão de WhatsApp).
 #   2. Reconstrói a interface só quando o código mudou depois da última
@@ -16,7 +16,7 @@ $raiz = Split-Path -Parent $PSScriptRoot
 $electron = Join-Path $raiz 'node_modules\electron\dist\electron.exe'
 $dist = Join-Path $raiz 'renderer\dist\index.html'
 $log = Join-Path $env:TEMP 'grow-prospect-abrir.log'
-$titulo = 'Grow+ Prospect'
+$titulo = 'Prospector 2.0'
 
 function Avisa($texto, $icone = 'Information') {
     [System.Windows.Forms.MessageBox]::Show($texto, $titulo, 'OK', $icone) | Out-Null
@@ -36,7 +36,7 @@ try {
     $aberto = Get-CimInstance Win32_Process -Filter "Name='electron.exe'" |
         Where-Object { $_.CommandLine -and $_.CommandLine -like "*$raiz\node_modules\electron*" }
     if ($aberto) {
-        Avisa 'O Grow+ Prospect já está aberto. Procure a janela dele na barra de tarefas.'
+        Avisa 'O Prospector 2.0 já está aberto. Procure a janela dele na barra de tarefas.'
         exit 0
     }
 

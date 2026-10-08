@@ -2,7 +2,7 @@ import React from 'react';
 import marca from '../assets/icones/marca.png';
 
 /**
- * Símbolo do Grow+ Prospect no topo do menu.
+ * Símbolo do Prospector 2.0 no topo do menu.
  *
  * É o mesmo desenho do ícone do app (alvo com três pessoas), para a marca de
  * dentro bater com a do atalho e da barra de tarefas. A imagem é a versão de
@@ -15,7 +15,7 @@ export default function LogoGrow({ size = 26, className = '' }) {
       src={marca}
       width={size}
       height={size}
-      alt="Grow+ Prospect"
+      alt="Prospector 2.0"
       draggable={false}
       style={{ display: 'block', objectFit: 'contain' }}
     />

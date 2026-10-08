@@ -460,7 +460,7 @@ function defaultSettings() {
       model: "openrouter/free",
       baseUrl: "",
       siteUrl: "https://growmais.app",
-      appName: "Grow+ Prospect",
+      appName: "Prospector 2.0",
       extraHeaders: "",
       // Fallback gratuito (OpenCode Zen) se o principal falhar
       fallbackProviders: JSON.stringify([

@@ -75,7 +75,7 @@ async function requestChatCompletion(providerConfig, payload) {
 
 function resolveProviderConfig(ai = {}) {
   const provider = String(ai.provider || "openrouter").toLowerCase();
-  const appName = ai.appName || "Grow+ Prospect";
+  const appName = ai.appName || "Prospector 2.0";
   if (provider === "openrouter") {
     return {
       provider,

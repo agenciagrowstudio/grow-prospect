@@ -8,6 +8,16 @@ const QRCode = require("qrcode");
 // O smoke empacotado usa um perfil descartável; nunca misture seus dados com o perfil real.
 if (process.env.SIGMA_QA === "1" && process.env.SIGMA_QA_USER_DATA) {
   app.setPath("userData", path.resolve(process.env.SIGMA_QA_USER_DATA));
+} else {
+  // A pasta dos dados (leads, campanhas, sessão do WhatsApp) é derivada do
+  // nome do app. Trocar o nome para "Prospector 2.0" levaria o app a uma pasta
+  // vazia e esconderia tudo o que já foi coletado. Aqui ela fica presa ao
+  // nome de antes: o instalado usava o nome de exibição, o de desenvolvimento
+  // usava o nome do pacote.
+  app.setPath(
+    "userData",
+    path.join(app.getPath("appData"), app.isPackaged ? "Grow+ Prospect" : "grow-prospect"),
+  );
 }
 
 // Suppress GPU and Cache errors in console

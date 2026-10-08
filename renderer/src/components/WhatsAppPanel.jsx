@@ -1117,7 +1117,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
           );
           if (local?.success) {
             setMessages((prev) => prev.filter((x) => x.key?.id !== m.key.id));
-            addLog('[WHATSAPP] Não deu para apagar para todos; removida só no Grow+ Prospect.');
+            addLog('[WHATSAPP] Não deu para apagar para todos; removida só no Prospector 2.0.');
             return;
           }
         }

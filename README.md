@@ -1,4 +1,4 @@
-# Grow+ Prospect
+# Prospector 2.0
 
 [![Release](https://img.shields.io/github/v/release/agenciagrowstudio/grow-prospect?display_name=tag)](https://github.com/agenciagrowstudio/grow-prospect/releases)
 [![Licença](https://img.shields.io/github/license/agenciagrowstudio/grow-prospect)](LICENSE)
@@ -52,8 +52,8 @@ Electron + React + Playwright, em uma única aplicação para Windows.
 
 Baixe a [versão mais recente](https://github.com/agenciagrowstudio/grow-prospect/releases):
 
-- `Grow-Prospect-<versão>-x64.exe` — instalador, recomendado.
-- `Grow-Prospect-<versão>-x64.zip` — versão portátil.
+- `Prospector-2.0-<versão>-x64.exe` — instalador, recomendado.
+- `Prospector-2.0-<versão>-x64.zip` — versão portátil.
 
 A atualização automática funciona na versão instalada pelo instalador. A pasta `win-unpacked` é saída de teste local e não recebe atualização.
 
@@ -111,7 +111,7 @@ test/                              Testes unitários e de integração
 
 ## Origem e licença
 
-O Grow+ Prospect deriva do **Sigma GMaps Scraper**, de Ferdy, distribuído sob
+O Prospector 2.0 deriva do **Sigma GMaps Scraper**, de Ferdy, distribuído sob
 licença MIT. O aviso de copyright original está preservado em
 [LICENSE](LICENSE) e no [NOTICE](NOTICE), como a licença exige. As mudanças de marca, interface,
 design system e funcionalidades feitas pela Grow+ seguem os mesmos termos.

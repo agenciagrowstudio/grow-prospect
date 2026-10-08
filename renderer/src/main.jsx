@@ -208,7 +208,7 @@ function persistError(report) {
     localStorage.setItem('sigma_last_react_error_at', String(Date.now()));
   } catch { /* ignore */ }
   try {
-    document.title = 'ERRO React · Grow+ Prospect';
+    document.title = 'ERRO React · Prospector 2.0';
   } catch { /* ignore */ }
   console.error(report);
 }

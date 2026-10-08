@@ -1,7 +1,7 @@
 {
   "name": "grow-prospect",
   "version": "1.1.6",
-  "description": "Grow+ Prospect: aplicativo desktop de prospecção B2B que coleta empresas no Google Maps, qualifica leads e dispara campanhas no WhatsApp.",
+  "description": "Prospector 2.0: aplicativo desktop de prospecção B2B que coleta empresas no Google Maps, qualifica leads e dispara campanhas no WhatsApp.",
   "author": {
     "name": "Grow+",
     "email": "contato.m2bstudio@gmail.com"
@@ -56,7 +56,7 @@
   },
   "build": {
     "appId": "com.growmais.prospect",
-    "productName": "Grow+ Prospect",
+    "productName": "Prospector 2.0",
     "directories": {
       "output": "dist"
     },
@@ -80,7 +80,7 @@
       "!node_modules/playwright/node_modules"
     ],
     "win": {
-      "artifactName": "Grow-Prospect-${version}-${arch}.${ext}",
+      "artifactName": "Prospector-2.0-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "nsis",
