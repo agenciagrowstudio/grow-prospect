@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, MapPinned, Loader, Search } from 'lucide-react';
 import MapaPreviaLocal from './MapaPreviaLocal';
 import MapaRaio from './MapaRaio';
+import Bandeira from './Bandeira';
 import {
-  lerLocalColado, paisDaCoordenada, paisDoTexto, buscaLocais, ROTULO_TIPO, ROTULO_PAIS,
+  lerLocalColado, paisDaCoordenada, paisDoTexto, buscaLocais, localDoPonto, ROTULO_TIPO, ROTULO_PAIS,
 } from '../localBusca';
 
 const NICHOS_BR = [
@@ -290,6 +291,25 @@ export default function NewExtractionModal({
     }
   };
 
+  // Clique no mapa: de longe escolhe a cidade, de perto o bairro.
+  const escolheNoMapa = async (lat, lng, nivel) => {
+    setLocalizando(true);
+    setMostraSugestoes(false);
+    setErroLocal('');
+    const pedido = Symbol('pedido');
+    pedidoRef.current = pedido;
+    try {
+      const achado = await localDoPonto(lat, lng, nivel);
+      if (pedidoRef.current !== pedido) return;
+      if (achado) escolheLocal(achado);
+      else setErroLocal('Esse ponto não fica numa cidade do Brasil ou dos EUA. Clique mais perto de uma cidade.');
+    } catch {
+      if (pedidoRef.current === pedido) setErroLocal('Não deu para reconhecer esse ponto agora. Tente de novo ou digite o nome.');
+    } finally {
+      if (pedidoRef.current === pedido) setLocalizando(false);
+    }
+  };
+
   const handleBuscaChange = (val) => {
     setBusca(val);
     setLocal(null);
@@ -525,7 +545,7 @@ export default function NewExtractionModal({
                       <div className="ac-list" role="listbox">
                         {sugestoes.map((s) => (
                           <button key={s.chave} type="button" className="ac-item" onClick={() => escolheSugestao(s)}>
-                            <span className={`onde-bandeira onde-${s.pais}`}>{ROTULO_PAIS[s.pais]}</span>
+                            <Bandeira pais={s.pais} />
                             <span>
                               <span>{s.nome}</span>
                               {s.detalhe && <small>{s.detalhe}</small>}
@@ -538,7 +558,7 @@ export default function NewExtractionModal({
                   </div>
                   {erroLocal
                     ? <span className="field-err" style={{ display: 'block' }}>{erroLocal}</span>
-                    : <span className="cfg-dica">Aceita coordenadas ("28.538, -81.379") ou link de um lugar no Google Maps. O país é reconhecido sozinho.</span>}
+                    : <span className="cfg-dica">Também dá para clicar no mapa, colar coordenadas ("28.538, -81.379") ou um link do Google Maps. O país é reconhecido sozinho.</span>}
                 </div>
 
                 {!local && (
@@ -550,7 +570,7 @@ export default function NewExtractionModal({
                         className="chip"
                         onClick={() => escolheSugestao(doCatalogo({ n, uf, pais: p, estado: false }))}
                       >
-                        {n} <small className="chip-pais">{ROTULO_PAIS[p]}</small>
+                        {n} <Bandeira pais={p} className="chip-pais" />
                       </button>
                     ))}
                   </div>
@@ -558,7 +578,7 @@ export default function NewExtractionModal({
 
                 {local && (
                   <div className="onde-escolhido">
-                    <span className={`onde-bandeira onde-${local.pais}`}>{ROTULO_PAIS[local.pais]}</span>
+                    <Bandeira pais={local.pais} />
                     <span><b>{rotuloDoLocal(local)}</b><small>{ROTULO_TIPO[local.tipo]}</small></span>
                   </div>
                 )}
@@ -590,12 +610,14 @@ export default function NewExtractionModal({
                   <span className="cfg-dica">
                     {raioKm
                       ? `Busca em volta do ponto e descarta o que ficar a mais de ${raioKm} km.`
-                      : 'Busca pelo nome do lugar. Na próxima etapa dá para dividir a cidade por bairros.'}
+                      : dividePorBairro
+                        ? 'Busca pelo nome do lugar. Na próxima etapa dá para dividir a cidade por bairros.'
+                        : 'Busca pelo nome do lugar.'}
                   </span>
                 </div>
               </div>
 
-              <MapaRaio local={Number.isFinite(local?.lat) ? local : null} raioKm={raioKm} />
+              <MapaRaio local={Number.isFinite(local?.lat) ? local : null} raioKm={raioKm} onClique={escolheNoMapa} />
             </div>
           )}
 
@@ -679,7 +701,7 @@ export default function NewExtractionModal({
                   <li><span>Nicho</span><b>{nicho}</b></li>
                   <li><span>Onde</span><b>{rotuloDoLocal(local) || busca}</b></li>
                   <li><span>Área</span><b>{raioKm ? `Raio de ${raioKm} km` : rotuloInteiro}</b></li>
-                  <li><span>País</span><b>{ROTULO_PAIS[pais]}</b></li>
+                  <li><span>País</span><b><Bandeira pais={pais} /> {ROTULO_PAIS[pais]}</b></li>
                 </ul>
                 {avisoIdioma && (
                   <div className="wz-aviso">

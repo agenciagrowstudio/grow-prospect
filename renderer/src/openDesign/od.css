@@ -20,7 +20,7 @@
   --section-y-desktop:96px; --section-y-tablet:64px; --section-y-phone:48px;
   --radius-sm:10px; --radius-md:14px; --radius-lg:20px; --radius-pill:999px;
   --elev-flat:none; --elev-ring:0 0 0 1px var(--border); --elev-raised:0 8px 24px rgba(16,24,40,.06);
-  --focus-ring:0 0 0 3px rgba(0,100,224,.25);
+  --focus-ring:0 0 0 1px var(--accent);
   --motion-fast:150ms; --motion-base:220ms; --ease-standard:cubic-bezier(0.16,1,0.3,1); --ease-spring:cubic-bezier(.22,1.15,.36,1);
   --container-max:1200px; --container-gutter-desktop:48px; --container-gutter-tablet:24px; --container-gutter-phone:24px;
   --accent-soft:#e7f0fd;
@@ -1204,7 +1204,7 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 
 /* Card do lead, formato vitrine: foto à esquerda, informação à direita */
 .cl-card{display:grid;grid-template-columns:96px minmax(0,1fr);column-gap:12px;row-gap:10px;padding:10px;border-radius:10px;align-items:start;position:relative}
-.cl-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cl-card:focus-visible{outline:1px solid var(--accent);outline-offset:0}
 /* Card com a lista de serviços aberta fica por cima dos vizinhos. */
 .cl-card:has(.cl-servicos-lista){z-index:20}
 .cl-foto{width:96px;height:96px;border-radius:8px;overflow:hidden;background:var(--surface-warm)}
@@ -1319,17 +1319,22 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 /* Assistente de extração: etapa "Onde?" */
 .onde-icone{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);display:grid;place-items:center;pointer-events:none}
 .onde-input{padding-left:40px!important}
-.onde-bandeira{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;color:var(--pal-tinta)}
-.onde-BR{background:color-mix(in srgb,var(--pal-verde) 22%,#fff)}
-.onde-US{background:color-mix(in srgb,var(--pal-azul) 22%,#fff)}
+.bandeira{flex:none;display:inline-block;width:20px;height:14px;border-radius:3px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.08);vertical-align:-2px}
+.bandeira svg{display:block;width:100%;height:100%}
+/* Rótulos do assistente em preto: é o que a pessoa lê primeiro. */
+.wz-step .field label{color:var(--fg)}
 .onde-escolhido{display:flex;align-items:center;gap:10px;margin-top:4px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-warm)}
 .onde-escolhido b{display:block;font-size:13.5px;color:var(--fg)}
 .onde-escolhido small{display:block;font-size:11.5px;color:var(--muted)}
-.chip-pais{font-size:10.5px;color:var(--muted);margin-left:4px}
+.chip-pais{margin-left:6px}
+.wz-raios .chip,.ex-chips .chip{display:inline-flex;align-items:center}
 .wz-raios{display:flex;flex-wrap:wrap;gap:6px}
 .wz-raios .chip{min-height:36px;padding:6px 14px}
 .wz-raios .chip:disabled{opacity:.4;cursor:default}
-.mapa-raio{width:100%;min-height:300px;height:100%;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--surface-warm)}
+.mapa-raio{position:relative;width:100%;min-height:300px;height:100%;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--surface-warm);isolation:isolate}
+.mapa-raio-tela{position:absolute;inset:0;cursor:crosshair}
+.mapa-raio-dica{position:absolute;left:10px;top:10px;z-index:500;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;background:#fff;box-shadow:0 1px 4px rgba(16,24,40,.14);font-size:12px;font-weight:600;color:var(--fg);pointer-events:none}
+.mapa-raio-dica svg{color:var(--accent)}
 .wz-resumo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden}
 .wz-resumo li{display:flex;justify-content:space-between;gap:12px;padding:11px 14px;font-size:13.5px;border-bottom:1px solid var(--border-soft)}
 .wz-resumo li:last-child{border-bottom:0}

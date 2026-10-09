@@ -10,6 +10,7 @@
  */
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_REVERSO = 'https://nominatim.openstreetmap.org/reverse';
 
 /** Ponto colado: coordenadas soltas ou link do Google Maps. */
 export function lerLocalColado(texto = '') {
@@ -94,6 +95,51 @@ export async function buscaLocais(texto, { signal } = {}) {
   }).filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng));
   cache.set(q, lista);
   return lista;
+}
+
+/**
+ * Converte a resposta da busca reversa (clique no mapa) num local do assistente.
+ * nivel 'bairro' devolve o bairro quando existe; sem bairro, cai na cidade.
+ * Fora do Brasil e dos EUA devolve null.
+ */
+export function localDoReverso(r, nivel = 'cidade') {
+  if (!r || r.error) return null;
+  const a = r.address || {};
+  const codigo = String(a.country_code || '').toUpperCase();
+  if (codigo !== 'BR' && codigo !== 'US') return null;
+  const cidade = a.city || a.town || a.municipality || a.village || a.county || '';
+  const bairro = a.suburb || a.neighbourhood || a.quarter || a.city_district || a.borough || '';
+  const uf = siglaUf(a);
+  const lat = Number(r.lat);
+  const lng = Number(r.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (nivel === 'bairro' && bairro) {
+    return {
+      nome: bairro, detalhe: [cidade, uf].filter(Boolean).join(', '), cidade, uf, pais: codigo,
+      tipo: 'bairro', lat, lng, chave: `rev-${r.osm_type}-${r.osm_id}`,
+    };
+  }
+  if (!cidade) return null;
+  return {
+    nome: cidade, detalhe: uf, cidade, uf, pais: codigo, tipo: 'cidade', lat, lng,
+    chave: `rev-${r.osm_type}-${r.osm_id}`,
+  };
+}
+
+/** Cidade ou bairro de um ponto clicado no mapa. */
+export async function localDoPonto(lat, lng, nivel = 'cidade', { signal } = {}) {
+  // zoom 10 = cidade. Para bairro pede a rua (16): nos EUA o nível 14 volta
+  // só a cidade, e a rua já traz o bairro no endereço.
+  const zoom = nivel === 'bairro' ? 16 : 10;
+  const url = `${NOMINATIM_REVERSO}?format=json&addressdetails=1&accept-language=pt-BR&zoom=${zoom}&lat=${lat}&lon=${lng}`;
+  const res = await fetch(url, { signal, headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`reverso ${res.status}`);
+  const local = localDoReverso(await res.json(), nivel);
+  // O pino do bairro fica onde a pessoa clicou, não no meio da rua achada.
+  if (local?.tipo === 'bairro') return { ...local, lat, lng };
+  if (local || nivel !== 'bairro') return local;
+  // Sem bairro mapeado ali: usa a cidade.
+  return localDoPonto(lat, lng, 'cidade', { signal });
 }
 
 export const ROTULO_TIPO = { cidade: 'Cidade', estado: 'Estado', bairro: 'Bairro', lugar: 'Endereço', ponto: 'Ponto' };
