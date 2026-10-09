@@ -21,10 +21,12 @@ import {
   X,
   Navigation,
   MessageCircle,
-  Layers
+  Layers,
+  ClipboardList
 } from 'lucide-react';
 import CardLead from './CardLead';
 import CabecalhoRegiao from './CabecalhoRegiao';
+import FilaAbordagem from './FilaAbordagem';
 import { qualificaLead, resumoTemperaturas, lerAnalisesSalvas } from '../qualificacaoLead';
 import { digitosWhatsApp } from '../telefone';
 import L from 'leaflet';
@@ -245,6 +247,7 @@ export default function MapScraperView({
   const [isBasePopOpen, setIsBasePopOpen] = useState(false);
   const [isLocPopOpen, setIsLocPopOpen] = useState(false);
   const [isListPopOpen, setIsListPopOpen] = useState(false);
+  const [filaAberta, setFilaAberta] = useState(false);
 
   // Filtros do Map Filter Drawer
   const [filterCat, setFilterCat] = useState('');
@@ -1421,6 +1424,21 @@ export default function MapScraperView({
               </button>
             </div>
           </div>
+        )}
+
+        <div className="feed-fila">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setFilaAberta(true)} disabled={!visibleLeads.length}>
+            <ClipboardList size={15} strokeWidth={2} aria-hidden="true" /> Fila do dia
+          </button>
+          <span className="cfg-dica">Mensagens prontas para você enviar pelo WhatsApp.</span>
+        </div>
+        {filaAberta && (
+          <FilaAbordagem
+            leads={visibleLeads}
+            qualificacoes={qualificacoes}
+            tituloBusca={regiao.titulo}
+            onFechar={() => setFilaAberta(false)}
+          />
         )}
 
         <div id="feedCount" role="status">

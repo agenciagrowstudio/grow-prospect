@@ -1717,9 +1717,22 @@ ipcMain.handle("reload-ui", async () => {
     return { success: false, error: err.message };
   }
 });
+// Único endereço que não é http(s) e que o app abre: a conversa do aplicativo
+// do WhatsApp, com o número e o texto já escritos. Só esse formato, e só com
+// número de verdade; qualquer outro "protocolo" (que abriria outro programa)
+// continua recusado.
+function isWhatsAppSendUrl(url) {
+  try {
+    const u = new URL(String(url));
+    return u.protocol === "whatsapp:" && u.hostname === "send" && /^\d{8,15}$/.test(u.searchParams.get("phone") || "");
+  } catch {
+    return false;
+  }
+}
+
 ipcMain.handle("open-external", async (_, { url } = {}) => {
   try {
-    if (!isHttpUrl(url)) return { success: false, error: "URL inválida" };
+    if (!isHttpUrl(url) && !isWhatsAppSendUrl(url)) return { success: false, error: "URL inválida" };
     await shell.openExternal(String(url));
     return { success: true };
   } catch (err) {

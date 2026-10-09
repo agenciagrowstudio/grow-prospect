@@ -134,7 +134,7 @@ button{font-family:inherit}
 .pin:hover{filter:brightness(.92)}
 .map-legend{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:11px;color:var(--muted);display:flex;gap:12px}
 .map-full{display:flex;background:#fff;border:1px solid var(--border-soft);border-radius:var(--radius-md);overflow:hidden;height:calc(100dvh - 56px - 48px);min-height:520px}
-.map-wrap{position:relative;flex:1;min-width:0;background:var(--surface-muted)}
+.map-wrap{position:relative;flex:1;min-width:0;background:var(--surface-muted);isolation:isolate}
 #realMap{position:absolute;inset:0;z-index:0;background:var(--surface-muted)}
 .leaflet-container{font-family:var(--font-body)}
 .map-bar{position:absolute;top:12px;left:12px;z-index:1000;display:flex;gap:8px}
@@ -1393,3 +1393,35 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 .mm-b-botao{max-width:92%;background:#fff;border-radius:8px;padding:8px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;color:#027EB5;box-shadow:0 1px 1px rgba(0,0,0,.08)}
 .mm-dicas{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--fg);line-height:1.45}
 .mm-dicas ul{margin:6px 0 0;padding-left:18px}
+
+/* Fila do dia (abordagem manual) */
+.feed-fila{display:flex;align-items:center;gap:10px;padding:8px 12px 0}
+.feed-fila .btn{display:inline-flex;align-items:center;gap:6px;flex:none}
+.feed-fila .cfg-dica{margin:0;line-height:1.3}
+.fa-modal{max-width:1000px;width:min(1000px,calc(100vw - 32px));max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+.fa-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.fa-sub{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.fa-meta{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;padding:0 24px 12px}
+.fa-contador{display:flex;flex-direction:column;gap:4px;min-width:130px}
+.fa-contador b{font-size:26px;font-weight:700;letter-spacing:-.6px;line-height:1;color:var(--fg)}
+.fa-contador span{font-size:12px;color:var(--muted)}
+.fa-barra{height:6px;border-radius:3px;background:#ededed;overflow:hidden}
+.fa-barra span{display:block;height:100%;background:var(--pal-verde-forte);border-radius:3px;transition:width .3s}
+.fa-config{display:flex;gap:10px;flex-wrap:wrap;flex:1;justify-content:flex-end}
+.fa-config label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.fa-config select,.fa-config input{min-height:36px;border:1px solid var(--border);border-radius:8px;padding:0 10px;background:#fff;font:inherit;font-size:13px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--fg);min-width:120px}
+.fa-corpo{padding:14px 24px;overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:12px}
+.fa-item{border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:#fff}
+.fa-item-feito{background:var(--surface-warm)}
+.fa-item-topo{display:flex;align-items:center;gap:10px}
+.fa-ordem{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--surface-warm);font-size:12px;font-weight:700;color:var(--muted)}
+.fa-quem{flex:1;min-width:0;display:flex;flex-direction:column}
+.fa-quem b{font-size:14px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fa-quem span{font-size:12px;color:var(--muted)}
+.fa-motivo{font-size:12.5px;color:var(--muted)}
+.fa-motivo b{color:var(--pal-tinta)}
+.fa-texto{width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font:inherit;font-size:14px;line-height:1.5;color:var(--fg);resize:vertical;background:#fff}
+.fa-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fa-acoes .btn{display:inline-flex;align-items:center;gap:5px}
+.fa-espaco{flex:1}
+.fa-feito-texto{margin:0;font-size:13px;line-height:1.45;color:var(--fg);white-space:pre-wrap}
