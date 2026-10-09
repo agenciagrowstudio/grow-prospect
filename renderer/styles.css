@@ -115,7 +115,7 @@
   --elev-ring: 0 0 0 1px var(--line);
   --elev-raised: var(--sombra-card);
   --elev-lg: 0 12px 32px rgba(16,24,40,.10);
-  --focus-ring: 0 0 0 3px rgba(0,100,224,.25);
+  --focus-ring: 0 0 0 1px var(--accent);
   --inset-shadow: inset 0 1px 0 rgba(255,255,255,.9);
 
   /* --------------------------------------------------------------- Motion -- */
@@ -165,8 +165,9 @@ h1, h2, h3, h4 {
 .tagline { letter-spacing: -1px; }
 
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
+  /* Uma linha só: o anel encosta na borda, sem o contorno afastado. */
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .entrada-gradiente { background: var(--gradiente-entrada); }
@@ -5215,8 +5216,9 @@ textarea:focus-visible,
 #sideNav .ni:focus-visible,
 .wa-tab:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  /* Uma linha só: o anel encosta na borda, sem o contorno afastado. */
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* Text selection */
@@ -7242,7 +7244,7 @@ tr { height: 40px; }
 
   --elev-raised: var(--sombra-card);
   --elev-lg: 0 12px 32px rgba(16,24,40,.10);
-  --focus-ring: 0 0 0 3px rgba(0,100,224,.25);
+  --focus-ring: 0 0 0 1px var(--accent);
 
   --dur-fast: 150ms;
   --dur-base: 220ms;
