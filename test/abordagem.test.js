@@ -27,7 +27,7 @@ describe('primeira mensagem de abordagem', () => {
     assert.equal(r.angulo, 'site');
     assert.equal(r.idioma, 'pt', 'brasileiro nos EUA recebe em português');
     assert.match(r.texto, /Clean Co/);
-    assert.match(r.texto, /Aqui é Alex, da Grow\+/);
+    assert.match(r.texto, /Alex aqui, da Grow\+/);
     assert.match(r.texto, /\?/);
   });
 
@@ -39,7 +39,8 @@ describe('primeira mensagem de abordagem', () => {
       for (const angulo of ['site', 'google', 'redes', 'conteudo', 'sistema', 'qualquer']) {
         for (let v = 0; v < 4; v++) {
           const { texto } = A.gerarAbordagem(lead, q, { ...cfg, oferta: angulo }, v);
-          assert.ok(texto.length <= 330, `longa demais (${texto.length}): ${texto}`);
+          // O modelo da Grow+ para brasileiros nos EUA tem uns 350 caracteres.
+          assert.ok(texto.length <= 420, `longa demais (${texto.length}): ${texto}`);
           assert.doesNotMatch(texto, /https?:|www\.|R\$|US\$|\d+\s?reais|—|–/i, texto);
           assert.doesNotMatch(texto, /\{[a-zA-Z]+\}/, `marcador sobrou: ${texto}`);
           assert.match(texto, /\?/, `sem pergunta: ${texto}`);
@@ -74,6 +75,26 @@ describe('primeira mensagem de abordagem', () => {
     const { texto } = A.gerarAbordagem(lead, Q.qualificaLead(lead), cfg);
     assert.ok(!texto.includes('Centro'), texto);
     assert.doesNotMatch(texto, /nota 3,2/);
+  });
+
+  it('brasileiro nos EUA recebe no tom do modelo da Grow+: serviço, cidade e estado por extenso', async () => {
+    await carrega();
+    const lead = { ...semSite, id: 'm1', name: 'RL Brazilian Cleaning', city: 'Milford', uf: 'MA', category: 'House cleaning service' };
+    const q = Q.qualificaLead(lead);
+    const textos = [0, 1, 2, 3].map((v) => A.gerarAbordagem(lead, q, { nome: 'Matheus', empresa: 'Grow+' }, v).texto);
+    const alvo = 'empresas brasileiras de house cleaning em Milford, Massachusetts e encontrei a RL Brazilian Cleaning';
+    assert.ok(textos.some((t) => t.includes(alvo)), textos.join('\n---\n'));
+    for (const t of textos) {
+      assert.match(t, /Matheus aqui, da Grow\+/);
+      assert.match(t, /\n\n/, 'parágrafos separados como no WhatsApp');
+      assert.doesNotMatch(t, / \n|\n /, 'espaço sobrando na quebra de linha');
+    }
+    // Brasileiro no Brasil não recebe bandeira nem "empresas brasileiras"
+    const br = { id: 'b9', name: 'Barbearia Centro', category: 'Barbearia', city: 'Niterói', pais: 'BR', phone: '21999990000' };
+    const tBr = A.gerarAbordagem(br, Q.qualificaLead(br), cfg).texto;
+    assert.doesNotMatch(tBr, /🇺🇸|empresas brasileiras/);
+    assert.equal(A.nichoDoLead({ category: 'Serviço de paisagismo' }, 'pt', true), 'landscaping');
+    assert.equal(A.nichoDoLead({ category: 'General contractor' }, 'pt', true), 'construction');
   });
 
   it('o link abre a conversa com o texto já na caixa, em Web ou no aplicativo', async () => {

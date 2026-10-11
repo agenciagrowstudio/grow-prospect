@@ -86,9 +86,15 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     .filter(([, e]) => e.status === 'enviada' || e.status === 'respondeu')
     .sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0));
 
+  // Cidade e estado vêm do endereço quando o lead não os guarda soltos.
+  const leadParaTexto = (lead) => {
+    const doEndereco = localDoEndereco(lead.address);
+    return { ...lead, city: lead.city || doEndereco.cidade, uf: lead.uf || lead.state || doEndereco.uf };
+  };
+
   const textoDe = ({ lead, q, chave }) => {
     if (editados[chave] !== undefined) return editados[chave];
-    return gerarAbordagem({ ...lead, city: lead.city || localDoEndereco(lead.address).cidade }, q, cfg, versoes[chave] || 0).texto;
+    return gerarAbordagem(leadParaTexto(lead), q, cfg, versoes[chave] || 0).texto;
   };
 
   const marca = (item, status) => {
@@ -204,7 +210,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
               {fila.map((item, i) => {
                 const { lead, q, chave } = item;
                 const Icone = ICONE_TEMP[q.temperatura.id];
-                const g = gerarAbordagem(lead, q, cfg, versoes[chave] || 0);
+                const g = gerarAbordagem(leadParaTexto(lead), q, cfg, versoes[chave] || 0);
                 return (
                   <article key={chave} className="fa-item">
                     <header className="fa-item-topo">
@@ -222,7 +228,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
                     </div>
                     <textarea
                       className="fa-texto"
-                      rows={4}
+                      rows={7}
                       value={textoDe(item)}
                       onChange={(e) => setEditados((x) => ({ ...x, [chave]: e.target.value }))}
                       aria-label={`Mensagem para ${lead.name}`}
