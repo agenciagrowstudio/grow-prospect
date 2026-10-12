@@ -1,0 +1,245 @@
+import React, { useEffect, useState } from 'react';
+import {
+  Cloud, CloudOff, Building2, KeyRound, Copy, Check, X, Loader, RefreshCw, LogOut, Eye, EyeOff, Plus, LogIn,
+} from 'lucide-react';
+import {
+  lerSessao, lerEmpresa, ultimaSincronizacao, criarConta, entrar, sair, criarEmpresa, entrarEmpresa,
+  empresasDoLogin, usarEmpresa, CHAVES_SINCRONIZADAS,
+} from '../nuvem';
+
+/**
+ * Empresa e sincronização: login, empresa com código (número de série) e
+ * estado da sincronização entre computadores.
+ */
+
+function quandoFoi(ts) {
+  if (!ts) return 'ainda não sincronizou';
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 10) return 'agora mesmo';
+  if (s < 60) return `há ${s} segundos`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `há ${m} min`;
+  return new Date(ts).toLocaleString('pt-BR');
+}
+
+export default function EmpresaNuvem() {
+  const [sessao, setSessao] = useState(() => lerSessao());
+  const [empresa, setEmpresa] = useState(() => lerEmpresa());
+  const [modo, setModo] = useState('entrar'); // entrar | criar
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [verSenha, setVerSenha] = useState(false);
+  const [nomeEmpresa, setNomeEmpresa] = useState('Grow+');
+  const [codigo, setCodigo] = useState('');
+  const [existentes, setExistentes] = useState([]);
+  const [ocupado, setOcupado] = useState('');
+  const [aviso, setAviso] = useState(null);
+  const [verCodigo, setVerCodigo] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  const [estado, setEstado] = useState({ ultima: ultimaSincronizacao(), erro: '' });
+  const [, setTique] = useState(0);
+
+  // Estado da sincronização automática (App liga o motor) e relógio do "há X min".
+  useEffect(() => {
+    const ouve = (e) => setEstado({ ultima: ultimaSincronizacao(), erro: e.detail?.ok ? '' : e.detail?.erro || '' });
+    window.addEventListener('prospector:nuvem', ouve);
+    const t = setInterval(() => setTique((n) => n + 1), 15000);
+    return () => { window.removeEventListener('prospector:nuvem', ouve); clearInterval(t); };
+  }, []);
+
+  // Logado e sem empresa neste computador: procura as que já são deste login.
+  useEffect(() => {
+    if (!sessao || empresa) return;
+    empresasDoLogin().then((lista) => setExistentes(Array.isArray(lista) ? lista : [])).catch(() => {});
+  }, [sessao, empresa]);
+
+  const acao = async (nome, fn) => {
+    setOcupado(nome);
+    setAviso(null);
+    try {
+      await fn();
+    } catch (e) {
+      setAviso({ ok: false, texto: e.message || 'Não deu certo.' });
+    } finally {
+      setOcupado('');
+    }
+  };
+
+  const conectado = (emp) => {
+    setEmpresa(emp);
+    setAviso({ ok: true, texto: `Conectado à empresa ${emp.nome}. Sincronizando os dados…` });
+    window.dispatchEvent(new Event('prospector:nuvem-agora'));
+  };
+
+  const fazLogin = () => acao('login', async () => {
+    if (!email.trim() || !senha) throw new Error('Preencha e-mail e senha.');
+    if (modo === 'criar') {
+      const r = await criarConta(email, senha);
+      if (r.precisaConfirmar) {
+        setModo('entrar');
+        setAviso({ ok: true, texto: 'Conta criada. Abra o e-mail de confirmação que chegou na sua caixa de entrada e depois clique em Entrar.' });
+        return;
+      }
+      setSessao(r.sessao);
+    } else {
+      setSessao(await entrar(email, senha));
+    }
+    setSenha('');
+  });
+
+  const fazSair = () => acao('sair', async () => {
+    if (!window.confirm('Desconectar este computador da empresa? Os dados continuam aqui e na nuvem, só param de sincronizar.')) return;
+    await sair();
+    setSessao(null);
+    setEmpresa(null);
+    setExistentes([]);
+    setEstado({ ultima: null, erro: '' });
+  });
+
+  const copiaCodigo = async () => {
+    try {
+      await navigator.clipboard.writeText(empresa.codigo);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1800);
+    } catch { setVerCodigo(true); }
+  };
+
+  return (
+    <div className="cfg-card en-card">
+      <div className="cfg-card-head">
+        <span className={`cfg-icone${empresa ? ' en-icone-ok' : ''}`}>{empresa ? <Cloud size={18} strokeWidth={1.75} /> : <CloudOff size={18} strokeWidth={1.75} />}</span>
+        <div>
+          <h2>Empresa e sincronização</h2>
+          <p>
+            Conecte este computador à empresa para os leads, a Fila do dia e o histórico ficarem iguais em
+            todos os computadores. Sessão do WhatsApp, senha do Gmail e chave de IA ficam só em cada computador.
+          </p>
+        </div>
+      </div>
+
+      {aviso && (
+        <div className={`cfg-resultado ${aviso.ok ? 'ok' : 'erro'}`} role="status">
+          {aviso.ok ? <Check size={15} strokeWidth={2} /> : <X size={15} strokeWidth={2} />}
+          <span>{aviso.texto}</span>
+        </div>
+      )}
+
+      {/* 1. Sem login */}
+      {!sessao && (
+        <div className="en-bloco">
+          <div className="fa-idioma en-abas" role="tablist">
+            <button type="button" className={modo === 'entrar' ? 'on' : ''} aria-pressed={modo === 'entrar'} onClick={() => setModo('entrar')}>Entrar</button>
+            <button type="button" className={modo === 'criar' ? 'on' : ''} aria-pressed={modo === 'criar'} onClick={() => setModo('criar')}>Criar conta</button>
+          </div>
+          <div className="email-grade">
+            <div className="field">
+              <label htmlFor="enEmail">E-mail</label>
+              <input id="enEmail" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@growmaisoficial.com" />
+            </div>
+            <div className="field">
+              <label htmlFor="enSenha">Senha</label>
+              <div className="cfg-chave">
+                <input
+                  id="enSenha"
+                  type={verSenha ? 'text' : 'password'}
+                  autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') fazLogin(); }}
+                  placeholder={modo === 'criar' ? 'mínimo 6 caracteres' : ''}
+                />
+                <button type="button" className="cfg-olho" onClick={() => setVerSenha((v) => !v)} aria-label={verSenha ? 'Esconder a senha' : 'Mostrar a senha'}>
+                  {verSenha ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="cfg-acoes">
+            <button type="button" className="btn btn-primary en-btn" onClick={fazLogin} disabled={!!ocupado}>
+              {ocupado === 'login' ? <Loader size={15} className="cfg-girando" /> : <LogIn size={15} strokeWidth={2} />}
+              {modo === 'criar' ? 'Criar conta' : 'Entrar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Logado, sem empresa neste computador */}
+      {sessao && !empresa && (
+        <div className="en-bloco">
+          <p className="en-logado">Entrou como <b>{sessao.usuario?.email}</b>.</p>
+          {existentes.length > 0 && (
+            <div className="en-existentes">
+              {existentes.map((e) => (
+                <button key={e.id} type="button" className="wa-bv-opcao" onClick={() => { usarEmpresa(e); conectado(e); }}>
+                  <span className="wa-bv-op-icone wa-bv-verde"><Building2 size={20} strokeWidth={2} /></span>
+                  <span className="wa-bv-op-txt"><b>Usar {e.nome}</b><small>Empresa já ligada ao seu login</small></span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="en-opcoes">
+            <div className="en-opcao">
+              <h3><KeyRound size={15} strokeWidth={2} /> Já tenho o código</h3>
+              <p>Use o código da empresa que aparece nas Configurações do outro computador.</p>
+              <input className="en-codigo-input" value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} placeholder="GROW-XXXX-XXXX-XXXX" aria-label="Código da empresa" />
+              <button type="button" className="btn btn-primary en-btn" disabled={!!ocupado || codigo.replace(/\W/g, '').length < 10} onClick={() => acao('entrar', async () => conectado(await entrarEmpresa(codigo)))}>
+                {ocupado === 'entrar' ? <Loader size={15} className="cfg-girando" /> : <LogIn size={15} strokeWidth={2} />} Conectar
+              </button>
+            </div>
+            <div className="en-opcao">
+              <h3><Plus size={15} strokeWidth={2} /> Criar a empresa</h3>
+              <p>Primeiro computador: cria a empresa e gera o código para os outros.</p>
+              <input className="en-codigo-input en-nome" value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder="Nome da empresa" aria-label="Nome da empresa" />
+              <button type="button" className="btn btn-ghost en-btn" disabled={!!ocupado || !nomeEmpresa.trim()} onClick={() => acao('criar', async () => conectado(await criarEmpresa(nomeEmpresa)))}>
+                {ocupado === 'criar' ? <Loader size={15} className="cfg-girando" /> : <Building2 size={15} strokeWidth={2} />} Criar empresa
+              </button>
+            </div>
+          </div>
+          <button type="button" className="en-link" onClick={fazSair}>Sair deste login</button>
+        </div>
+      )}
+
+      {/* 3. Conectado */}
+      {sessao && empresa && (
+        <div className="en-bloco">
+          <div className="en-conectado">
+            <span className="em-conta-icone"><Building2 size={20} strokeWidth={1.75} /></span>
+            <div className="em-conta-info">
+              <span className="em-conta-rotulo">Empresa conectada</span>
+              <b>{empresa.nome}</b>
+              <span className="en-sub">{sessao.usuario?.email}</span>
+            </div>
+          </div>
+
+          <div className="en-codigo">
+            <span className="en-codigo-rotulo">Código da empresa (número de série)</span>
+            <div className="en-codigo-linha">
+              <code>{verCodigo ? empresa.codigo : `${empresa.codigo.slice(0, 5)}••••-••••-${empresa.codigo.slice(-4)}`}</code>
+              <button type="button" className="sc-acao" onClick={() => setVerCodigo((v) => !v)} aria-label={verCodigo ? 'Esconder o código' : 'Mostrar o código'} title={verCodigo ? 'Esconder' : 'Mostrar'}>
+                {verCodigo ? <EyeOff size={15} strokeWidth={2} /> : <Eye size={15} strokeWidth={2} />}
+              </button>
+              <button type="button" className="sc-acao" onClick={copiaCodigo} aria-label="Copiar o código" title="Copiar">
+                {copiado ? <Check size={15} strokeWidth={2.25} /> : <Copy size={15} strokeWidth={2} />}
+              </button>
+            </div>
+            <span className="cfg-dica">Para ligar outro computador: abra o Prospector nele, entre com o mesmo login e digite este código. Guarde-o como uma senha.</span>
+          </div>
+
+          <div className={`en-estado${estado.erro ? ' erro' : ''}`}>
+            {estado.erro ? <CloudOff size={15} strokeWidth={2} /> : <Cloud size={15} strokeWidth={2} />}
+            <span>{estado.erro ? `Não sincronizou: ${estado.erro}` : `Sincronizado ${quandoFoi(estado.ultima)}. ${CHAVES_SINCRONIZADAS.length} tipos de dado.`}</span>
+          </div>
+
+          <div className="cfg-acoes">
+            <button type="button" className="btn btn-ghost en-btn" onClick={() => window.dispatchEvent(new Event('prospector:nuvem-agora'))}>
+              <RefreshCw size={15} strokeWidth={2} /> Sincronizar agora
+            </button>
+            <button type="button" className="btn btn-ghost en-btn" onClick={fazSair} disabled={!!ocupado}>
+              <LogOut size={15} strokeWidth={2} /> Desconectar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -39,6 +39,7 @@ import UpdateBanner from './components/UpdateBanner';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
 import { mascaraTelefone } from './telefone';
 import IconePng from './components/IconePng';
+import { iniciarSincronizacao } from './nuvem';
 
 function organizeStoredLeads() {
   const raw = readLocalArray('sigma_leads');
@@ -150,6 +151,11 @@ function AppInner() {
   const [isNewExtractionOpen, setIsNewExtractionOpen] = useState(false);
   const [isCmdOpen, setIsCmdOpen] = useState(false);
   // Menu lateral aberto ou recolhido; lembra a escolha entre aberturas do app.
+  // Sincronização com a empresa na nuvem: quando chega dado novo de outro
+  // computador, a tela atual é montada de novo para ler os dados atualizados.
+  const [versaoDados, setVersaoDados] = useState(0);
+  useEffect(() => iniciarSincronizacao(() => setVersaoDados((v) => v + 1)), []);
+
   const [isSidebarLocked, setIsSidebarLocked] = useState(() => {
     try { return localStorage.getItem('sigma_menu_aberto') === '1'; } catch { return false; }
   });
@@ -540,7 +546,7 @@ function AppInner() {
         {/* Screen Content — view-transition */}
         <main className="app-screen-container">
           <UpdateBanner />
-          <div key={activeTab} className="view-transition" style={{ flex:1, display:'flex', flexDirection:'column' }}>
+          <div key={`${activeTab}-${versaoDados}`} className="view-transition" style={{ flex:1, display:'flex', flexDirection:'column' }}>
             {renderContent()}
           </div>
         </main>
