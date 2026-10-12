@@ -15,7 +15,12 @@ import {
   ChevronRight,
   Search,
   Users,
-  Bot
+  Bot,
+  Gauge,
+  Globe,
+  Flame,
+  ListChecks,
+  FolderPlus,
 } from 'lucide-react';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from '../leadData';
 
@@ -421,18 +426,33 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
   const currentProviderName = PROVIDERS[aiConfig.provider]?.name || aiConfig.provider;
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="sc-view" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <header className="page-head sc-topo">
+        <div>
+          <h1>Lead Scoring</h1>
+          <p>Analisa a presença digital de cada empresa do grupo (site, Google, redes) e aponta as oportunidades de venda.</p>
+        </div>
+        {groups.length > 0 && (
+          <label className="sc-topo-grupo">
+            <Users size={15} strokeWidth={2} aria-hidden="true" />
+            <select aria-label="Grupo analisado" value={selectedGroupId} onChange={(e) => handleSelectGroup(e.target.value)}>
+              <option value="">Escolher grupo…</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name} ({g.members ? g.members.length : 0})</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </header>
+
       {/* Se nenhum grupo selecionado: Estado Vazio (#scEmpty) */}
       {!currentGroup ? (
-        <div id="scEmpty">
-          <div className="empty" style={{ padding: '56px 20px' }}>
-            <div className="e-icon">◎</div>
-            <b style={{ color: 'var(--fg)', fontSize: 15 }}>Selecione um grupo para analisar</b>
-            <span style={{ maxWidth: '46ch', textAlign: 'center', lineHeight: 1.5 }}>
-              O scoring investiga a presença digital das empresas de um grupo, uma por uma.
-            </span>
-
-            <div className="field" style={{ minWidth: 'min(320px, 80vw)', marginTop: 8 }}>
+        <div id="scEmpty" className="cfg-card sc-vazio">
+          <span className="sc-vazio-icone"><Target size={26} strokeWidth={1.75} /></span>
+          <b>{groups.length ? 'Escolha um grupo para analisar' : 'Crie um grupo para começar'}</b>
+          <span>O scoring investiga a presença digital das empresas de um grupo, uma por uma.</span>
+          {groups.length > 0 ? (
+            <div className="field sc-vazio-sel">
               <select
                 id="scGroupPick"
                 aria-label="Selecionar grupo"
@@ -447,22 +467,18 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                 ))}
               </select>
             </div>
-
-            {groups.length === 0 && (
-              <div id="scNoGroups" style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', marginTop: 12 }}>
-                <span style={{ fontSize: 13, color: 'var(--muted)' }}>Você ainda não possui grupos de leads.</span>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => {
-                    window.location.hash = '#base';
-                  }}
-                >
-                  Criar grupo na Base de Leads
-                </button>
-              </div>
-            )}
-          </div>
+          ) : (
+            <>
+              <ol className="em-passos sc-passos" id="scNoGroups">
+                <li><b>1</b><span>Na <strong>Base de Leads</strong>, marque os leads que quer analisar.</span></li>
+                <li><b>2</b><span>Clique em <strong>Criar grupo</strong> na barra que aparece.</span></li>
+                <li><b>3</b><span>Volte aqui, escolha o grupo e clique em <strong>Analisar</strong>.</span></li>
+              </ol>
+              <button type="button" className="btn btn-primary sc-vazio-btn" onClick={() => { window.location.hash = '#base'; }}>
+                <FolderPlus size={15} strokeWidth={2} /> Ir para a Base de Leads
+              </button>
+            </>
+          )}
         </div>
       ) : (
         /* Quando grupo está selecionado: Área de Trabalho (#scWork) */
@@ -478,9 +494,6 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                 </span>
               </div>
               <div className="sc-cab-acoes">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleSelectGroup('')}>
-                  Trocar grupo
-                </button>
                 <button type="button" className="btn btn-primary" id="scRunBtn" onClick={handleRunScoring}>
                   {isRunning
                     ? `Pausar (${progressCount.current}/${progressCount.total})`
@@ -504,6 +517,42 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
               </button>
             </div>
           </div>
+
+          {(() => {
+            const analisados = groupLeads.filter((l) => analysisMap[l.id]);
+            const notas = analisados.map((l) => Number(analysisMap[l.id].score)).filter((n) => Number.isFinite(n));
+            const media = notas.length ? Math.round(notas.reduce((a, b) => a + b, 0) / notas.length) : null;
+            const semSite = groupLeads.filter((l) => !l.website).length;
+            const altas = notas.filter((n) => n >= 80).length;
+            return (
+              <div className="rs-kpis sc-kpis">
+                <article className="rs-kpi">
+                  <span className="rs-kpi-icone rs-azul"><ListChecks size={16} strokeWidth={2} /></span>
+                  <span className="rs-kpi-rotulo">Analisados</span>
+                  <b>{analisados.length}<em> / {groupLeads.length}</em></b>
+                  <div className="rs-kpi-barra" aria-hidden="true"><i style={{ width: `${groupLeads.length ? (analisados.length / groupLeads.length) * 100 : 0}%`, background: 'var(--pal-azul-forte)' }} /></div>
+                </article>
+                <article className="rs-kpi">
+                  <span className="rs-kpi-icone rs-roxo"><Gauge size={16} strokeWidth={2} /></span>
+                  <span className="rs-kpi-rotulo">Score médio</span>
+                  <b>{media ?? '—'}</b>
+                  <small>{media == null ? 'rode a análise para ver' : 'de 0 a 100'}</small>
+                </article>
+                <article className="rs-kpi">
+                  <span className="rs-kpi-icone rs-amarelo"><Globe size={16} strokeWidth={2} /></span>
+                  <span className="rs-kpi-rotulo">Sem site</span>
+                  <b>{semSite}</b>
+                  <small>oportunidade direta de site</small>
+                </article>
+                <article className="rs-kpi">
+                  <span className="rs-kpi-icone rs-verde"><Flame size={16} strokeWidth={2} /></span>
+                  <span className="rs-kpi-rotulo">Score 80+</span>
+                  <b>{altas}</b>
+                  <small>prioridade alta</small>
+                </article>
+              </div>
+            );
+          })()}
 
           {/* Painel de Progresso (#scProgPanel) */}
           {(isRunning || progressCount.current > 0) && (
@@ -606,7 +655,7 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                     <th>Situação</th>
                     <th>Oportunidades</th>
                     <th>Atualizado</th>
-                    <th style={{ width: 90 }}></th>
+                    <th className="sc-th-acao"><span className="sr-only">Ações</span></th>
                   </tr>
                 </thead>
                 <tbody id="scResBody">
@@ -617,7 +666,7 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                     const score = an ? an.score : null;
                     const band = score != null ? (score >= 80 ? ['high', 'Alta'] : score >= 50 ? ['mid', 'Média'] : ['low', 'Baixa']) : null;
 
-                    const sit = an ? (an.noSite ? ['Sem site', 'st-nosite'] : ['Concluído', 'st-ok']) : ['Não analisado', 'st-wait'];
+                    const sit = an ? (an.noSite ? ['Sem site', 'st-nosite'] : ['Concluído', 'st-ok']) : ['Aguardando', 'st-wait'];
 
                     return (
                       <tr key={lead.id} className={isRowChecked ? 'selrow' : ''}>
@@ -643,14 +692,13 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                         </td>
                         <td>
                           {an ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                              <b style={{ fontVariantNumeric: 'tabular-nums' }}>{score}</b>
-                              <span className={`ftag ${band[0]}`} style={{ marginLeft: 6 }}>
-                                {band[1]}
-                              </span>
+                            <span className={`sc-score sc-score-${band[0]}`}>
+                              <b>{score}</b>
+                              <span className="sc-score-barra" aria-hidden="true"><i style={{ width: `${Math.max(4, Math.min(100, score))}%` }} /></span>
+                              <small>{band[1]}</small>
                             </span>
                           ) : (
-                            <span style={{ fontSize: 12, color: 'var(--meta)' }}>Não analisado</span>
+                            <span className="sc-traco">—</span>
                           )}
                         </td>
                         <td style={{ fontSize: 12.5 }}>
@@ -671,7 +719,12 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                           <span className={`st-pill ${sit[1]}`}>{sit[0]}</span>
                         </td>
                         <td style={{ fontSize: 12.5, maxWidth: 220 }} title={an ? an.opp.join('; ') : ''}>
-                          {an && an.opp.length > 0 ? an.opp.slice(0, 2).join(' · ') : '—'}
+                          {an && an.opp.length > 0 ? (
+                            <span className="sc-opps">
+                              {an.opp.slice(0, 2).map((o) => <span key={o} className="sc-opp">{o}</span>)}
+                              {an.opp.length > 2 && <span className="sc-opp sc-opp-mais">+{an.opp.length - 2}</span>}
+                            </span>
+                          ) : <span className="sc-traco">—</span>}
                         </td>
                         <td style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                           {an ? fmtShort(an.ts) : '—'}
@@ -679,10 +732,12 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                         <td>
                           <button
                             type="button"
-                            className="btn btn-sm"
+                            className={`sc-acao${an ? '' : ' sc-acao-nova'}`}
                             onClick={() => handleRetrySingle(lead)}
+                            title={an ? `Reanalisar ${lead.name || 'empresa'}` : `Analisar ${lead.name || 'empresa'}`}
+                            aria-label={an ? `Reanalisar ${lead.name || 'empresa'}` : `Analisar ${lead.name || 'empresa'}`}
                           >
-                            Reanalisar
+                            {an ? <RotateCcw size={15} strokeWidth={2} /> : <Play size={15} strokeWidth={2} />}
                           </button>
                         </td>
                       </tr>
