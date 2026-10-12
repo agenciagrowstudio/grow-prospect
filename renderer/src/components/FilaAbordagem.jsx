@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send,
 } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
+import Bandeira from './Bandeira';
 
 /**
  * Fila do dia: leads qualificados com a primeira mensagem já escrita.
@@ -15,6 +17,9 @@ import { localDoEndereco } from '../leadData';
  * usuário, no WhatsApp de verdade. Para o WhatsApp isso é uso normal, e é o
  * jeito de menor risco de banimento. O app só prepara, guarda o que já foi
  * abordado e conta a meta do dia.
+ *
+ * Layout em lista e detalhe: a fila à esquerda, um lead por vez à direita.
+ * Depois de marcar um lead, o próximo da fila abre sozinho.
  */
 
 const CHAVE_CFG = 'sigma_abordagem_cfg';
@@ -33,6 +38,21 @@ function gravaJson(chave, valor) {
   try { localStorage.setItem(chave, JSON.stringify(valor)); } catch { /* sem espaço: a fila segue na tela */ }
 }
 
+// Cidade e estado vêm do endereço quando o lead não os guarda soltos.
+function leadParaTexto(lead) {
+  const doEndereco = localDoEndereco(lead.address);
+  return { ...lead, city: lead.city || doEndereco.cidade, uf: lead.uf || lead.state || doEndereco.uf };
+}
+
+function Temperatura({ q }) {
+  const Icone = ICONE_TEMP[q.temperatura.id];
+  return (
+    <span className={`cl-temp cl-temp-${q.temperatura.id}`}>
+      <Icone size={11} strokeWidth={2} aria-hidden="true" /> {q.temperatura.rotulo} {q.nota}
+    </span>
+  );
+}
+
 export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFechar }) {
   const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web' }));
   const [log, setLog] = useState(() => lerJson(CHAVE_LOG, {}));
@@ -41,6 +61,10 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
   const [jaAbordados, setJaAbordados] = useState({});
   const [aviso, setAviso] = useState('');
   const [aba, setAba] = useState('fila');
+  const [selecionado, setSelecionado] = useState(null);
+  const [abertos, setAbertos] = useState({});
+  // Ajustes começam abertos só enquanto falta o nome de quem assina.
+  const [ajustesAbertos, setAjustesAbertos] = useState(() => !lerJson(CHAVE_CFG, { nome: '' }).nome);
   const hoje = chaveDoDia();
 
   useEffect(() => gravaJson(CHAVE_CFG, cfg), [cfg]);
@@ -50,6 +74,11 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }, [onFechar]);
+  useEffect(() => {
+    if (!aviso) return undefined;
+    const t = setTimeout(() => setAviso(''), 3500);
+    return () => clearTimeout(t);
+  }, [aviso]);
 
   // Candidatos: têm WhatsApp, ainda não foram tratados, e têm o que oferecer.
   const candidatos = useMemo(() => leads
@@ -81,38 +110,38 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
 
   const enviadasHoje = Object.values(log).filter((e) => e.status === 'enviada' && e.dia === hoje).length;
   const restante = Math.max(0, cfg.limite - enviadasHoje);
-  const fila = candidatos.filter(({ chave }) => !jaAbordados[chave]).slice(0, Math.max(restante, 0) || cfg.limite);
+  const fila = candidatos.filter(({ chave }) => !jaAbordados[chave]).slice(0, restante);
   const enviadas = Object.entries(log)
     .filter(([, e]) => e.status === 'enviada' || e.status === 'respondeu')
     .sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0));
+  const responderam = enviadas.filter(([, e]) => e.status === 'respondeu').length;
 
-  // Cidade e estado vêm do endereço quando o lead não os guarda soltos.
-  const leadParaTexto = (lead) => {
-    const doEndereco = localDoEndereco(lead.address);
-    return { ...lead, city: lead.city || doEndereco.cidade, uf: lead.uf || lead.state || doEndereco.uf };
-  };
+  // O selecionado some da fila quando é marcado: abre o próximo, na mesma posição.
+  const atual = fila.find((f) => f.chave === selecionado) || fila[0] || null;
+  const posicao = atual ? fila.indexOf(atual) : -1;
 
-  const textoDe = ({ lead, q, chave }) => {
-    if (editados[chave] !== undefined) return editados[chave];
-    return gerarAbordagem(leadParaTexto(lead), q, cfg, versoes[chave] || 0).texto;
-  };
+  const gerado = (item) => gerarAbordagem(leadParaTexto(item.lead), item.q, cfg, versoes[item.chave] || 0);
+  const textoDe = (item) => (editados[item.chave] !== undefined ? editados[item.chave] : gerado(item).texto);
 
   const marca = (item, status) => {
-    setLog((atual) => ({
-      ...atual,
+    const proximo = fila[posicao + 1] || fila[posicao - 1] || null;
+    setLog((atualLog) => ({
+      ...atualLog,
       [item.chave]: {
         status,
         dia: hoje,
         ts: Date.now(),
         nome: item.lead.name || '',
         texto: status === 'enviada' ? textoDe(item) : '',
-        angulo: item.q.servicos[0]?.id || '',
+        angulo: gerado(item).angulo,
       },
     }));
+    setSelecionado(proximo?.chave || null);
+    if (status === 'enviada') setAviso(`${item.lead.name || 'Lead'} marcado como enviado.`);
   };
 
-  const desfaz = (chave) => setLog((atual) => {
-    const { [chave]: _tirado, ...resto } = atual;
+  const desfaz = (chave) => setLog((atualLog) => {
+    const { [chave]: _tirado, ...resto } = atualLog;
     return resto;
   });
 
@@ -120,6 +149,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     const numero = digitosWhatsApp(item.q.canais.whatsapp, item.lead.pais);
     const url = linkWhatsApp(numero, textoDe(item), cfg.abrirEm);
     setAviso('');
+    setAbertos((a) => ({ ...a, [item.chave]: true }));
     if (window.electronAPI?.openExternal) {
       const r = await window.electronAPI.openExternal(url);
       if (r && r.success === false) {
@@ -141,29 +171,136 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     }
   };
 
+  const outraVersao = (chave) => {
+    setEditados((x) => { const { [chave]: _x, ...r } = x; return r; });
+    setVersoes((v) => ({ ...v, [chave]: (v[chave] || 0) + 1 }));
+  };
+  const restaura = (chave) => setEditados((x) => { const { [chave]: _x, ...r } = x; return r; });
+
   const muda = (campo) => (e) => setCfg((c) => ({ ...c, [campo]: campo === 'limite' ? Number(e.target.value) : e.target.value }));
+  const progresso = Math.min(100, (enviadasHoje / cfg.limite) * 100);
+
+  const detalhe = atual && (() => {
+    const { lead, q, chave } = atual;
+    const g = gerado(atual);
+    const texto = textoDe(atual);
+    const editado = editados[chave] !== undefined;
+    const servico = q.servicos.find((s) => s.id === g.angulo);
+    const ingles = idiomaDoLead(lead) === 'en';
+    const local = [lead.city || localDoEndereco(lead.address).cidade, lead.uf || lead.state || localDoEndereco(lead.address).uf].filter(Boolean).join(', ');
+    const jaAbriu = abertos[chave];
+    return (
+      <section className="fa-detalhe" aria-label={`Mensagem para ${lead.name}`}>
+        <header className="fa-det-topo">
+          <div className="fa-det-quem">
+            <h3>{lead.name || 'Empresa'}</h3>
+            <span>
+              <Bandeira pais={String(lead.pais || 'BR').toUpperCase() === 'US' ? 'US' : 'BR'} />
+              {[lead.category, local].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+          <Temperatura q={q} />
+        </header>
+
+        <div className="fa-chips">
+          <span className="fa-chip fa-chip-oferta">Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b></span>
+          {servico?.motivo && <span className="fa-chip">{servico.motivo}</span>}
+          {ingles && <span className="fa-chip">Em inglês</span>}
+        </div>
+
+        <div className="fa-msg">
+          <div className="fa-msg-topo">
+            <span className="fa-rotulo">Mensagem</span>
+            <span className="fa-versao">{editado ? 'Editada por você' : `Versão ${g.versao + 1} de ${g.total}`}</span>
+            <span className="fa-espaco" />
+            {editado && (
+              <button type="button" className="fa-mini" onClick={() => restaura(chave)}>
+                <RotateCcw size={13} strokeWidth={2} aria-hidden="true" /> Desfazer edição
+              </button>
+            )}
+            <button type="button" className="fa-mini" onClick={() => outraVersao(chave)}>
+              <RefreshCw size={13} strokeWidth={2} aria-hidden="true" /> Outra versão
+            </button>
+            <button type="button" className="fa-mini" onClick={() => copia(atual)}>
+              <Copy size={13} strokeWidth={2} aria-hidden="true" /> Copiar
+            </button>
+          </div>
+          <div className="fa-balao-fundo">
+            <textarea
+              className="fa-balao"
+              value={texto}
+              onChange={(e) => setEditados((x) => ({ ...x, [chave]: e.target.value }))}
+              aria-label={`Mensagem para ${lead.name}`}
+              spellCheck
+            />
+            <span className="fa-contagem">{texto.length} caracteres</span>
+          </div>
+        </div>
+
+        <div className="fa-passos">
+          <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
+            <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
+            {jaAbriu ? 'Abrir de novo' : 'Abrir no WhatsApp'}
+          </button>
+          <button type="button" className={`btn fa-enviei${jaAbriu ? ' pronto' : ''}`} onClick={() => marca(atual, 'enviada')}>
+            <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
+          </button>
+          <span className="fa-espaco" />
+          <button type="button" className="fa-mini" onClick={() => marca(atual, 'sem_whatsapp')} title="O número não tem WhatsApp">
+            <PhoneOff size={13} strokeWidth={2} aria-hidden="true" /> Sem WhatsApp
+          </button>
+          <button type="button" className="fa-mini" onClick={() => marca(atual, 'pulada')} title="Tira da fila sem abordar">
+            <SkipForward size={13} strokeWidth={2} aria-hidden="true" /> Pular
+          </button>
+        </div>
+        <p className="fa-dica">
+          {jaAbriu
+            ? 'Enviou no WhatsApp? Clique em Enviei para contar na meta e ir para o próximo.'
+            : 'O WhatsApp abre com o texto na caixa. Você confere e aperta enviar lá.'}
+        </p>
+      </section>
+    );
+  })();
 
   // Vai direto no body: dentro da tela do mapa, os controles do mapa ficavam por cima.
   return createPortal(
     <div className="overlay on" onClick={onFechar} style={{ display: 'grid' }}>
       <div className="modal fa-modal" role="dialog" aria-modal="true" aria-labelledby="faTitulo" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head fa-head">
-          <div>
+        <header className="fa-head">
+          <div className="fa-titulo">
             <div className="eyebrow">Abordagem manual</div>
             <h2 id="faTitulo">Fila do dia</h2>
-            <p className="fa-sub">{tituloBusca ? `${tituloBusca} · ` : ''}Você abre, lê e aperta enviar no WhatsApp. O app só prepara.</p>
+            <p className="fa-sub">{tituloBusca ? `${tituloBusca} · ` : ''}Você abre, confere e envia no WhatsApp. O app só prepara.</p>
           </div>
-          <button type="button" className="mm-fechar" onClick={onFechar} aria-label="Fechar"><X size={16} strokeWidth={2} /></button>
-        </div>
+          <div className="fa-meta" role="status" aria-label={`${enviadasHoje} de ${cfg.limite} mensagens enviadas hoje`}>
+            <div className="fa-meta-num"><b>{enviadasHoje}</b><span>/ {cfg.limite}</span></div>
+            <div className="fa-meta-lado">
+              <span>enviadas hoje</span>
+              <div className="fa-barra" aria-hidden="true"><span style={{ width: `${progresso}%` }} /></div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`fa-icone${ajustesAbertos ? ' on' : ''}`}
+            onClick={() => setAjustesAbertos((v) => !v)}
+            aria-expanded={ajustesAbertos}
+            title="Ajustes da fila"
+          >
+            <SlidersHorizontal size={16} strokeWidth={2} />
+          </button>
+          <button type="button" className="fa-icone" onClick={onFechar} aria-label="Fechar"><X size={16} strokeWidth={2} /></button>
+        </header>
 
-        <div className="fa-meta">
-          <div className="fa-contador" role="status">
-            <b>{enviadasHoje}</b><span>de {cfg.limite} hoje</span>
-            <div className="fa-barra" aria-hidden="true"><span style={{ width: `${Math.min(100, (enviadasHoje / cfg.limite) * 100)}%` }} /></div>
-          </div>
-          <div className="fa-config">
+        {ajustesAbertos && (
+          <div className="fa-ajustes">
+            <label>Seu nome
+              <input value={cfg.nome} onChange={muda('nome')} placeholder="Ex.: Matheus" autoComplete="off" />
+            </label>
+            <label>Sua empresa
+              <input value={cfg.empresa} onChange={muda('empresa')} placeholder="Grow+" autoComplete="off" />
+            </label>
             <label>Meta por dia
-              <select value={cfg.limite} onChange={muda('limite')}>{LIMITES.map((n) => <option key={n} value={n}>{n}</option>)}</select>
+              <select value={cfg.limite} onChange={muda('limite')}>{LIMITES.map((n) => <option key={n} value={n}>{n} mensagens</option>)}</select>
             </label>
             <label>Oferecer
               <select value={cfg.oferta} onChange={muda('oferta')}>
@@ -173,132 +310,95 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
             </label>
             <label>Abrir em
               <select value={cfg.abrirEm} onChange={muda('abrirEm')}>
-                <option value="web">WhatsApp Web (navegador)</option>
+                <option value="web">WhatsApp Web</option>
                 <option value="app">Aplicativo do WhatsApp</option>
               </select>
             </label>
-            <label>Seu nome
-              <input value={cfg.nome} onChange={muda('nome')} placeholder="Ex.: Alex" autoComplete="off" />
-            </label>
-            <label>Sua empresa
-              <input value={cfg.empresa} onChange={muda('empresa')} placeholder="Grow+" autoComplete="off" />
-            </label>
           </div>
-        </div>
+        )}
 
-        <div className="mm-abas" role="tablist">
+        <div className="fa-abas" role="tablist">
           <button type="button" role="tab" aria-selected={aba === 'fila'} className={aba === 'fila' ? 'on' : ''} onClick={() => setAba('fila')}>
-            Para enviar ({fila.length})
+            <Send size={14} strokeWidth={2} aria-hidden="true" /> Para enviar <span className="fa-conta">{fila.length}</span>
           </button>
           <button type="button" role="tab" aria-selected={aba === 'enviadas'} className={aba === 'enviadas' ? 'on' : ''} onClick={() => setAba('enviadas')}>
-            Já abordados ({enviadas.length})
+            <MessagesSquare size={14} strokeWidth={2} aria-hidden="true" /> Já abordados <span className="fa-conta">{enviadas.length}</span>
           </button>
+          <span className="fa-espaco" />
+          {!cfg.nome && <span className="fa-alerta">Preencha seu nome nos ajustes para assinar a mensagem.</span>}
         </div>
 
-        {aviso && <div className="mm-resultado ok" role="status"><span>{aviso}</span></div>}
-
-        <div className="fa-corpo">
-          {aba === 'fila' && (
-            <>
-              {fila.length === 0 && (
-                <p className="mm-vazio">
-                  {restante === 0 && candidatos.length
-                    ? `Meta de ${cfg.limite} cumprida hoje. Para continuar, aumente a meta ou volte amanhã.`
-                    : 'Nenhum lead com WhatsApp e algo para oferecer nesta busca. Troque a busca ou o que oferecer.'}
-                </p>
-              )}
+        {aba === 'fila' && (fila.length === 0 ? (
+          <div className="fa-vazio">
+            {restante === 0 ? <PartyPopper size={28} strokeWidth={1.5} aria-hidden="true" /> : <Inbox size={28} strokeWidth={1.5} aria-hidden="true" />}
+            <b>{restante === 0 ? `Meta de ${cfg.limite} cumprida hoje` : 'Ninguém na fila'}</b>
+            <span>
+              {restante === 0
+                ? 'Para continuar, aumente a meta nos ajustes ou volte amanhã.'
+                : 'Nenhum lead desta busca tem WhatsApp e algo para oferecer. Troque a busca ou o que oferecer.'}
+            </span>
+          </div>
+        ) : (
+          <div className="fa-corpo">
+            <ol className="fa-lista" aria-label="Leads da fila">
               {fila.map((item, i) => {
                 const { lead, q, chave } = item;
-                const Icone = ICONE_TEMP[q.temperatura.id];
-                const g = gerarAbordagem(leadParaTexto(lead), q, cfg, versoes[chave] || 0);
+                const ativo = atual?.chave === chave;
                 return (
-                  <article key={chave} className="fa-item">
-                    <header className="fa-item-topo">
-                      <span className="fa-ordem">{i + 1}</span>
-                      <div className="fa-quem">
+                  <li key={chave}>
+                    <button type="button" className={`fa-linha${ativo ? ' on' : ''}`} onClick={() => setSelecionado(chave)} aria-current={ativo}>
+                      <span className="fa-ordem">{abertos[chave] ? <Check size={12} strokeWidth={2.5} /> : i + 1}</span>
+                      <span className="fa-linha-txt">
                         <b>{lead.name || 'Empresa'}</b>
-                        <span>{[lead.category, lead.city || localDoEndereco(lead.address).cidade].filter(Boolean).join(' · ')}</span>
-                      </div>
-                      <span className={`cl-temp cl-temp-${q.temperatura.id}`}><Icone size={11} strokeWidth={2} aria-hidden="true" /> {q.temperatura.rotulo} {q.nota}</span>
-                    </header>
-                    <div className="fa-motivo">
-                      Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b>
-                      {q.servicos.find((s) => s.id === g.angulo)?.motivo ? ` · ${q.servicos.find((s) => s.id === g.angulo).motivo}` : ''}
-                      {idiomaDoLead(lead) === 'en' ? ' · em inglês' : ''}
-                    </div>
-                    <textarea
-                      className="fa-texto"
-                      rows={7}
-                      value={textoDe(item)}
-                      onChange={(e) => setEditados((x) => ({ ...x, [chave]: e.target.value }))}
-                      aria-label={`Mensagem para ${lead.name}`}
-                    />
-                    <div className="fa-acoes">
-                      <button type="button" className="btn btn-primary btn-sm" onClick={() => abre(item)}>
-                        <ExternalLink size={14} strokeWidth={2} /> Abrir no WhatsApp
-                      </button>
-                      <button type="button" className="btn btn-sm" onClick={() => marca(item, 'enviada')}>
-                        <Check size={14} strokeWidth={2} /> Enviei
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => { setEditados((x) => { const { [chave]: _x, ...r } = x; return r; }); setVersoes((v) => ({ ...v, [chave]: (v[chave] || 0) + 1 })); }}
-                        title={`Versão ${g.versao + 1} de ${g.total}`}
-                      >
-                        <RefreshCw size={14} strokeWidth={2} /> Outra versão
-                      </button>
-                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => copia(item)}>Copiar</button>
-                      <span className="fa-espaco" />
-                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => marca(item, 'sem_whatsapp')} title="O número não tem WhatsApp">
-                        <PhoneOff size={14} strokeWidth={2} /> Sem WhatsApp
-                      </button>
-                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => marca(item, 'pulada')}>
-                        <SkipForward size={14} strokeWidth={2} /> Pular
-                      </button>
-                    </div>
-                  </article>
+                        <span>{[lead.city || localDoEndereco(lead.address).cidade, ANGULOS.find((a) => a.id === gerado(item).angulo)?.nome].filter(Boolean).join(' · ')}</span>
+                      </span>
+                      <span className={`fa-ponto fa-ponto-${q.temperatura.id}`} title={`${q.temperatura.rotulo} ${q.nota}`} />
+                    </button>
+                  </li>
                 );
               })}
-            </>
-          )}
+            </ol>
+            {detalhe}
+          </div>
+        ))}
 
-          {aba === 'enviadas' && (
-            <>
-              {enviadas.length === 0 && <p className="mm-vazio">Ninguém abordado por aqui ainda.</p>}
-              {enviadas.map(([chave, e]) => (
-                <article key={chave} className="fa-item fa-item-feito">
-                  <header className="fa-item-topo">
-                    <div className="fa-quem">
-                      <b>{e.nome || chave}</b>
-                      <span>{new Date(e.ts).toLocaleDateString('pt-BR')} · {ANGULOS.find((a) => a.id === e.angulo)?.nome || 'Abordagem geral'}</span>
-                    </div>
-                    <span className={`mm-situacao ${e.status === 'respondeu' ? 'mm-aprovado' : 'mm-analise'}`}>{e.status === 'respondeu' ? 'Respondeu' : 'Enviada'}</span>
-                  </header>
-                  {e.texto && <p className="fa-feito-texto">{e.texto}</p>}
-                  <div className="fa-acoes">
-                    {e.status === 'enviada' ? (
-                      <button type="button" className="btn btn-sm" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'respondeu' } }))}>
-                        <MessagesSquare size={14} strokeWidth={2} /> Respondeu
-                      </button>
-                    ) : (
-                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'enviada' } }))}>Não respondeu</button>
-                    )}
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => desfaz(chave)}>
-                      <Undo2 size={14} strokeWidth={2} /> Voltar para a fila
-                    </button>
+        {aba === 'enviadas' && (enviadas.length === 0 ? (
+          <div className="fa-vazio">
+            <MessagesSquare size={28} strokeWidth={1.5} aria-hidden="true" />
+            <b>Ninguém abordado ainda</b>
+            <span>Quem você marcar como enviado aparece aqui, para anotar quem respondeu.</span>
+          </div>
+        ) : (
+          <div className="fa-historico">
+            <p className="fa-hist-resumo"><b>{enviadas.length}</b> abordados · <b>{responderam}</b> responderam</p>
+            {enviadas.map(([chave, e]) => (
+              <article key={chave} className="fa-hist-item">
+                <div className="fa-hist-topo">
+                  <div className="fa-linha-txt">
+                    <b>{e.nome || chave}</b>
+                    <span>{new Date(e.ts).toLocaleDateString('pt-BR')} · {ANGULOS.find((a) => a.id === e.angulo)?.nome || 'Abordagem geral'}</span>
                   </div>
-                </article>
-              ))}
-            </>
-          )}
-        </div>
+                  <span className={`mm-situacao ${e.status === 'respondeu' ? 'mm-aprovado' : 'mm-analise'}`}>{e.status === 'respondeu' ? 'Respondeu' : 'Aguardando'}</span>
+                </div>
+                {e.texto && <p className="fa-hist-texto">{e.texto}</p>}
+                <div className="fa-hist-acoes">
+                  {e.status === 'enviada' ? (
+                    <button type="button" className="fa-mini fa-mini-forte" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'respondeu' } }))}>
+                      <MessagesSquare size={13} strokeWidth={2} aria-hidden="true" /> Respondeu
+                    </button>
+                  ) : (
+                    <button type="button" className="fa-mini" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'enviada' } }))}>Ainda não respondeu</button>
+                  )}
+                  <button type="button" className="fa-mini" onClick={() => desfaz(chave)}>
+                    <Undo2 size={13} strokeWidth={2} aria-hidden="true" /> Voltar para a fila
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ))}
 
-        <div className="modal-foot">
-          <span className="cfg-dica">Primeira mensagem sem link e sem imagem. Leia e ajuste antes de enviar. Se alguém bloquear, pare por hoje.</span>
-          <span style={{ flex: 1 }} />
-          <button type="button" className="btn btn-ghost" onClick={onFechar}>Fechar</button>
-        </div>
+        {aviso && <div className="fa-toast" role="status">{aviso}</div>}
       </div>
     </div>,
     document.body,
