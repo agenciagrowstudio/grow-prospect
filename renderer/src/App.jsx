@@ -14,7 +14,9 @@ import {
   BarChart3,
   Mail,
   Plus,
-  Settings
+  Settings,
+  PanelLeftOpen,
+  PanelLeftClose
 } from 'lucide-react';
 import Overview from './components/Overview';
 import MapScraperView from './components/MapScraperView';
@@ -147,7 +149,13 @@ function AppInner() {
   });
   const [isNewExtractionOpen, setIsNewExtractionOpen] = useState(false);
   const [isCmdOpen, setIsCmdOpen] = useState(false);
-  const [isSidebarLocked, setIsSidebarLocked] = useState(false);
+  // Menu lateral aberto ou recolhido; lembra a escolha entre aberturas do app.
+  const [isSidebarLocked, setIsSidebarLocked] = useState(() => {
+    try { return localStorage.getItem('sigma_menu_aberto') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('sigma_menu_aberto', isSidebarLocked ? '1' : '0'); } catch {}
+  }, [isSidebarLocked]);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [waStatus, setWaStatus] = useState('disconnected');
   const [waPhone, setWaPhone] = useState('');
@@ -384,8 +392,8 @@ function AppInner() {
           type="button"
           className="sidebar-brand"
           onClick={() => setIsSidebarLocked((value) => !value)}
-          aria-pressed={isSidebarLocked}
-          title="Fixar ou soltar o menu"
+          aria-expanded={isSidebarLocked}
+          title={isSidebarLocked ? 'Recolher o menu' : 'Abrir o menu'}
         >
           <div className="brand-icon-box">
             <LogoGrow size={30} />
@@ -477,6 +485,18 @@ function AppInner() {
 
         {/* Sidebar Footer */}
         <div className="sidebar-footer">
+          <button
+            type="button"
+            className="nav-item menu-toggle"
+            onClick={() => setIsSidebarLocked((value) => !value)}
+            aria-expanded={isSidebarLocked}
+            title={isSidebarLocked ? 'Recolher o menu' : 'Abrir o menu'}
+          >
+            {isSidebarLocked
+              ? <PanelLeftClose className="ico" size={18} aria-hidden="true" />
+              : <PanelLeftOpen className="ico" size={18} aria-hidden="true" />}
+            <span className="nav-label-text">Recolher menu</span>
+          </button>
           <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')}>
             <Settings className="ico" size={18} aria-hidden="true" />
             <span className="nav-label-text">Configurações</span>

@@ -1439,3 +1439,28 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 /* Janela sem moldura: o cabeçalho arrasta a janela e cada botão dele continua clicável. */
 .app-header-bar{-webkit-app-region:drag;app-region:drag}
 .app-header-bar button,.app-header-bar a,.app-header-bar input{-webkit-app-region:no-drag;app-region:no-drag}
+
+/* Menu lateral: abre e fecha pelo botão do rodapé (não mais ao passar o mouse).
+   Para a animação ser suave nos dois sentidos, nada troca de display: os textos
+   ficam sempre no lugar e só aparecem ou somem por opacidade, os ícones não
+   mudam de posição (o padding é o mesmo aberto e fechado) e os títulos de
+   seção crescem de altura em vez de surgir de uma vez. */
+.app-sidebar{transition:width 240ms var(--ease-standard),min-width 240ms var(--ease-standard),transform var(--dur-base) var(--ease-out)}
+.app-sidebar .brand-text-col,.app-sidebar .nav-label-text,.app-sidebar .nav-kbd,.app-sidebar .nav-lote,.app-sidebar .sidebar-release{display:flex;opacity:0;white-space:nowrap;transition:opacity 120ms var(--ease-standard)}
+.app-sidebar .btn-new-extraction span{display:inline;opacity:0;white-space:nowrap;transition:opacity 120ms var(--ease-standard)}
+.app-sidebar .sidebar-nav-label{display:block;opacity:0;max-height:0;padding-top:0;padding-bottom:0;overflow:hidden;white-space:nowrap;transition:opacity 120ms var(--ease-standard),max-height 240ms var(--ease-standard),padding 240ms var(--ease-standard)}
+body.side-locked .app-sidebar .brand-text-col,body.side-locked .app-sidebar .nav-label-text,body.side-locked .app-sidebar .nav-kbd,body.side-locked .app-sidebar .nav-lote,body.side-locked .app-sidebar .sidebar-release,body.side-locked .app-sidebar .btn-new-extraction span{opacity:1;transition:opacity 200ms var(--ease-standard) 90ms}
+body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;padding-top:8px;padding-bottom:4px;transition:opacity 200ms var(--ease-standard) 90ms,max-height 240ms var(--ease-standard),padding 240ms var(--ease-standard)}
+/* Ícone sempre no centro da faixa de 68px, aberto ou fechado. */
+.app-sidebar .nav-item,body.side-locked .app-sidebar .nav-item{justify-content:flex-start;padding:0 12px}
+.app-sidebar .btn-new-extraction{justify-content:flex-start;padding:0 0 0 15px}
+.menu-toggle{width:100%;appearance:none;background:transparent;cursor:pointer;text-align:left}
+/* O texto fica sempre no lugar (só invisível), então o ícone não pode encolher. */
+.app-sidebar .nav-item svg,.app-sidebar .btn-new-extraction svg{flex:none}
+.app-sidebar .nav-label-text,.app-sidebar .btn-new-extraction span{min-width:0;overflow:hidden}
+.menu-toggle svg{min-width:22px}
+@media (max-width:920px){
+  .app-sidebar .brand-text-col,.app-sidebar .nav-label-text,.app-sidebar .nav-kbd,.app-sidebar .nav-lote,.app-sidebar .sidebar-release,.app-sidebar .btn-new-extraction span,.app-sidebar .sidebar-nav-label{opacity:1}
+  .app-sidebar .sidebar-nav-label{max-height:28px;padding-top:8px;padding-bottom:4px}
+  .menu-toggle{display:none}
+}
