@@ -22,7 +22,8 @@ import {
   Navigation,
   MessageCircle,
   Layers,
-  ClipboardList
+  ClipboardList,
+  Eraser,
 } from 'lucide-react';
 import CardLead from './CardLead';
 import CabecalhoRegiao from './CabecalhoRegiao';
@@ -30,6 +31,9 @@ import FilaAbordagem from './FilaAbordagem';
 import { qualificaLead, resumoTemperaturas, lerAnalisesSalvas } from '../qualificacaoLead';
 import { publicoDoLead } from '../resultados';
 import { pegarPedidoMapa } from '../pedidoMapa';
+import { areasExtraidas } from '../cobertura';
+import { desenhaAreas } from './camadaAreas';
+import SeletorExtracao, { MAPA_LIMPO } from './SeletorExtracao';
 import { digitosWhatsApp } from '../telefone';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -253,6 +257,10 @@ export default function MapScraperView({
   // Chips do banner: clicou em "Frios" ou na bandeira, a lista mostra só esses.
   const [filtroTemp, setFiltroTemp] = useState('');
   const [filtroPublico, setFiltroPublico] = useState('');
+  // Áreas já extraídas pintadas de azul no mapa.
+  const [mostrarAreas, setMostrarAreas] = useState(() => {
+    try { return localStorage.getItem('prospector_mostrar_areas') !== '0'; } catch { return true; }
+  });
 
   // Filtros do Map Filter Drawer
   const [filterCat, setFilterCat] = useState('');
@@ -274,6 +282,7 @@ export default function MapScraperView({
   const mapInstanceRef = useRef(null);
   const tileLayerRef = useRef(null);
   const markersLayerRef = useRef(null);
+  const areasLayerRef = useRef(null);
   const userMarkerRef = useRef(null);
   const leadCardRefs = useRef({});
   const markersMapRef = useRef(new Map());
@@ -341,11 +350,22 @@ export default function MapScraperView({
     }
   }, [addNotification]);
 
+  // Extração nova começa com o mapa limpo: a lista mostra só ela, que vai
+  // aparecer quando terminar.
   useEffect(() => {
     if (!activeExtraction?.id) return;
     setIsProcessing(true);
     setProgressPct(0);
-  }, [activeExtraction?.id]);
+    setBuscaAtiva(String(activeExtraction.id));
+    setFiltroTemp('');
+    setFiltroPublico('');
+  }, [activeExtraction?.id, setBuscaAtiva]);
+
+  // Cancelou ou falhou: a busca escolhida não existe, volta para a mais nova.
+  useEffect(() => {
+    if (activeExtraction?.id || !buscaAtiva || buscaAtiva === MAPA_LIMPO) return;
+    if (!searches.some((s) => String(s.id) === buscaAtiva)) setBuscaAtiva(searches[0]?.id ? String(searches[0].id) : '');
+  }, [activeExtraction?.id, buscaAtiva, searches, setBuscaAtiva]);
 
   // Sincronizar contagem global
   useEffect(() => {
@@ -563,6 +583,7 @@ export default function MapScraperView({
 
       tileLayerRef.current = tile;
       mapInstanceRef.current = map;
+      areasLayerRef.current = L.layerGroup().addTo(map);
       markersLayerRef.current = L.layerGroup().addTo(map);
 
       initialInvalidateTimer = window.setTimeout(() => {
@@ -585,6 +606,7 @@ export default function MapScraperView({
       mapInstanceRef.current = null;
       tileLayerRef.current = null;
       markersLayerRef.current = null;
+      areasLayerRef.current = null;
       userMarkerRef.current = null;
       markersMapRef.current.clear();
     };
@@ -642,6 +664,31 @@ export default function MapScraperView({
       userMarkerRef.current = marker;
     }
   }, [userLocation]);
+
+  // Áreas extraídas (cidades pintadas de azul). A da extração escolhida fica mais forte.
+  const areas = useMemo(() => areasExtraidas(searches, leads), [searches, leads]);
+  useEffect(() => {
+    const camada = areasLayerRef.current;
+    if (!camada) return undefined;
+    if (!mostrarAreas) { camada.clearLayers(); return undefined; }
+    let vivo = true;
+    desenhaAreas(camada, areas, {
+      destaque: buscaAtiva,
+      vivo: () => vivo,
+      aoClicar: (a) => setBuscaAtiva(a.id),
+    });
+    // Mapa limpo: mostra todas as áreas já extraídas, para escolher a próxima cidade.
+    if (buscaAtiva === MAPA_LIMPO && areas.length) {
+      try {
+        const limites = L.latLngBounds(areas.map((a) => [a.lat, a.lng]));
+        mapInstanceRef.current?.fitBounds(limites.pad(0.4), { maxZoom: 11 });
+      } catch {}
+    }
+    return () => { vivo = false; };
+  }, [areas, mostrarAreas, buscaAtiva, setBuscaAtiva]);
+  useEffect(() => {
+    try { localStorage.setItem('prospector_mostrar_areas', mostrarAreas ? '1' : '0'); } catch {}
+  }, [mostrarAreas]);
 
   // Renderizar Marcadores de Leads
   useEffect(() => {
@@ -1091,6 +1138,16 @@ export default function MapScraperView({
 
           <button
             type="button"
+            className={`btn btn-sm mb-areas${mostrarAreas ? ' on' : ''}`}
+            aria-pressed={mostrarAreas}
+            title={mostrarAreas ? 'Esconder as áreas já extraídas' : 'Mostrar as áreas já extraídas'}
+            onClick={() => setMostrarAreas((v) => !v)}
+          >
+            <span className="mb-areas-amostra" aria-hidden="true" /> Áreas extraídas{areas.length ? ` (${areas.length})` : ''}
+          </button>
+
+          <button
+            type="button"
             className="icon-btn"
             id="locBtn"
             title="Minha localização"
@@ -1371,18 +1428,15 @@ export default function MapScraperView({
         </div>
 
         {/* Popover de Filtros da Lista */}
-        {searches.length > 0 && (
-          <div className="feed-busca">
-            <label htmlFor="feedBusca">Busca</label>
-            <select id="feedBusca" value={buscaAtiva} onChange={(e) => setBuscaAtiva(e.target.value)}>
-              <option value="">Todas as buscas ({leads.length})</option>
-              {searches.map((s) => (
-                <option key={s.id} value={String(s.id)}>
-                  {(s.label || s.query || 'Busca').replace(/ · /g, ', ')} ({leadsPorBusca.get(String(s.id)) || 0})
-                </option>
-              ))}
-            </select>
-          </div>
+        {(searches.length > 0 || activeExtraction?.id) && (
+          <SeletorExtracao
+            buscas={searches}
+            valor={buscaAtiva}
+            onEscolher={setBuscaAtiva}
+            leadsPorBusca={leadsPorBusca}
+            totalLeads={leads.length}
+            emAndamento={activeExtraction?.id ? { id: String(activeExtraction.id), rotulo: activeExtraction.rotulo || activeExtraction.query } : null}
+          />
         )}
 
         {isListPopOpen && (
@@ -1476,7 +1530,7 @@ export default function MapScraperView({
           />
         )}
 
-        <div id="feedCount" role="status">
+        <div id="feedCount" role="status" hidden={!leadsDoRecorte.length}>
           <CabecalhoRegiao
             titulo={regiao.titulo}
             cidadeFoto={regiao.cidadeFoto}
@@ -1496,7 +1550,23 @@ export default function MapScraperView({
 
         {/* Lista de Lead Cards */}
         <div className="feed-list" id="feedList">
-          {visibleLeads.length === 0 ? (
+          {visibleLeads.length === 0 && activeExtraction?.id && buscaAtiva === String(activeExtraction.id) ? (
+            <div className="empty">
+              <div className="e-icon"><Loader2 size={20} strokeWidth={2} className="cfg-girando" /></div>
+              <b style={{ color: 'var(--fg)' }}>Extraindo {activeExtraction.rotulo || activeExtraction.query}</b>
+              <span>Os leads novos aparecem aqui quando a extração terminar. As áreas em azul no mapa já foram extraídas antes.</span>
+            </div>
+          ) : visibleLeads.length === 0 && buscaAtiva === MAPA_LIMPO ? (
+            <div className="empty">
+              <div className="e-icon"><Eraser size={20} strokeWidth={2} /></div>
+              <b style={{ color: 'var(--fg)' }}>Mapa limpo</b>
+              <span>As áreas em azul são as que você já extraiu. Escolha uma cidade fora delas para a próxima extração.</span>
+              <div className="empty-acoes">
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => onOpenNewExtraction?.()}>Nova extração</button>
+                <button type="button" className="btn btn-sm" onClick={() => setBuscaAtiva('')}>Ver todas as extrações</button>
+              </div>
+            </div>
+          ) : visibleLeads.length === 0 ? (
             <div className="empty">
               <div className="e-icon">○</div>
               <b style={{ color: 'var(--fg)' }}>Nada por aqui</b>

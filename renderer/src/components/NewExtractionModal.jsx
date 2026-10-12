@@ -1,11 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, MapPinned, Loader, Search } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X, MapPinned, Loader, Search, CircleCheck } from 'lucide-react';
 import MapaPreviaLocal from './MapaPreviaLocal';
 import MapaRaio from './MapaRaio';
 import Bandeira from './Bandeira';
 import {
   lerLocalColado, paisDaCoordenada, paisDoTexto, buscaLocais, localDoPonto, ROTULO_TIPO, ROTULO_PAIS,
 } from '../localBusca';
+import { areasExtraidas, jaExtraida, chaveNicho, chaveLugar } from '../cobertura';
+import { poligonoDoLugar } from '../poligonos';
+import { readLocalArray } from '../leadData';
+
+function dataCurta(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 const NICHOS_BR = [
   'Dentistas', 'Clínica odontológica', 'Ortodontista', 'Odontologia', 'Aparelho ortodôntico',
@@ -177,6 +186,11 @@ export default function NewExtractionModal({
   const carViewRef = useRef(null);
   const pedidoRef = useRef(null);
 
+  // O que já foi extraído (lido ao abrir) e a escolha de repetir mesmo assim.
+  const [areas, setAreas] = useState([]);
+  const [repetir, setRepetir] = useState(false);
+  const [contorno, setContorno] = useState(null);
+
   useEffect(() => {
     if (isOpen) {
       setStep(1);
@@ -189,8 +203,28 @@ export default function NewExtractionModal({
       setRaio('inteiro');
       setBairroInput('');
       setBairros([]);
+      setRepetir(false);
+      setContorno(null);
+      setAreas(areasExtraidas(readLocalArray('sigma_searches'), readLocalArray('sigma_leads')));
     }
   }, [isOpen]);
+
+  // Contorno da cidade escolhida, para ver no mapa exatamente o que vai ser extraído.
+  useEffect(() => {
+    setContorno(null);
+    if (!local || !['cidade', 'bairro', 'estado'].includes(local.tipo)) return undefined;
+    let vivo = true;
+    poligonoDoLugar(local, chaveLugar(local)).then((geo) => { if (vivo) setContorno(geo); });
+    return () => { vivo = false; };
+  }, [local]);
+
+  // Trocou o nicho, o lugar ou a área: a confirmação de repetir não vale mais.
+  useEffect(() => setRepetir(false), [nicho, local, raio]);
+
+  const areasDoNicho = useMemo(
+    () => areas.filter((a) => chaveNicho(a.nicho) === chaveNicho(nicho)),
+    [areas, nicho],
+  );
 
   // Sugestões do mapa, com espera curta para não consultar a cada letra.
   useEffect(() => {
@@ -223,6 +257,8 @@ export default function NewExtractionModal({
     && !/brasil|brazil/i.test(nicho);
   const avisoIdioma = pais === 'US' && nichoEmPortugues;
   const rotuloInteiro = local?.tipo === 'estado' ? 'Estado inteiro' : local?.tipo === 'bairro' ? 'Bairro inteiro' : 'Cidade inteira';
+  const jaFeita = jaExtraida(areas, nicho, local, raioKm);
+  const bloqueadaPorRepeticao = Boolean(jaFeita && !repetir);
 
   const wzTitles = {
     1: 'Qual nicho você quer pesquisar?',
@@ -283,7 +319,7 @@ export default function NewExtractionModal({
       const achados = await buscaLocais(`${item.nome}, ${item.uf}, ${item.pais === 'US' ? 'USA' : 'Brasil'}`);
       if (pedidoRef.current !== pedido) return;
       const melhor = achados.find((a) => a.pais === item.pais) || achados[0];
-      escolheLocal(melhor ? { ...item, lat: melhor.lat, lng: melhor.lng } : item);
+      escolheLocal(melhor ? { ...item, lat: melhor.lat, lng: melhor.lng, chave: melhor.chave } : item);
     } catch {
       escolheLocal(item);
     } finally {
@@ -417,6 +453,7 @@ export default function NewExtractionModal({
         setErroLocal('Para buscar por raio, escolha um local da lista ou cole um ponto.');
         return;
       }
+      if (bloqueadaPorRepeticao) return;
       setStep(3);
       return;
     }
@@ -431,6 +468,7 @@ export default function NewExtractionModal({
       limit: 1000,
       area: usaRaio ? { lat: local.lat, lng: local.lng, raioKm } : null,
       localLabel: rotuloDoLocal(local) || busca.trim(),
+      local,
     });
     onClose();
   };
@@ -550,7 +588,9 @@ export default function NewExtractionModal({
                               <span>{s.nome}</span>
                               {s.detalhe && <small>{s.detalhe}</small>}
                             </span>
-                            <span className="t">{ROTULO_TIPO[s.tipo]}</span>
+                            {jaExtraida(areas, nicho, s)
+                              ? <span className="t ac-extraida"><CircleCheck size={12} strokeWidth={2.2} aria-hidden="true" /> Extraída</span>
+                              : <span className="t">{ROTULO_TIPO[s.tipo]}</span>}
                           </button>
                         ))}
                       </div>
@@ -583,18 +623,36 @@ export default function NewExtractionModal({
                   </div>
                 )}
 
+                {jaFeita && (
+                  <div className={`ja-extraida${repetir ? ' ok' : ''}`} role="status">
+                    <CircleCheck size={16} strokeWidth={2} aria-hidden="true" />
+                    <div>
+                      <b>Já extraído aqui</b>
+                      <span>
+                        {jaFeita.nicho} · {jaFeita.rotulo || rotuloDoLocal(local)} em {dataCurta(jaFeita.ts)}, {jaFeita.leads} lead{jaFeita.leads === 1 ? '' : 's'}.
+                        {' '}Escolha outra cidade para continuar mapeando a região.
+                      </span>
+                      <label className="ja-extraida-repetir">
+                        <input type="checkbox" checked={repetir} onChange={(e) => setRepetir(e.target.checked)} />
+                        Extrair de novo mesmo assim (só entra o que for novo)
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 <div className="field" style={{ marginTop: 14 }}>
                   <label>Área da busca</label>
                   <div className="wz-raios" role="group" aria-label="Área da busca">
                     <button
                       type="button"
-                      className={`chip${raio === 'inteiro' ? ' on' : ''}`}
+                      className={`chip chip-inteiro${raio === 'inteiro' ? ' on' : ''}`}
                       aria-pressed={raio === 'inteiro'}
                       disabled={!podeInteiro}
                       onClick={() => setRaio('inteiro')}
                     >
                       {rotuloInteiro}
                     </button>
+                    <span className="wz-raios-ou">ou raio</span>
                     {RAIOS.map((km) => (
                       <button
                         key={km}
@@ -609,15 +667,21 @@ export default function NewExtractionModal({
                   </div>
                   <span className="cfg-dica">
                     {raioKm
-                      ? `Busca em volta do ponto e descarta o que ficar a mais de ${raioKm} km.`
+                      ? `Busca em volta do ponto e descarta o que ficar a mais de ${raioKm} km. Prefira a cidade inteira: ela fica marcada em azul e não se repete.`
                       : dividePorBairro
-                        ? 'Busca pelo nome do lugar. Na próxima etapa dá para dividir a cidade por bairros.'
-                        : 'Busca pelo nome do lugar.'}
+                        ? 'Recomendado: extrai a cidade inteira, que fica pintada de azul no mapa. Assim você vai mapeando cidade por cidade, sem repetir.'
+                        : 'Busca pelo nome do lugar inteiro, que fica pintado de azul depois.'}
                   </span>
                 </div>
               </div>
 
-              <MapaRaio local={Number.isFinite(local?.lat) ? local : null} raioKm={raioKm} onClique={escolheNoMapa} />
+              <MapaRaio
+                local={Number.isFinite(local?.lat) ? local : null}
+                raioKm={raioKm}
+                onClique={escolheNoMapa}
+                areas={areasDoNicho}
+                contorno={raioKm ? null : contorno}
+              />
             </div>
           )}
 
@@ -715,7 +779,7 @@ export default function NewExtractionModal({
                     : 'Confira e clique em Iniciar extração.'}
                 </span>
               </div>
-              <MapaRaio local={Number.isFinite(local?.lat) ? local : null} raioKm={raioKm} />
+              <MapaRaio local={Number.isFinite(local?.lat) ? local : null} raioKm={raioKm} areas={areasDoNicho} contorno={raioKm ? null : contorno} />
             </div>
           )}
         </div>
@@ -730,7 +794,7 @@ export default function NewExtractionModal({
               Voltar
             </button>
           )}
-          <button type="button" className="btn btn-primary" disabled={isProcessing || (step === 2 && localizando)} onClick={handleNext}>
+          <button type="button" className="btn btn-primary" disabled={isProcessing || (step === 2 && (localizando || bloqueadaPorRepeticao))} onClick={handleNext}>
             {isProcessing ? 'Extração em andamento…' : (step === 3 ? 'Iniciar extração' : 'Continuar')}
           </button>
         </div>

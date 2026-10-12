@@ -40,6 +40,7 @@ import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData
 import { mascaraTelefone } from './telefone';
 import IconePng from './components/IconePng';
 import { iniciarSincronizacao, lerSessao, lerEmpresa } from './nuvem';
+import { separaNovos } from './cobertura';
 import { ehWeb } from './ambiente';
 import EntradaWeb from './components/EntradaWeb';
 import SoNoComputador from './components/SoNoComputador';
@@ -257,7 +258,7 @@ function AppInner() {
   const handleMaximize = () => window.electronAPI?.winMaximize();
   const handleClose = () => window.electronAPI?.winClose();
 
-  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '' }) => {
+  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '', local: localEscolhido = null }) => {
     if (ehWeb) {
       addNotification({
         type: 'info',
@@ -295,7 +296,7 @@ function AppInner() {
       return;
     }
 
-    setActiveExtraction({ id: searchId, query: qstr, pais, startedAt: Date.now() });
+    setActiveExtraction({ id: searchId, query: qstr, rotulo: `${niche} · ${ondeTexto}`, pais, startedAt: Date.now() });
     try {
       // Dois ou mais bairros: uma busca por bairro, somadas no processo principal.
       const divisao = bairros.length > 1 ? { nicho: niche, cidade: city, areas: bairros } : null;
@@ -310,9 +311,11 @@ function AppInner() {
       const resultLeads = Array.isArray(res.data) ? res.data : [];
       if (!resultLeads.length) throw new Error('A busca foi concluída, mas não retornou leads válidos.');
 
+      // O que já está na base não entra de novo: fica na extração em que apareceu primeiro.
       const current = readLocalArray('sigma_leads');
+      const { novos, repetidos } = separaNovos(resultLeads, current);
       const combined = normalizeLeadCollection([
-        ...resultLeads.map((lead) => ({ ...lead, searchId, pais, id: lead.id || Math.random().toString(36).slice(2) })),
+        ...novos.map((lead) => ({ ...lead, searchId, pais, id: lead.id || Math.random().toString(36).slice(2) })),
         ...current,
       ]);
       const currentSearches = readLocalArray('sigma_searches');
@@ -325,6 +328,23 @@ function AppInner() {
           source: 'maps',
           pais,
           timestamp: Date.now(),
+          // Onde foi, para pintar a área de azul e não extrair o mesmo lugar de novo.
+          nicho: niche,
+          encontrados: resultLeads.length,
+          repetidos,
+          area: localEscolhido && Number.isFinite(Number(localEscolhido.lat)) ? {
+            tipo: area ? 'raio' : localEscolhido.tipo,
+            nome: localEscolhido.nome || '',
+            cidade: localEscolhido.cidade || '',
+            uf: localEscolhido.uf || '',
+            pais,
+            lat: area ? area.lat : Number(localEscolhido.lat),
+            lng: area ? area.lng : Number(localEscolhido.lng),
+            raioKm: area ? area.raioKm : null,
+            chave: localEscolhido.chave || '',
+            bairros: bairros.length ? bairros : undefined,
+            rotulo: ondeTexto,
+          } : null,
         },
       ];
       localStorage.setItem('sigma_leads', JSON.stringify(combined));
@@ -337,9 +357,11 @@ function AppInner() {
         type: res.partial ? 'info' : 'success',
         category: 'scraper',
         title: res.partial ? 'Extração concluída parcialmente' : 'Extração concluída',
-        message: res.partial && res.warnings?.length
-          ? `${resultLeads.length} leads adicionados. ${res.warnings[0]}`
-          : `${resultLeads.length} leads adicionados!`,
+        message: [
+          `${novos.length} lead${novos.length === 1 ? '' : 's'} novo${novos.length === 1 ? '' : 's'}`,
+          repetidos ? `${repetidos} já estava${repetidos === 1 ? '' : 'm'} na base` : '',
+          res.partial && res.warnings?.length ? res.warnings[0] : '',
+        ].filter(Boolean).join('. ') + '.',
       });
     } catch (err) {
       addNotification({
