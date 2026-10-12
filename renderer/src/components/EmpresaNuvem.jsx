@@ -8,6 +8,7 @@ import {
   empresasDoLogin, usarEmpresa, CHAVES_SINCRONIZADAS, definirLogo, lerLogoLembrada, lembrarLogo,
 } from '../nuvem';
 import LogoGrow from './LogoGrow';
+import BaixarApp from './BaixarApp';
 
 /**
  * Empresa e sincronização: login, empresa com código (número de série) e
@@ -354,6 +355,7 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
               </button>
             </div>
             <span className="cfg-dica">Para ligar outro computador: abra o Prospector nele, entre com o mesmo login e digite este código. Guarde-o como uma senha.</span>
+            <div className="en-baixar"><BaixarApp className="btn btn-ghost en-btn" rotulo="Baixar o app para outro computador" /></div>
           </div>
 
           <div className={`en-estado${estado.erro ? ' erro' : ''}`}>

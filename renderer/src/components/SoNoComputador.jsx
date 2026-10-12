@@ -1,5 +1,6 @@
 import React from 'react';
 import { Monitor, ClipboardList } from 'lucide-react';
+import BaixarApp from './BaixarApp';
 
 /** Aviso da versão web para o que só roda no app do computador. */
 const TEXTOS = {
@@ -25,7 +26,8 @@ export default function SoNoComputador({ recurso, onNavigate }) {
         <span className="sc-vazio-icone"><Monitor size={26} strokeWidth={1.75} /></span>
         <b>{t.titulo}</b>
         <span>{t.texto}</span>
-        <button type="button" className="btn btn-primary sc-vazio-btn" onClick={() => onNavigate?.('scraper')}>
+        <BaixarApp className="btn btn-primary sc-vazio-btn" />
+        <button type="button" className="btn btn-ghost sc-vazio-btn" onClick={() => onNavigate?.('scraper')}>
           <ClipboardList size={15} strokeWidth={2} /> Ir para a Fila do dia
         </button>
       </div>

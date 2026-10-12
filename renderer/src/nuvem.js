@@ -382,3 +382,15 @@ export function iniciarSincronizacao(aoMudar) {
     window.__prospectorNuvem = false;
   };
 }
+
+/**
+ * Links de download do app para Windows. Ficam no banco (não no código, que é
+ * público) e só quem é membro de uma empresa consegue ler.
+ * @returns {Promise<{id: string, rotulo: string, url: string, versao: string|null}[]>}
+ */
+export async function linksDeDownload() {
+  if (!lerSessao()) return [];
+  const token = await tokenValido();
+  const lista = await chamar('/rest/v1/prospector_downloads?select=id,rotulo,url,versao&order=id', { token });
+  return Array.isArray(lista) ? lista : [];
+}
