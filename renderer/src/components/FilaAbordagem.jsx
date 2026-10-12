@@ -9,6 +9,7 @@ import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
 import Bandeira from './Bandeira';
 import { publicoDoLead } from '../resultados';
+import { ehWeb } from '../ambiente';
 
 /**
  * Fila do dia: leads qualificados com a primeira mensagem já escrita.
@@ -167,7 +168,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
 
   const abre = async (item) => {
     const numero = digitosWhatsApp(item.q.canais.whatsapp, item.lead.pais);
-    const url = linkWhatsApp(numero, textoDe(item), cfg.abrirEm);
+    const url = linkWhatsApp(numero, textoDe(item), ehWeb ? 'wame' : cfg.abrirEm);
     setAviso('');
     setAbertos((a) => ({ ...a, [item.chave]: true }));
     if (window.electronAPI?.openExternal) {
@@ -214,7 +215,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
       setAviso('Coloque seu número nos ajustes para receber o teste.');
       return;
     }
-    const url = linkWhatsApp(numero, textoDe(item), cfg.abrirEm);
+    const url = linkWhatsApp(numero, textoDe(item), ehWeb ? 'wame' : cfg.abrirEm);
     if (window.electronAPI?.openExternal) await window.electronAPI.openExternal(url);
     else window.open(url, '_blank', 'noopener');
     setAviso('Abrindo a conversa com o seu número. Envie para ver como a mensagem chega.');
@@ -390,12 +391,14 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
             <label>Seu WhatsApp (teste)
               <input value={cfg.numeroTeste} onChange={muda('numeroTeste')} placeholder="Ex.: 27 99999-9999" autoComplete="off" inputMode="tel" />
             </label>
-            <label>Abrir em
-              <select value={cfg.abrirEm} onChange={muda('abrirEm')}>
-                <option value="web">WhatsApp Web</option>
-                <option value="app">Aplicativo do WhatsApp</option>
-              </select>
-            </label>
+            {!ehWeb && (
+              <label>Abrir em
+                <select value={cfg.abrirEm} onChange={muda('abrirEm')}>
+                  <option value="web">WhatsApp Web</option>
+                  <option value="app">Aplicativo do WhatsApp</option>
+                </select>
+              </label>
+            )}
           </div>
         )}
 

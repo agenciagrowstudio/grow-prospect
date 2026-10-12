@@ -356,9 +356,10 @@ export function partesWhatsApp(texto = '') {
 export function linkWhatsApp(digitos, texto, modo = 'web') {
   const d = String(digitos || '').replace(/\D/g, '');
   const t = encodeURIComponent(String(texto || ''));
-  return modo === 'app'
-    ? `whatsapp://send?phone=${d}&text=${t}`
-    : `https://web.whatsapp.com/send?phone=${d}&text=${t}`;
+  if (modo === 'app') return `whatsapp://send?phone=${d}&text=${t}`;
+  // wa.me: no celular abre o aplicativo; no navegador do PC abre o WhatsApp Web.
+  if (modo === 'wame') return `https://wa.me/${d}?text=${t}`;
+  return `https://web.whatsapp.com/send?phone=${d}&text=${t}`;
 }
 
 export function chaveDoDia(data = new Date()) {

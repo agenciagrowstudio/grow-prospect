@@ -22,7 +22,7 @@ function quandoFoi(ts) {
   return new Date(ts).toLocaleString('pt-BR');
 }
 
-export default function EmpresaNuvem() {
+export default function EmpresaNuvem({ onConectado, web = false }) {
   const [sessao, setSessao] = useState(() => lerSessao());
   const [empresa, setEmpresa] = useState(() => lerEmpresa());
   const [modo, setModo] = useState('entrar'); // entrar | criar
@@ -68,7 +68,8 @@ export default function EmpresaNuvem() {
   const conectado = (emp) => {
     setEmpresa(emp);
     setAviso({ ok: true, texto: `Conectado à empresa ${emp.nome}. Sincronizando os dados…` });
-    window.dispatchEvent(new Event('prospector:nuvem-agora'));
+    if (onConectado) onConectado(emp);
+    else window.dispatchEvent(new Event('prospector:nuvem-agora'));
   };
 
   const fazLogin = () => acao('login', async () => {
@@ -94,6 +95,7 @@ export default function EmpresaNuvem() {
     setEmpresa(null);
     setExistentes([]);
     setEstado({ ultima: null, erro: '' });
+    if (web) window.location.reload();
   });
 
   const copiaCodigo = async () => {
@@ -111,8 +113,9 @@ export default function EmpresaNuvem() {
         <div>
           <h2>Empresa e sincronização</h2>
           <p>
-            Conecte este computador à empresa para os leads, a Fila do dia e o histórico ficarem iguais em
-            todos os computadores. Sessão do WhatsApp, senha do Gmail e chave de IA ficam só em cada computador.
+            {web
+              ? 'Entre com o mesmo login do app do computador e o código da empresa para ver seus leads, a Fila do dia e os resultados.'
+              : 'Conecte este computador à empresa para os leads, a Fila do dia e o histórico ficarem iguais em todos os computadores. Sessão do WhatsApp, senha do Gmail e chave de IA ficam só em cada computador.'}
           </p>
         </div>
       </div>

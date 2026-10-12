@@ -39,7 +39,10 @@ import UpdateBanner from './components/UpdateBanner';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
 import { mascaraTelefone } from './telefone';
 import IconePng from './components/IconePng';
-import { iniciarSincronizacao } from './nuvem';
+import { iniciarSincronizacao, lerSessao, lerEmpresa } from './nuvem';
+import { ehWeb } from './ambiente';
+import EntradaWeb from './components/EntradaWeb';
+import SoNoComputador from './components/SoNoComputador';
 
 function organizeStoredLeads() {
   const raw = readLocalArray('sigma_leads');
@@ -224,6 +227,15 @@ function AppInner() {
   const handleClose = () => window.electronAPI?.winClose();
 
   const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '' }) => {
+    if (ehWeb) {
+      addNotification({
+        type: 'info',
+        category: 'scraper',
+        title: 'Extração roda no computador',
+        message: 'O robô do Google Maps fica no Prospector instalado no PC. Os leads extraídos lá aparecem aqui sozinhos.',
+      });
+      return;
+    }
     if (activeExtraction) {
       addNotification({
         type: 'info',
@@ -311,6 +323,9 @@ function AppInner() {
   };
 
   const renderContent = () => {
+    if (ehWeb && ['whatsapp', 'campaigns', 'email', 'kanban'].includes(activeTab)) {
+      return <SoNoComputador recurso={activeTab === 'campaigns' ? 'whatsapp' : activeTab} onNavigate={navigate} />;
+    }
     switch (activeTab) {
       case 'overview':
         return <Overview onNavigate={navigate} onNewExtraction={() => setIsNewExtractionOpen(true)} waStatus={waStatus} leadsCount={leadsCount} scoringCount={scoringCount} />;
@@ -388,6 +403,9 @@ function AppInner() {
         );
     }
   };
+
+  // Versão web sem login e empresa: primeiro conectar.
+  if (ehWeb && !(lerSessao() && lerEmpresa())) return <EntradaWeb />;
 
   return (
     <div className="app-layout-root">

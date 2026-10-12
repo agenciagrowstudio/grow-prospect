@@ -153,6 +153,8 @@ describe('primeira mensagem de abordagem', () => {
     await carrega();
     assert.equal(A.linkWhatsApp('+1 (407) 555-0101', 'Oi, tudo bem?'), 'https://web.whatsapp.com/send?phone=14075550101&text=Oi%2C%20tudo%20bem%3F');
     assert.equal(A.linkWhatsApp('5521999990000', 'Oi', 'app'), 'whatsapp://send?phone=5521999990000&text=Oi');
+    // versão web/celular: wa.me abre o aplicativo do próprio telefone
+    assert.equal(A.linkWhatsApp('5527998721786', 'Oi *Grow+*', 'wame'), 'https://wa.me/5527998721786?text=Oi%20*Grow%2B*');
     assert.match(A.chaveDoDia(new Date(2026, 9, 8)), /^2026-10-08$/);
   });
 });
