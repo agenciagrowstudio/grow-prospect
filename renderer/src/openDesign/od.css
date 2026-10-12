@@ -2015,3 +2015,14 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .app-sidebar .nav-item.active .nav-kbd{color:#fff;border-color:rgba(255,255,255,.55)}
 .app-sidebar .sidebar-release{color:#52525b}
 .app-sidebar .brand-name{color:#0a0a0a}
+
+/* Login: e-mail lembrado */
+.en-lembrado{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#fafafa}
+.en-avatar{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font-size:16px;font-weight:700}
+.en-lembrado-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.en-lembrado-txt small{font-size:11.5px;color:var(--muted)}
+.en-lembrado-txt b{font-size:14px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.en-trocar{flex:none;border:1px solid var(--border);border-radius:9px;background:#fff;padding:7px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--fg);cursor:pointer}
+.en-trocar:hover{background:#f4f4f4}
+.en-lembrar{display:flex!important;align-items:center;gap:8px;font-size:13px!important;font-weight:500!important;letter-spacing:0!important;text-transform:none!important;color:var(--fg)!important;cursor:pointer;user-select:none}
+.en-lembrar input{width:16px;height:16px;min-height:0;margin:0;accent-color:var(--accent);cursor:pointer}

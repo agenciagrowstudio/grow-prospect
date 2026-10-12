@@ -18,6 +18,12 @@ export function formataCodigo(valor) {
   return limpo.match(/.{1,4}/g)?.join('-') || '';
 }
 
+// Só o e-mail fica lembrado neste aparelho; a senha nunca é guardada.
+const CHAVE_LEMBRAR = 'prospector_lembrar_email';
+function emailLembrado() {
+  try { return localStorage.getItem(CHAVE_LEMBRAR) || ''; } catch { return ''; }
+}
+
 function quandoFoi(ts) {
   if (!ts) return 'ainda não sincronizou';
   const s = Math.round((Date.now() - ts) / 1000);
@@ -32,7 +38,10 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
   const [sessao, setSessao] = useState(() => lerSessao());
   const [empresa, setEmpresa] = useState(() => lerEmpresa());
   const [modo, setModo] = useState('entrar'); // entrar | criar
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => emailLembrado());
+  const [lembrar, setLembrar] = useState(() => Boolean(emailLembrado()));
+  // Com e-mail lembrado, o login mostra só a senha; "trocar" volta ao campo de e-mail.
+  const [trocandoEmail, setTrocandoEmail] = useState(() => !emailLembrado());
   const [senha, setSenha] = useState('');
   const [verSenha, setVerSenha] = useState(false);
   const [nomeEmpresa, setNomeEmpresa] = useState('Grow+');
@@ -97,6 +106,10 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
       setSessao(await entrar(email, senha));
     }
     setSenha('');
+    try {
+      if (lembrar) localStorage.setItem(CHAVE_LEMBRAR, email.trim());
+      else localStorage.removeItem(CHAVE_LEMBRAR);
+    } catch { /* sem armazenamento: só não lembra */ }
     onSessao?.();
   });
 
@@ -146,31 +159,45 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
         <div className="en-bloco">
           <div className="fa-idioma en-abas" role="tablist">
             <button type="button" className={modo === 'entrar' ? 'on' : ''} aria-pressed={modo === 'entrar'} onClick={() => setModo('entrar')}>Entrar</button>
-            <button type="button" className={modo === 'criar' ? 'on' : ''} aria-pressed={modo === 'criar'} onClick={() => setModo('criar')}>Criar conta</button>
+            <button type="button" className={modo === 'criar' ? 'on' : ''} aria-pressed={modo === 'criar'} onClick={() => { setModo('criar'); setTrocandoEmail(true); }}>Criar conta</button>
           </div>
-          <div className="email-grade">
+          {modo === 'entrar' && !trocandoEmail && email ? (
+            <div className="en-lembrado">
+              <span className="en-avatar" aria-hidden="true">{email.trim().charAt(0).toUpperCase()}</span>
+              <span className="en-lembrado-txt">
+                <small>Entrar como</small>
+                <b>{email}</b>
+              </span>
+              <button type="button" className="en-trocar" onClick={() => { setTrocandoEmail(true); setSenha(''); }}>Trocar</button>
+            </div>
+          ) : (
             <div className="field">
               <label htmlFor="enEmail">E-mail</label>
-              <input id="enEmail" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@growmaisoficial.com" />
+              <input id="enEmail" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@growmaisoficial.com" autoFocus={trocandoEmail && Boolean(emailLembrado())} />
             </div>
-            <div className="field">
-              <label htmlFor="enSenha">Senha</label>
-              <div className="cfg-chave">
-                <input
-                  id="enSenha"
-                  type={verSenha ? 'text' : 'password'}
-                  autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') fazLogin(); }}
-                  placeholder={modo === 'criar' ? 'mínimo 6 caracteres' : ''}
-                />
-                <button type="button" className="cfg-olho" onClick={() => setVerSenha((v) => !v)} aria-label={verSenha ? 'Esconder a senha' : 'Mostrar a senha'}>
-                  {verSenha ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
-                </button>
-              </div>
+          )}
+          <div className="field">
+            <label htmlFor="enSenha">Senha</label>
+            <div className="cfg-chave">
+              <input
+                id="enSenha"
+                type={verSenha ? 'text' : 'password'}
+                autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') fazLogin(); }}
+                placeholder={modo === 'criar' ? 'mínimo 6 caracteres' : 'sua senha'}
+                autoFocus={modo === 'entrar' && !trocandoEmail && Boolean(email)}
+              />
+              <button type="button" className="cfg-olho" onClick={() => setVerSenha((v) => !v)} aria-label={verSenha ? 'Esconder a senha' : 'Mostrar a senha'}>
+                {verSenha ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
+              </button>
             </div>
           </div>
+          <label className="en-lembrar">
+            <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} />
+            <span>Lembrar meu e-mail neste aparelho</span>
+          </label>
           <div className="cfg-acoes">
             <button type="button" className="btn btn-primary en-btn en-btn-cheio" onClick={fazLogin} disabled={!!ocupado}>
               {ocupado === 'login' ? <Loader size={15} className="cfg-girando" /> : <LogIn size={15} strokeWidth={2} />}
