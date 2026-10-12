@@ -12,8 +12,14 @@ import {
   Plus,
   Send,
   Users,
+  Thermometer,
+  Snowflake,
+  ClipboardList,
 } from 'lucide-react';
 import IconeNicho from './IconeNicho';
+import Bandeira from './Bandeira';
+import { qualificaLead, lerAnalisesSalvas } from '../qualificacaoLead';
+import { publicoDoLead, PUBLICOS_RESULTADO } from '../resultados';
 import GraficoArea, { construirSerie, totalSerie, variacaoSerie } from './GraficoArea';
 import {
   dedupeLeads,
@@ -339,6 +345,20 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
     ];
   }, [data]);
 
+  // De onde são os leads e quão quentes estão: o que decide a abordagem.
+  const perfil = useMemo(() => {
+    const lista = dedupeLeads(normalizeLeadCollection(readLocalArray('sigma_leads')));
+    const analises = lerAnalisesSalvas();
+    const pub = { br: 0, brus: 0, us: 0 };
+    const temp = { quente: 0, morno: 0, frio: 0 };
+    lista.forEach((l) => {
+      const p = publicoDoLead(l);
+      if (p) pub[p] += 1;
+      temp[qualificaLead(l, analises[l.id]).temperatura.id] += 1;
+    });
+    return { total: lista.length, pub, temp };
+  }, [data]);
+
   return (
     <div className="overview-view">
       <header className="ov-head">
@@ -368,6 +388,58 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
           </article>
         ))}
       </section>
+
+      {perfil.total > 0 && (
+        <section className="ov-perfil" aria-label="Perfil da base">
+          <article className="cfg-card rs-card">
+            <header className="rs-card-topo"><h2>Público</h2><span className="rs-fonte">{perfil.total} leads</span></header>
+            <ul className="ov-pub">
+              {PUBLICOS_RESULTADO.map((p) => {
+                const n = perfil.pub[p.id];
+                const pct = Math.round((n / perfil.total) * 100);
+                return (
+                  <li key={p.id}>
+                    <div className="ov-pub-topo">
+                      <span><Bandeira pais={p.pais} /> {p.nome}</span>
+                      <span><b>{n}</b> · {pct}%</span>
+                    </div>
+                    <div className="ov-pub-barra" aria-hidden="true"><i className={`ov-pub-${p.id}`} style={{ width: `${Math.max(n ? 3 : 0, pct)}%` }} /></div>
+                  </li>
+                );
+              })}
+            </ul>
+          </article>
+
+          <article className="cfg-card rs-card">
+            <header className="rs-card-topo">
+              <h2>Temperatura</h2>
+              <button type="button" className="btn btn-sm ov-fila" onClick={() => onNavigate?.('scraper')}>
+                <ClipboardList size={14} strokeWidth={2} /> Abrir Fila do dia
+              </button>
+            </header>
+            <div className="ov-temp-barra" aria-hidden="true">
+              {['quente', 'morno', 'frio'].map((t) => (perfil.temp[t]
+                ? <span key={t} className={`ov-temp-${t}`} style={{ width: `${(perfil.temp[t] / perfil.total) * 100}%` }} />
+                : null))}
+            </div>
+            <ul className="ov-temp-legenda">
+              {[
+                { id: 'quente', nome: 'Quentes', Icone: Flame, dica: 'abordar primeiro' },
+                { id: 'morno', nome: 'Mornos', Icone: Thermometer, dica: 'vale nutrir' },
+                { id: 'frio', nome: 'Frios', Icone: Snowflake, dica: 'baixa prioridade' },
+              ].map(({ id, nome, Icone, dica }) => (
+                <li key={id}>
+                  <span className={`ov-temp-icone ov-temp-${id}`}><Icone size={14} strokeWidth={2} /></span>
+                  <span className="ov-temp-txt"><b>{perfil.temp[id]}</b> {nome}<small>{dica}</small></span>
+                </li>
+              ))}
+            </ul>
+            <p className="rs-nota">
+              {perfil.temp.quente + perfil.temp.morno} leads quentes ou mornos para a primeira abordagem.
+            </p>
+          </article>
+        </section>
+      )}
 
       <section className="ov-chart" aria-label="Leads captados nos últimos 30 dias">
         <div className="ov-chart-head">
