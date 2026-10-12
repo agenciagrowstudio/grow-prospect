@@ -569,7 +569,7 @@ function AppInner() {
           </div>
         </main>
         <CommandPalette open={isCmdOpen} onClose={setIsCmdOpen} onNavigate={setActiveTab} onNewExtraction={() => setIsNewExtractionOpen(true)} />
-        <OnboardingTour onNavigate={setActiveTab} />
+        <OnboardingTour onNavigate={navigate} onNewExtraction={() => setIsNewExtractionOpen(true)} />
       </div>
 
       {/* New Extraction Modal */}

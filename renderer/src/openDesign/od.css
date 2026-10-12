@@ -1956,3 +1956,45 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .ew-marca span:not(.brand-icon-box){font-size:13px!important;line-height:1.15!important}
 .ew-marca .brand-icon-box{width:46px!important;height:46px!important}
 .ew-marca .brand-icon-box img{width:38px;height:38px}
+
+/* Tour de boas-vindas */
+.ob-fundo{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;padding:16px;background:rgba(15,23,42,.38);backdrop-filter:blur(2px)}
+.ob-card{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface,#fff);border:1px solid var(--border);border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,.22);animation:viewIn 200ms cubic-bezier(.16,1,.3,1)}
+.ob-topo{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
+.ob-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.ob-fechar{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--muted);cursor:pointer}
+.ob-fechar:hover{background:#fafafa;color:var(--fg)}
+.ob-etapas{list-style:none;margin:16px 20px 0;padding:0;display:flex;align-items:center}
+.ob-etapas li{display:flex;align-items:center;flex:1}
+.ob-etapas li:last-child{flex:none}
+.ob-etapas li:not(:last-child)::after{content:"";flex:1;height:2px;border-radius:1px;background:#e8e8e8;margin:0 8px}
+.ob-etapas li.feito:not(:last-child)::after{background:var(--pal-verde-forte)}
+.ob-etapas button{width:28px;height:28px;border:0;border-radius:50%;display:grid;place-items:center;background:#ececec;color:var(--fg);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;flex:none}
+.ob-etapas li.atual button{background:var(--accent);color:#fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,#fff)}
+.ob-etapas li.feito button{background:var(--pal-verde-forte);color:#fff}
+.ob-corpo{padding:22px 24px 6px;animation:ob-entra 220ms cubic-bezier(.16,1,.3,1)}
+@keyframes ob-entra{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.ob-icone{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;margin-bottom:14px}
+.ob-azul .ob-icone{background:color-mix(in srgb,var(--pal-azul) 14%,#fff);color:var(--pal-azul-forte)}
+.ob-amarelo .ob-icone{background:color-mix(in srgb,var(--pal-amarelo) 22%,#fff);color:#9a5b00}
+.ob-verde .ob-icone{background:color-mix(in srgb,var(--pal-verde) 15%,#fff);color:var(--pal-verde-forte)}
+.ob-roxo .ob-icone{background:color-mix(in srgb,var(--pal-roxo) 12%,#fff);color:var(--pal-roxo)}
+.ob-corpo h2{margin:0;font-family:var(--font-display);font-size:21px;font-weight:700;letter-spacing:-.4px;line-height:1.2;color:var(--fg)}
+.ob-corpo > p{margin:8px 0 0;font-size:14px;line-height:1.55;color:var(--muted)}
+.ob-pontos{list-style:none;margin:16px 0 0;padding:14px 16px;display:flex;flex-direction:column;gap:9px;border:1px solid var(--border);border-radius:12px;background:#fafafa}
+.ob-pontos li{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.4;color:var(--fg)}
+.ob-pontos svg{flex:none;margin-top:2px;color:var(--pal-verde-forte)}
+.ob-acao{display:inline-flex;align-items:center;gap:6px;margin-top:14px;height:38px;padding:0 14px;border:1px solid var(--border);border-radius:10px;background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:var(--fg);cursor:pointer}
+.ob-acao:hover{background:#fafafa;border-color:#cfcfcf}
+.ob-rodape{display:flex;align-items:center;gap:8px;padding:16px 24px 6px}
+.ob-espaco{flex:1}
+.ob-pular{border:0;background:transparent;padding:8px 4px;font:inherit;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer}
+.ob-pular:hover{color:var(--fg)}
+.ob-voltar,.ob-proximo{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 16px;border-radius:12px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.ob-voltar{border:1px solid var(--border);background:#fff;color:var(--fg)}
+.ob-voltar:hover{background:#fafafa}
+.ob-proximo{border:0;background:var(--accent);color:#fff;box-shadow:0 6px 16px -6px color-mix(in srgb,var(--accent) 60%,transparent)}
+.ob-proximo:hover{background:var(--accent-hover,var(--accent))}
+.ob-dica{margin:6px 0 0;padding:6px 24px 18px;text-align:center;font-size:12px;color:var(--muted)}
+.ob-dica kbd{font-family:var(--font-body);font-size:11.5px;font-weight:600;padding:2px 7px;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:#fafafa;color:var(--fg)}
+@media (max-width:480px){.ob-corpo{padding:18px 18px 4px}.ob-rodape{padding:14px 18px 4px;flex-wrap:wrap}.ob-dica{display:none}.ob-voltar,.ob-proximo{height:44px}}
