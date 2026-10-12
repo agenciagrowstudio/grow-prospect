@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   Cloud, CloudOff, Building2, KeyRound, Copy, Check, X, Loader, RefreshCw, LogOut, Eye, EyeOff, Plus, LogIn,
+  ImagePlus, Trash2,
 } from 'lucide-react';
 import {
   lerSessao, lerEmpresa, ultimaSincronizacao, criarConta, entrar, sair, criarEmpresa, entrarEmpresa,
-  empresasDoLogin, usarEmpresa, CHAVES_SINCRONIZADAS,
+  empresasDoLogin, usarEmpresa, CHAVES_SINCRONIZADAS, definirLogo, lerLogoLembrada, lembrarLogo,
 } from '../nuvem';
 import LogoGrow from './LogoGrow';
 
@@ -23,6 +24,32 @@ export function formataCodigo(valor) {
 const CHAVE_LEMBRAR = 'prospector_lembrar_email';
 function emailLembrado() {
   try { return localStorage.getItem(CHAVE_LEMBRAR) || ''; } catch { return ''; }
+}
+
+const LADO_LOGO = 160;
+function reduzLogo(arquivo) {
+  return new Promise((resolve, reject) => {
+    if (!arquivo || !/^image\//.test(arquivo.type)) { reject(new Error('Escolha uma imagem (PNG, JPG, WebP ou SVG).')); return; }
+    if (arquivo.size > 5 * 1024 * 1024) { reject(new Error('Imagem grande demais. Use uma de até 5 MB.')); return; }
+    const url = URL.createObjectURL(arquivo);
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, LADO_LOGO / Math.max(img.naturalWidth || LADO_LOGO, img.naturalHeight || LADO_LOGO));
+      const w = Math.max(1, Math.round((img.naturalWidth || LADO_LOGO) * escala));
+      const h = Math.max(1, Math.round((img.naturalHeight || LADO_LOGO) * escala));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      let dados = canvas.toDataURL('image/png');
+      if (dados.length > 280000) dados = canvas.toDataURL('image/webp', 0.9);
+      if (dados.length > 290000) { reject(new Error('Não consegui reduzir esta imagem. Tente outra.')); return; }
+      resolve(dados);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não consegui abrir esta imagem.')); };
+    img.src = url;
+  });
 }
 
 function quandoFoi(ts) {
@@ -59,8 +86,10 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
   useEffect(() => {
     const ouve = (e) => setEstado({ ultima: ultimaSincronizacao(), erro: e.detail?.ok ? '' : e.detail?.erro || '' });
     window.addEventListener('prospector:nuvem', ouve);
+    const empresaMudou = () => setEmpresa(lerEmpresa());
+    window.addEventListener('prospector:empresa', empresaMudou);
     const t = setInterval(() => setTique((n) => n + 1), 15000);
-    return () => { window.removeEventListener('prospector:nuvem', ouve); clearInterval(t); };
+    return () => { window.removeEventListener('prospector:nuvem', ouve); window.removeEventListener('prospector:empresa', empresaMudou); clearInterval(t); };
   }, []);
 
   // Logado e sem empresa neste computador: procura as que já são deste login.
@@ -109,7 +138,7 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
     setSenha('');
     try {
       if (lembrar) localStorage.setItem(CHAVE_LEMBRAR, email.trim());
-      else localStorage.removeItem(CHAVE_LEMBRAR);
+      else { localStorage.removeItem(CHAVE_LEMBRAR); lembrarLogo(null); }
     } catch { /* sem armazenamento: só não lembra */ }
     onSessao?.();
   });
@@ -164,7 +193,9 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
           </div>
           {modo === 'entrar' && !trocandoEmail && email ? (
             <div className="en-lembrado">
-              <span className="en-avatar" aria-hidden="true"><LogoGrow size={34} /></span>
+              <span className="en-avatar" aria-hidden="true">
+                {lerLogoLembrada() ? <img src={lerLogoLembrada()} alt="" /> : <LogoGrow size={34} />}
+              </span>
               <span className="en-lembrado-txt">
                 <small>Entrar como</small>
                 <b>{email}</b>
@@ -260,12 +291,55 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
       {sessao && empresa && (
         <div className="en-bloco">
           <div className="en-conectado">
-            <span className="em-conta-icone"><Building2 size={20} strokeWidth={1.75} /></span>
+            <span className={`em-conta-icone${empresa.logo ? ' en-com-logo' : ''}`}>
+              {empresa.logo ? <img src={empresa.logo} alt={`Logo da ${empresa.nome}`} /> : <Building2 size={20} strokeWidth={1.75} />}
+            </span>
             <div className="em-conta-info">
               <span className="em-conta-rotulo">Empresa conectada</span>
               <b>{empresa.nome}</b>
               <span className="en-sub">{sessao.usuario?.email}</span>
             </div>
+          </div>
+
+          <div className="en-logo">
+            <span className="en-logo-previa">
+              {empresa.logo ? <img src={empresa.logo} alt="" /> : <Building2 size={22} strokeWidth={1.75} />}
+            </span>
+            <div className="en-logo-txt">
+              <b>Logo da empresa</b>
+              <span>Aparece no login e nas Configurações de todos os computadores. PNG, JPG, WebP ou SVG.</span>
+            </div>
+            <label className={`btn btn-ghost en-btn${ocupado ? ' disabled' : ''}`}>
+              {ocupado === 'logo' ? <Loader size={15} className="cfg-girando" /> : <ImagePlus size={15} strokeWidth={2} />}
+              {empresa.logo ? 'Trocar' : 'Enviar logo'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                hidden
+                disabled={!!ocupado}
+                onChange={(e) => {
+                  const arquivo = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!arquivo) return;
+                  acao('logo', async () => {
+                    setEmpresa(await definirLogo(await reduzLogo(arquivo)));
+                    setAviso({ ok: true, texto: 'Logo da empresa atualizada.' });
+                  });
+                }}
+              />
+            </label>
+            {empresa.logo && (
+              <button
+                type="button"
+                className="sc-acao"
+                title="Remover a logo"
+                aria-label="Remover a logo"
+                disabled={!!ocupado}
+                onClick={() => acao('logo', async () => { setEmpresa(await definirLogo(null)); })}
+              >
+                <Trash2 size={15} strokeWidth={2} />
+              </button>
+            )}
           </div>
 
           <div className="en-codigo">

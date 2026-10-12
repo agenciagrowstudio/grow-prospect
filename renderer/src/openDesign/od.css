@@ -2028,3 +2028,15 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .en-lembrar input{width:16px;height:16px;min-height:0;margin:0;accent-color:var(--accent);cursor:pointer}
 .en-avatar{background:#fff;box-shadow:0 0 0 1px var(--border);overflow:hidden}
 .en-avatar img{width:34px;height:34px;object-fit:contain}
+
+/* Logo da empresa */
+.en-com-logo{background:#fff!important;box-shadow:0 0 0 1px var(--border);overflow:hidden}
+.en-com-logo img,.en-avatar img{width:100%;height:100%;object-fit:contain}
+.en-logo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px;border:1px solid var(--border);border-radius:12px;background:#fafafa}
+.en-logo-previa{width:52px;height:52px;flex:none;border-radius:12px;display:grid;place-items:center;background:#fff;border:1px solid var(--border);color:var(--muted);overflow:hidden}
+.en-logo-previa img{width:100%;height:100%;object-fit:contain}
+.en-logo-txt{flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px}
+.en-logo-txt b{font-size:13.5px;color:var(--fg)}
+.en-logo-txt span{font-size:12.5px;color:var(--muted);line-height:1.4}
+.en-logo label.btn{cursor:pointer}
+.en-logo label.btn.disabled{opacity:.45;pointer-events:none}

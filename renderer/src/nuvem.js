@@ -33,6 +33,8 @@ const CHAVE_SESSAO = 'prospector_nuvem_sessao';
 const CHAVE_EMPRESA = 'prospector_nuvem_empresa';
 const PREFIXO_BASE = 'prospector_nuvem_base:';
 const CHAVE_ULTIMA = 'prospector_nuvem_ultima';
+// Logo da empresa guardada no aparelho para aparecer no login, antes de entrar.
+const CHAVE_LOGO_LEMBRADA = 'prospector_lembrar_logo';
 
 /* ------------------------------------------------------------------ */
 /* Mescla em três vias (pura, testada)                                  */
@@ -116,6 +118,26 @@ export const lerSessao = () => lerJson(CHAVE_SESSAO) || null;
 export const lerEmpresa = () => lerJson(CHAVE_EMPRESA) || null;
 export const ultimaSincronizacao = () => lerJson(CHAVE_ULTIMA) || null;
 
+export function lerLogoLembrada() {
+  try { return armazem()?.getItem(CHAVE_LOGO_LEMBRADA) || ''; } catch { return ''; }
+}
+/** Guarda (ou apaga) a logo para o login, só se o e-mail também estiver lembrado. */
+export function lembrarLogo(logo) {
+  try {
+    const a = armazem();
+    if (!a) return;
+    if (logo && a.getItem('prospector_lembrar_email')) a.setItem(CHAVE_LOGO_LEMBRADA, logo);
+    else if (!logo) a.removeItem(CHAVE_LOGO_LEMBRADA);
+  } catch { /* sem espaço: o login mostra a logo do Prospector */ }
+}
+
+function guardaEmpresa(e) {
+  const empresa = { id: e.id, nome: e.nome, codigo: e.codigo, logo: e.logo || null };
+  gravarJson(CHAVE_EMPRESA, empresa);
+  lembrarLogo(empresa.logo);
+  return empresa;
+}
+
 /* ------------------------------------------------------------------ */
 /* Supabase por fetch                                                   */
 /* ------------------------------------------------------------------ */
@@ -150,6 +172,7 @@ function traduzErro(msg) {
   if (/password should be at least/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
   if (/rate limit/i.test(msg)) return 'Muitas tentativas. Espere um pouco e tente de novo.';
   if (/failed to fetch|network/i.test(msg)) return 'Sem conexão com a internet.';
+  if (/jwt|token is expired|invalid claim|refresh token/i.test(msg)) return 'Sua sessão expirou. Clique em Desconectar e entre de novo.';
   return msg;
 }
 
@@ -231,8 +254,7 @@ async function rpc(nome, args) {
   const r = await chamar(`/rest/v1/rpc/${nome}`, { metodo: 'POST', corpo: args, token });
   const empresa = Array.isArray(r) ? r[0] : r;
   if (!empresa?.id) throw new Error('Não foi possível conectar à empresa.');
-  gravarJson(CHAVE_EMPRESA, { id: empresa.id, nome: empresa.nome, codigo: empresa.codigo });
-  return lerEmpresa();
+  return guardaEmpresa(empresa);
 }
 
 export const criarEmpresa = (nome) => rpc('prospector_criar_empresa', { p_nome: nome });
@@ -241,10 +263,19 @@ export const entrarEmpresa = (codigo) => rpc('prospector_entrar_empresa', { p_co
 /** Empresa já ligada a este login (útil depois de entrar em outro computador). */
 export async function empresasDoLogin() {
   const token = await tokenValido();
-  return chamar('/rest/v1/prospector_empresas?select=id,nome,codigo&order=criado_em', { token });
+  return chamar('/rest/v1/prospector_empresas?select=id,nome,codigo,logo&order=criado_em', { token });
 }
 export function usarEmpresa(empresa) {
-  gravarJson(CHAVE_EMPRESA, { id: empresa.id, nome: empresa.nome, codigo: empresa.codigo });
+  return guardaEmpresa(empresa);
+}
+
+/** Troca a logo da empresa (data URL já reduzida) ou remove com null. */
+export async function definirLogo(logo) {
+  const empresa = lerEmpresa();
+  if (!empresa) throw new Error('Conecte a empresa primeiro.');
+  const token = await tokenValido();
+  await chamar('/rest/v1/rpc/prospector_definir_logo', { metodo: 'POST', corpo: { p_empresa: empresa.id, p_logo: logo }, token });
+  return guardaEmpresa({ ...empresa, logo });
 }
 
 /* ------------------------------------------------------------------ */
@@ -266,6 +297,13 @@ export function sincronizar() {
     const token = await tokenValido();
     const filtro = `empresa_id=eq.${empresa.id}`;
     const linhas = await chamar(`/rest/v1/prospector_dados?${filtro}&select=chave,valor,atualizado_em`, { token });
+    try {
+      const [atual] = await chamar(`/rest/v1/prospector_empresas?id=eq.${empresa.id}&select=id,nome,codigo,logo`, { token }) || [];
+      if (atual && (atual.logo !== (empresa.logo || null) || atual.nome !== empresa.nome)) {
+        guardaEmpresa(atual);
+        window.dispatchEvent(new CustomEvent('prospector:empresa', { detail: atual }));
+      }
+    } catch { /* sem a logo nova, segue com a guardada */ }
     const remotas = new Map((linhas || []).map((l) => [l.chave, l]));
     const mudouAqui = [];
     let enviadas = 0;
