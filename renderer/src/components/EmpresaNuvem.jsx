@@ -6,6 +6,7 @@ import {
   lerSessao, lerEmpresa, ultimaSincronizacao, criarConta, entrar, sair, criarEmpresa, entrarEmpresa,
   empresasDoLogin, usarEmpresa, CHAVES_SINCRONIZADAS,
 } from '../nuvem';
+import LogoGrow from './LogoGrow';
 
 /**
  * Empresa e sincronização: login, empresa com código (número de série) e
@@ -163,7 +164,7 @@ export default function EmpresaNuvem({ onConectado, onSessao, web = false }) {
           </div>
           {modo === 'entrar' && !trocandoEmail && email ? (
             <div className="en-lembrado">
-              <span className="en-avatar" aria-hidden="true">{email.trim().charAt(0).toUpperCase()}</span>
+              <span className="en-avatar" aria-hidden="true"><LogoGrow size={34} /></span>
               <span className="en-lembrado-txt">
                 <small>Entrar como</small>
                 <b>{email}</b>

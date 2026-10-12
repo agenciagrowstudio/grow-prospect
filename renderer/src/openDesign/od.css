@@ -2026,3 +2026,5 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .en-trocar:hover{background:#f4f4f4}
 .en-lembrar{display:flex!important;align-items:center;gap:8px;font-size:13px!important;font-weight:500!important;letter-spacing:0!important;text-transform:none!important;color:var(--fg)!important;cursor:pointer;user-select:none}
 .en-lembrar input{width:16px;height:16px;min-height:0;margin:0;accent-color:var(--accent);cursor:pointer}
+.en-avatar{background:#fff;box-shadow:0 0 0 1px var(--border);overflow:hidden}
+.en-avatar img{width:34px;height:34px;object-fit:contain}
