@@ -1998,3 +1998,8 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .ob-dica{margin:6px 0 0;padding:6px 24px 18px;text-align:center;font-size:12px;color:var(--muted)}
 .ob-dica kbd{font-family:var(--font-body);font-size:11.5px;font-weight:600;padding:2px 7px;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:#fafafa;color:var(--fg)}
 @media (max-width:480px){.ob-corpo{padding:18px 18px 4px}.ob-rodape{padding:14px 18px 4px;flex-wrap:wrap}.ob-dica{display:none}.ob-voltar,.ob-proximo{height:44px}}
+
+/* Marca do menu: "Prospector" e a versão na mesma linha */
+.app-sidebar .brand-text-col{flex-direction:row!important;align-items:center;gap:7px;min-width:0}
+.app-sidebar .brand-name{font-size:17px;line-height:1.1}
+.app-sidebar .brand-tag{display:inline-flex;align-items:center;height:18px;padding:0 7px;margin:2px 0 0;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:700;letter-spacing:.2px;text-transform:none}
