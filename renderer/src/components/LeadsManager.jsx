@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import GraficoArea, { construirSerie, lerExtracoes, totalSerie, variacaoSerie } from './GraficoArea';
 import AvatarLead from './AvatarLead';
 import IconeNicho from './IconeNicho';
 import {
-  Phone,
   Globe,
   Instagram,
   Mail,
@@ -12,18 +10,22 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageCircle,
-  Layers,
   Download,
   Filter,
   Columns,
   X,
   Check,
-  Tag,
-  Database,
   Send,
-  Clock,
-  TrendingUp,
-  TrendingDown
+  Reply,
+  Circle,
+  ChevronUp,
+  ChevronDown,
+  BarChart3,
+  AlignLeft,
+  List,
+  Brain,
+  Flag,
+  Users
 } from 'lucide-react';
 import { dedupeLeads, normalizeLeadCategory, normalizeLeadCollection, readLocalArray } from '../leadData';
 
@@ -135,12 +137,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
 
   // Period
   const [bPeriod, setBPeriod] = useState('all');
-  const [focoBase, setFocoBase] = useState(null);
+  const [mostraAnalise, setMostraAnalise] = useState(false);
 
   // Mesma origem de dado da Visao Geral: uma serie so, calculada num lugar so.
-  const serieBase = useMemo(() => construirSerie(lerExtracoes(), 30), [leads]);
-  const variacaoBase = useMemo(() => variacaoSerie(serieBase), [serieBase]);
-  const totalSerieBase = useMemo(() => totalSerie(serieBase), [serieBase]);
   const [bD0, setBD0] = useState('');
   const [bD1, setBD1] = useState('');
 
@@ -620,131 +619,154 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
 
   return (
     <div className="base-leads-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
-      <header className="ov-head">
-        <div className="ov-head-txt">
-          <h1 className="ov-title">Base de Leads</h1>
-          <p className="ov-sub tagline">Filtre, organize e exporte a sua base.</p>
+      <header className="page-head bl-topo">
+        <div>
+          <h1>Base de Leads</h1>
+          <p>
+            {filteredLeads.length < leads.length
+              ? `${filteredLeads.length} de ${leads.length} leads no filtro.`
+              : `${leads.length} leads. Filtre, organize em grupos e exporte.`}
+          </p>
+        </div>
+        <div className="bl-topo-acoes">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={qualificarComIA}
+            disabled={qualificando || !filteredLeads.length}
+            title="Reavalia os leads da lista atual, usando a IA só nos casos que as regras não resolvem"
+          >
+            <Brain size={15} strokeWidth={1.75} /> {qualificando ? 'Avaliando…' : 'Qualificar com IA'}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => setIsExportOpen(true)}>
+            <Download size={15} strokeWidth={2} /> Exportar
+          </button>
         </div>
       </header>
 
-      <section className="ov-kpis" aria-label="Resumo da base">
-        <article className="ov-kpi principal">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Leads na base</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><Database size={18} /></span>
-          </div>
-          <div className="ov-kpi-row"><span className="ov-kpi-val" id="bTotal">{filteredLeads.length}</span></div>
-          <div className="ov-kpi-foot" id="bCtx">
-            {filteredLeads.length < leads.length ? `de ${leads.length} na base` : 'leads na base'}
-          </div>
-        </article>
+      {/* Filtros rápidos: um clique filtra a tabela */}
+      <div className="bl-rapidos" role="group" aria-label="Filtros rápidos">
+        <button
+          type="button"
+          className={`bl-rapido${!bChans.length && !bSinalBr ? ' on' : ''}`}
+          onClick={() => { setBChans([]); setBSinalBr(''); }}
+          aria-pressed={!bChans.length && !bSinalBr}
+        >
+          <Users size={15} strokeWidth={2} /> Todos <b>{leads.length}</b>
+        </button>
+        {[
+          { ch: 'wa', nome: 'WhatsApp', Icone: MessageCircle, n: stats.withWa, cor: 'verde' },
+          { ch: 'mail', nome: 'E-mail', Icone: Mail, n: stats.withMail, cor: 'roxo' },
+          { ch: 'ig', nome: 'Instagram', Icone: Instagram, n: stats.withIg, cor: 'rosa' },
+          { ch: 'site', nome: 'Site', Icone: Globe, n: stats.withSite, cor: 'azul' },
+        ].map(({ ch, nome, Icone, n, cor }) => (
+          <button
+            key={ch}
+            type="button"
+            className={`bl-rapido bl-${cor}${bChans.includes(ch) ? ' on' : ''}`}
+            onClick={() => handleChannelToggle(ch)}
+            aria-pressed={bChans.includes(ch)}
+          >
+            <Icone size={15} strokeWidth={2} /> {nome} <b>{n}</b>
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`bl-rapido bl-amarelo${bSinalBr === 'alto' ? ' on' : ''}`}
+          onClick={() => setBSinalBr(bSinalBr === 'alto' ? '' : 'alto')}
+          aria-pressed={bSinalBr === 'alto'}
+          title="Leads com sinal brasileiro alto"
+        >
+          <Flag size={15} strokeWidth={2} /> Brasileiros <b>{filteredLeads.filter((l) => l?.sinalBr?.nivel === 'alto').length}</b>
+        </button>
+      </div>
 
-        <article className="ov-kpi">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Disparadas</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><Send size={18} /></span>
-          </div>
-          <div className="ov-kpi-row"><span className="ov-kpi-val" id="bSent">{stats.sent}</span></div>
-          <div className="ov-kpi-foot">mensagens enviadas</div>
-        </article>
+      {/* TOOLBAR */}
+      <div className="bbar" data-od-id="base-toolbar">
+        <div className="bsearch">
+          <Search size={15} style={{ color: 'var(--meta)' }} />
+          <input
+            id="baseSearch"
+            placeholder="Buscar empresa, telefone, Instagram, cidade…"
+            value={bq}
+            onChange={(e) => setBq(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
 
-        <article className="ov-kpi">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Taxa de resposta</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><MessageCircle size={18} /></span>
-          </div>
-          <div className="ov-kpi-row">
-            <span className="ov-kpi-val" id="bTaxa">{stats.taxa == null ? '—' : `${Math.round(stats.taxa * 100)}%`}</span>
-          </div>
-          <div className="ov-kpi-foot">de quem foi abordado</div>
-        </article>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setShowFilters(!showFilters)}
+          aria-expanded={showFilters}
+        >
+          <Filter size={14} /> Filtros {activeFiltersCount > 0 && <span>· {activeFiltersCount}</span>}
+        </button>
 
-        <article className="ov-kpi">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Tempo médio</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><Clock size={18} /></span>
-          </div>
-          <div className="ov-kpi-row"><span className="ov-kpi-val" id="bTempo">{fmtDur(stats.avgTime)}</span></div>
-          <div className="ov-kpi-foot">até a primeira resposta</div>
-        </article>
-      </section>
-
-      <section className="ov-chart" aria-label="Leads captados nos últimos 30 dias">
-        <div className="ov-chart-head">
-          <div>
-            <h3 className="ov-chart-title">Leads captados</h3>
-            <div className="ov-chart-val">
-              <span className="ov-chart-big">{totalSerieBase.toLocaleString('pt-BR')}</span>
-              {variacaoBase !== null ? (
-                <span className={`ov-delta${variacaoBase < 0 ? ' baixa' : ''}`}>
-                  {variacaoBase < 0 ? <TrendingDown size={13} /> : <TrendingUp size={13} />}
-                  {Math.abs(variacaoBase)}%
-                </span>
-              ) : null}
-              <span className="ov-chart-ctx">nos últimos 30 dias</span>
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setShowColPop(!showColPop)}
+            aria-expanded={showColPop}
+          >
+            <Columns size={14} /> Colunas
+          </button>
+          {showColPop && (
+            <div className="col-pop" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px', minWidth: '200px', boxShadow: 'var(--elev-raised)' }}>
+              {DEFAULT_COLS.map((c) => (
+                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '6px 8px', cursor: 'pointer', borderRadius: '6px' }}>
+                  <input
+                    type="checkbox"
+                    className="rowcheck"
+                    checked={visCols.includes(c.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setVisCols([...visCols, c.id]);
+                      } else {
+                        if (visCols.length <= 1) return;
+                        setVisCols(visCols.filter((x) => x !== c.id));
+                      }
+                    }}
+                  />
+                  <span>{c.label}</span>
+                </label>
+              ))}
             </div>
-          </div>
+          )}
         </div>
-        <GraficoArea id="grBase" pontos={serieBase} foco={focoBase} onFoco={setFocoBase} />
-      </section>
 
-      <section className="ov-cobertura" data-od-id="base-hero">
-        <div className="hero-contacts" data-od-id="base-channels">
-          <span className="hc" title="Com telefone">
-            <Phone size={17} /><b>{stats.withTel}</b>
+        <select
+          className="bl-periodo"
+          value={bPeriod}
+          onChange={(e) => setBPeriod(e.target.value)}
+          aria-label="Período"
+        >
+          <option value="all">Todo o período</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="15">Últimos 15 dias</option>
+          <option value="30">Últimos 30 dias</option>
+          <option value="custom">Personalizado</option>
+        </select>
+        {bPeriod === 'custom' && (
+          <span className="bl-datas">
+            <input type="date" value={bD0} onChange={(e) => setBD0(e.target.value)} aria-label="De" />
+            <input type="date" value={bD1} onChange={(e) => setBD1(e.target.value)} aria-label="Até" />
           </span>
-          <span className="hc" title="Com WhatsApp">
-            <MessageCircle size={17} /><b>{stats.withWa}</b>
-          </span>
-          <span className="hc" title="Com Instagram">
-            <Instagram size={17} /><b>{stats.withIg}</b>
-          </span>
-          <span className="hc" title="Com site">
-            <Globe size={17} /><b>{stats.withSite}</b>
-          </span>
-          <span className="hc" title="Com e-mail">
-            <Mail size={17} /><b>{stats.withMail}</b>
-          </span>
-          <span className="hc" title="Categorias na base">
-            <Tag size={17} /><b>{stats.categoriesCount}</b>
-          </span>
-          <span className="hc" title="Grupos de leads">
-            <Layers size={17} /><b>{stats.groupsCount}</b>
-          </span>
-          <span className="bperiod" style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <select
-              value={bPeriod}
-              onChange={(e) => setBPeriod(e.target.value)}
-              aria-label="Período"
-              style={{ background: 'var(--input-bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: '10px', minHeight: '40px', padding: '0 10px', fontSize: '12.5px' }}
-            >
-              <option value="all">Todo o período</option>
-              <option value="7">Últimos 7 dias</option>
-              <option value="15">Últimos 15 dias</option>
-              <option value="30">Últimos 30 dias</option>
-              <option value="custom">Personalizado</option>
-            </select>
-            {bPeriod === 'custom' && (
-              <span style={{ display: 'inline-flex', gap: '6px' }}>
-                <input
-                  type="date"
-                  value={bD0}
-                  onChange={(e) => setBD0(e.target.value)}
-                  style={{ background: 'var(--input-bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: '10px', minHeight: '40px', padding: '0 8px', fontSize: '12px', colorScheme: 'light' }}
-                />
-                <input
-                  type="date"
-                  value={bD1}
-                  onChange={(e) => setBD1(e.target.value)}
-                  style={{ background: 'var(--input-bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: '10px', minHeight: '40px', padding: '0 8px', fontSize: '12px', colorScheme: 'light' }}
-                />
-              </span>
-            )}
-          </span>
-        </div>
-      </section>
+        )}
 
-      {/* ANÁLISE DA BASE PANEL */}
+        <button
+          type="button"
+          className={`btn${mostraAnalise ? ' bl-on' : ''}`}
+          onClick={() => setMostraAnalise((v) => !v)}
+          aria-expanded={mostraAnalise}
+        >
+          <BarChart3 size={14} /> Análise
+        </button>
+      </div>
+
+      {/* ANÁLISE DA BASE PANEL (abre pelo botão Análise) */}
+      {mostraAnalise && (
       <div className="panel" data-od-id="base-chart">
         <div className="panel-head">
           <h3>Análise da base</h3>
@@ -754,24 +776,27 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
               aria-pressed={bMode === 'bars'}
               onClick={() => setBMode('bars')}
               title="Barras"
+              aria-label="Barras"
             >
-              ☰
+              <AlignLeft size={15} strokeWidth={2} />
             </button>
             <button
               type="button"
               aria-pressed={bMode === 'cols'}
               onClick={() => setBMode('cols')}
               title="Colunas"
+              aria-label="Colunas"
             >
-              ▮▮
+              <BarChart3 size={15} strokeWidth={2} />
             </button>
             <button
               type="button"
               aria-pressed={bMode === 'list'}
               onClick={() => setBMode('list')}
               title="Lista"
+              aria-label="Lista"
             >
-              ⋮
+              <List size={15} strokeWidth={2} />
             </button>
           </div>
         </div>
@@ -869,70 +894,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           )}
         </div>
       </div>
-
-      {/* TOOLBAR */}
-      <div className="bbar" data-od-id="base-toolbar">
-        <div className="bsearch">
-          <Search size={15} style={{ color: 'var(--meta)' }} />
-          <input
-            id="baseSearch"
-            placeholder="Buscar empresa, telefone, Instagram, cidade…"
-            value={bq}
-            onChange={(e) => setBq(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setShowFilters(!showFilters)}
-          aria-expanded={showFilters}
-        >
-          <Filter size={14} /> Filtros {activeFiltersCount > 0 && <span>· {activeFiltersCount}</span>}
-        </button>
-
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setShowColPop(!showColPop)}
-            aria-expanded={showColPop}
-          >
-            <Columns size={14} /> Colunas
-          </button>
-          {showColPop && (
-            <div className="col-pop" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, background: '#fff', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px', minWidth: '200px', boxShadow: 'var(--elev-raised)' }}>
-              {DEFAULT_COLS.map((c) => (
-                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '6px 8px', cursor: 'pointer', borderRadius: '6px' }}>
-                  <input
-                    type="checkbox"
-                    className="rowcheck"
-                    checked={visCols.includes(c.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setVisCols([...visCols, c.id]);
-                      } else {
-                        if (visCols.length <= 1) return;
-                        setVisCols(visCols.filter((x) => x !== c.id));
-                      }
-                    }}
-                  />
-                  <span>{c.label}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setIsExportOpen(true)}
-        >
-          <Download size={14} /> Exportar
-        </button>
-      </div>
+      )}
 
       {/* COLLAPSIBLE FILTERS PANEL */}
       {showFilters && (
@@ -985,19 +947,6 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                 <option key={g.id} value={g.id}>{g.name} ({g.members.length})</option>
               ))}
             </select>
-          </div>
-
-          <div className="field">
-            <label>Qualificar com IA</label>
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={qualificarComIA}
-              disabled={qualificando || !filteredLeads.length}
-              title="Reavalia os leads da lista atual, usando a IA só nos casos que as regras não resolvem"
-            >
-              {qualificando ? 'Avaliando…' : `Avaliar ${filteredLeads.length} lead(s)`}
-            </button>
           </div>
 
           <div className="field">
@@ -1100,7 +1049,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                     className={colId === 'av' ? 'num' : ''}
                   >
                     {col?.label}
-                    {isSorted && (bSort.dir === 1 ? ' ▲' : ' ▼')}
+                    {isSorted && (bSort.dir === 1
+                      ? <ChevronUp size={13} strokeWidth={2.25} className="bl-ordem" aria-label="crescente" />
+                      : <ChevronDown size={13} strokeWidth={2.25} className="bl-ordem" aria-label="decrescente" />)}
                   </th>
                 );
               })}
@@ -1159,7 +1110,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                               className={`st-ic ${st === 'resp' ? 'st-resp' : st === 'env' ? 'st-env' : 'st-novo'}`}
                               title={st === 'resp' ? 'Respondeu' : st === 'env' ? 'Mensagem enviada' : 'Ainda não contatado'}
                             >
-                              {st === 'resp' ? '↩' : st === 'env' ? '→' : '○'}
+                              {st === 'resp' ? <Reply size={13} strokeWidth={2.25} /> : st === 'env' ? <Send size={12} strokeWidth={2.25} /> : <Circle size={11} strokeWidth={2.25} />}
                             </span>
                           </td>
                         );
@@ -1178,8 +1129,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                                     type="button"
                                     onClick={() => removeLeadFromGroup(id, g.id)}
                                     title="Remover deste grupo"
+                                    aria-label={`Remover do grupo ${g.name}`}
                                   >
-                                    ×
+                                    <X size={11} strokeWidth={2.5} />
                                   </button>
                                 </span>
                               ))
@@ -1227,7 +1179,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
             disabled={bPage <= 1}
             aria-label="Página anterior"
           >
-            ←
+            <ChevronLeft size={15} strokeWidth={2} />
           </button>
           <span style={{ fontSize: '12.5px', color: 'var(--muted)' }}>
             Página {bPage} de {totalPages} · {filteredLeads.length} leads
@@ -1239,7 +1191,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
             disabled={bPage >= totalPages}
             aria-label="Próxima página"
           >
-            →
+            <ChevronRight size={15} strokeWidth={2} />
           </button>
         </div>
       </div>
