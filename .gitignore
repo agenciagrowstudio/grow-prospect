@@ -22,3 +22,4 @@ renderer/mr*.png
 *.lnk
 .vercel
 .env*
+!renderer/public/**/*.png

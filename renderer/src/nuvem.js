@@ -164,8 +164,14 @@ function guardaSessao(r) {
   return sessao;
 }
 
+// O link do e-mail de confirmação volta para a versão web, que já entra logada.
+export const URL_WEB = 'https://prospector.growmaisoficial.com';
+
 export async function criarConta(email, senha) {
-  const r = await chamar('/auth/v1/signup', { metodo: 'POST', corpo: { email: String(email).trim(), password: senha } });
+  const r = await chamar(`/auth/v1/signup?redirect_to=${encodeURIComponent(URL_WEB)}`, {
+    metodo: 'POST',
+    corpo: { email: String(email).trim(), password: senha },
+  });
   // Com confirmação de e-mail ligada, não vem sessão: a pessoa confirma e depois entra.
   if (r?.access_token) return { sessao: guardaSessao(r), precisaConfirmar: false };
   return { sessao: null, precisaConfirmar: true };
@@ -174,6 +180,34 @@ export async function criarConta(email, senha) {
 export async function entrar(email, senha) {
   const r = await chamar('/auth/v1/token?grant_type=password', { metodo: 'POST', corpo: { email: String(email).trim(), password: senha } });
   return guardaSessao(r);
+}
+
+/**
+ * Volta do link de confirmação: o Supabase devolve a sessão no endereço
+ * (#access_token=...&refresh_token=...) ou o erro (#error_description=...).
+ * @returns {Promise<null | {ok: true, email: string} | {ok: false, erro: string}>}
+ */
+export async function sessaoDoLinkDeConfirmacao() {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash.replace(/^#/, '');
+  if (!/(^|&)(access_token|error_description)=/.test(hash)) return null;
+  const p = new URLSearchParams(hash);
+  const limpa = () => window.history.replaceState(null, '', `${window.location.pathname}#overview`);
+  if (p.get('error_description')) {
+    limpa();
+    const msg = p.get('error_description').replace(/\+/g, ' ');
+    return { ok: false, erro: /expired|invalid/i.test(msg) ? 'O link de confirmação expirou ou já foi usado. Entre com e-mail e senha; se pedir confirmação de novo, crie a conta outra vez para receber um link novo.' : msg };
+  }
+  const token = p.get('access_token');
+  const usuario = await chamar('/auth/v1/user', { token });
+  guardaSessao({
+    access_token: token,
+    refresh_token: p.get('refresh_token'),
+    expires_in: p.get('expires_in'),
+    user: usuario,
+  });
+  limpa();
+  return { ok: true, email: usuario?.email || '' };
 }
 
 async function tokenValido() {

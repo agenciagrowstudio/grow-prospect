@@ -1908,3 +1908,51 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .ew-marca b{display:block;font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--fg)}
 .ew-marca span:not(.brand-icon-box){font-size:12.5px;color:var(--muted)}
 .ew-marca .brand-icon-box{width:40px;height:40px;display:grid;place-items:center;border-radius:12px}
+
+/* Entrada web em duas colunas */
+.ew-tela{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,560px);gap:48px;align-items:center;justify-content:center;padding:40px clamp(16px,5vw,72px);background:#fafafa}
+@media (max-width:960px){.ew-tela{grid-template-columns:1fr;gap:24px;padding:24px 16px;align-items:start}}
+.ew-lado{display:flex;flex-direction:column;gap:14px;max-width:460px;justify-self:end}
+@media (max-width:960px){.ew-lado{justify-self:stretch}}
+.ew-lado h1{margin:18px 0 0;font-family:var(--font-display);font-size:clamp(26px,3.4vw,36px);font-weight:700;letter-spacing:-.8px;line-height:1.12;color:var(--fg)}
+.ew-sub{margin:0;font-size:15px;line-height:1.55;color:var(--muted)}
+.ew-lista{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:14px}
+.ew-lista li{display:flex;gap:12px;align-items:flex-start}
+.ew-lista b{display:block;font-size:14px;color:var(--fg)}
+.ew-lista span:not(.ew-li-icone){display:block;font-size:13px;color:var(--muted);line-height:1.45}
+.ew-li-icone{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center}
+.ew-verde{background:color-mix(in srgb,var(--pal-verde) 15%,#fff);color:var(--pal-verde-forte)}
+.ew-azul{background:color-mix(in srgb,var(--pal-azul) 14%,#fff);color:var(--pal-azul-forte)}
+.ew-roxo{background:color-mix(in srgb,var(--pal-roxo) 12%,#fff);color:var(--pal-roxo)}
+@media (max-width:960px){.ew-lista,.ew-sub{display:none}.ew-lado h1{font-size:24px;margin-top:8px}}
+.ew-caixa{width:100%;max-width:560px}
+.ew-etapas{list-style:none;margin:0;padding:0;display:flex;gap:6px;align-items:center}
+.ew-etapas li{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted)}
+.ew-etapas li + li::before{content:"";width:28px;height:2px;border-radius:1px;background:#e4e4e4;margin-right:2px}
+.ew-etapa-n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:#ececec;color:var(--fg)}
+.ew-etapas li.atual{color:var(--fg)}
+.ew-etapas li.atual .ew-etapa-n{background:var(--accent);color:#fff}
+.ew-etapas li.feito .ew-etapa-n{background:var(--pal-verde-forte);color:#fff}
+.ew-etapas li.feito + li::before{background:var(--pal-verde-forte)}
+
+/* Cartão da empresa: botões e opções */
+.en-btn-cheio{width:100%;justify-content:center;height:44px}
+.en-card .btn:disabled,.en-card .btn-primary:disabled{opacity:.42;cursor:not-allowed;filter:none}
+.en-card .btn-primary:disabled{background:var(--action,#0a0a0a);color:#fff;border-color:var(--action,#0a0a0a)}
+.en-btn-borda{background:#fff;border:1px solid #d6d6d6;color:var(--fg)}
+.en-btn-borda:hover:not(:disabled){background:#fafafa;border-color:#c4c4c4}
+.en-opcao{background:#fff;gap:10px;padding:18px}
+.en-opcao h3{font-size:15px}
+.en-opcao-icone{width:36px;height:36px;border-radius:10px;display:grid;place-items:center}
+.en-azul{background:color-mix(in srgb,var(--pal-azul) 14%,#fff);color:var(--pal-azul-forte)}
+.en-verde{background:color-mix(in srgb,var(--pal-verde) 15%,#fff);color:var(--pal-verde-forte)}
+.en-codigo-input{width:100%}
+.en-logado{display:flex;align-items:center;gap:8px}
+.en-ponto{width:8px;height:8px;border-radius:50%;background:var(--pal-verde-forte)}
+/* Marca da entrada web: nome maior, linhas juntas */
+.ew-marca{gap:12px}
+.ew-marca > div{display:flex;flex-direction:column;gap:2px}
+.ew-marca b{font-size:26px!important;line-height:1!important;letter-spacing:-.6px!important}
+.ew-marca span:not(.brand-icon-box){font-size:13px!important;line-height:1.15!important}
+.ew-marca .brand-icon-box{width:46px!important;height:46px!important}
+.ew-marca .brand-icon-box img{width:38px;height:38px}

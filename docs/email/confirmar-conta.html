@@ -1,0 +1,99 @@
+<!--
+  Prospector 2.0: e-mail de confirmação de conta (Supabase Auth, "Confirm signup").
+  Assunto: Confirme seu e-mail para entrar no Prospector
+  Onde colar: Supabase > projeto growplus-shop > Authentication > Emails > Confirm signup.
+  Variáveis do Supabase: {{ .ConfirmationURL }} e {{ .Email }}.
+  Estilos em linha de propósito: Gmail e Outlook ignoram <style> em boa parte dos casos.
+-->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light only">
+  <title>Confirme seu e-mail</title>
+  <!-- Inter onde o cliente de e-mail aceita fonte externa (Apple Mail, iOS); nos outros, Helvetica/Arial. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+</head>
+<body style="margin:0;padding:0;background:#fafafa;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#fafafa;">
+    Falta um clique para entrar no Prospector e sincronizar seus leads.
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fafafa;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:520px;">
+
+          <!-- Marca -->
+          <tr>
+            <td style="padding:0 4px 20px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:12px;">
+                    <img src="https://prospector.growmaisoficial.com/email/logo.png" width="40" height="40" alt="Prospector" style="display:block;border:0;border-radius:10px;">
+                  </td>
+                  <td style="vertical-align:middle;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;">
+                    <div style="font-size:18px;font-weight:700;color:#12121a;letter-spacing:-0.3px;line-height:1.1;">Prospector</div>
+                    <div style="font-size:12px;color:#6b7280;line-height:1.4;">2.0 · Grow+</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Cartão -->
+          <tr>
+            <td style="background:#ffffff;border:1px solid #ebebeb;border-radius:16px;padding:32px 28px;">
+              <h1 style="margin:0 0 12px;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;line-height:1.25;color:#12121a;letter-spacing:-0.4px;">
+                Confirme seu e-mail
+              </h1>
+              <p style="margin:0 0 24px;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#3f3f46;">
+                Você criou uma conta no Prospector com <strong style="color:#12121a;">{{ .Email }}</strong>.
+                Confirme o endereço para entrar e manter seus leads, a Fila do dia e os resultados iguais em todos os computadores e no celular.
+              </p>
+
+              <!-- Botão -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
+                <tr>
+                  <td align="center" bgcolor="#0064E0" style="border-radius:10px;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank"
+                       style="display:inline-block;padding:14px 28px;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">
+                      Confirmar e entrar
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Próximo passo -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;background:#fafafa;border:1px solid #ebebeb;border-radius:12px;">
+                <tr>
+                  <td style="padding:14px 16px;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.55;color:#3f3f46;">
+                    <strong style="color:#12121a;">Depois de confirmar:</strong> no primeiro computador, crie a empresa em
+                    Configurações e guarde o código. Nos outros computadores e no celular, entre com este mesmo e-mail e digite o código.
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 6px;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.5;color:#6b7280;">
+                O botão não funcionou? Copie e cole este endereço no navegador:
+              </p>
+              <p style="margin:0;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:1.5;word-break:break-all;">
+                <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#0064E0;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Rodapé -->
+          <tr>
+            <td style="padding:20px 8px 0;font-family:Inter,'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.55;color:#8a8a8a;text-align:center;">
+              Não foi você que criou esta conta? Pode ignorar este e-mail: sem a confirmação, nada acontece.<br>
+              Prospector 2.0 · Grow+ · <a href="https://prospector.growmaisoficial.com" target="_blank" style="color:#8a8a8a;text-decoration:underline;">prospector.growmaisoficial.com</a>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
