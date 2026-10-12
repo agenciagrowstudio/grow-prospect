@@ -27,7 +27,7 @@ describe('primeira mensagem de abordagem', () => {
     assert.equal(r.angulo, 'site');
     assert.equal(r.idioma, 'pt', 'brasileiro nos EUA recebe em português');
     assert.match(r.texto, /Clean Co/);
-    assert.match(r.texto, /Alex aqui, da Grow\+/);
+    assert.match(r.texto, /Alex aqui, da \*Grow\+\*/);
     assert.match(r.texto, /\?/);
   });
 
@@ -82,10 +82,10 @@ describe('primeira mensagem de abordagem', () => {
     const lead = { ...semSite, id: 'm1', name: 'RL Brazilian Cleaning', city: 'Milford', uf: 'MA', category: 'House cleaning service' };
     const q = Q.qualificaLead(lead);
     const textos = [0, 1, 2, 3].map((v) => A.gerarAbordagem(lead, q, { nome: 'Matheus', empresa: 'Grow+' }, v).texto);
-    const alvo = 'empresas brasileiras de house cleaning em Milford, Massachusetts e encontrei a RL Brazilian Cleaning';
+    const alvo = 'empresas brasileiras de house cleaning em Milford, Massachusetts e encontrei a *RL Brazilian Cleaning*';
     assert.ok(textos.some((t) => t.includes(alvo)), textos.join('\n---\n'));
     for (const t of textos) {
-      assert.match(t, /Matheus aqui, da Grow\+/);
+      assert.match(t, /Matheus aqui, da \*Grow\+\*/);
       assert.match(t, /\n\n/, 'parágrafos separados como no WhatsApp');
       assert.doesNotMatch(t, / \n|\n /, 'espaço sobrando na quebra de linha');
     }
@@ -95,6 +95,31 @@ describe('primeira mensagem de abordagem', () => {
     assert.doesNotMatch(tBr, /🇺🇸|empresas brasileiras/);
     assert.equal(A.nichoDoLead({ category: 'Serviço de paisagismo' }, 'pt', true), 'landscaping');
     assert.equal(A.nichoDoLead({ category: 'General contractor' }, 'pt', true), 'construction');
+  });
+
+  it('formatação do WhatsApp: marca, empresa e nota em negrito, nota com estrela', async () => {
+    await carrega();
+    const lead = { ...semSite, id: 'f1', name: 'RL Brazilian Cleaning', city: 'Milford', uf: 'MA', rating: 4.9, reviews: 37 };
+    const q = Q.qualificaLead(lead);
+    const textos = [0, 1, 2, 3].map((v) => A.gerarAbordagem(lead, q, { nome: 'Matheus' }, v).texto);
+    for (const t of textos) {
+      assert.match(t, /\*Grow\+\*/);
+      assert.match(t, /\*RL Brazilian Cleaning\*/);
+    }
+    assert.ok(textos.some((t) => t.includes('nota *4,9* ⭐')), textos.join('\n---\n'));
+    // desligado, volta ao texto puro
+    const puro = A.gerarAbordagem(lead, q, { nome: 'Matheus', formatar: false }, 1).texto;
+    assert.doesNotMatch(puro, /\*|⭐/);
+    // prévia: separa o negrito como o WhatsApp mostra
+    assert.deepEqual(A.partesWhatsApp('Oi, *Grow+* e _hoje_.'), [
+      { texto: 'Oi, ', estilo: '' },
+      { texto: 'Grow+', estilo: 'negrito' },
+      { texto: ' e ', estilo: '' },
+      { texto: 'hoje', estilo: 'italico' },
+      { texto: '.', estilo: '' },
+    ]);
+    // asterisco solto não vira negrito
+    assert.deepEqual(A.partesWhatsApp('5 * 3 = 15'), [{ texto: '5 * 3 = 15', estilo: '' }]);
   });
 
   it('o link abre a conversa com o texto já na caixa, em Web ou no aplicativo', async () => {

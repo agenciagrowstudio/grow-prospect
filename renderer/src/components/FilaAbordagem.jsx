@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send,
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone,
 } from 'lucide-react';
-import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead } from '../abordagem';
+import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
 import Bandeira from './Bandeira';
@@ -53,8 +53,18 @@ function Temperatura({ q }) {
   );
 }
 
+// Mostra o texto como ele chega no WhatsApp: *negrito*, _itálico_, ~riscado~.
+const TAG_ESTILO = { negrito: 'strong', italico: 'em', riscado: 's' };
+function TextoWhatsApp({ texto }) {
+  return partesWhatsApp(texto).map((p, i) => {
+    const Tag = TAG_ESTILO[p.estilo];
+    // eslint-disable-next-line react/no-array-index-key
+    return Tag ? <Tag key={i}>{p.texto}</Tag> : <React.Fragment key={i}>{p.texto}</React.Fragment>;
+  });
+}
+
 export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFechar }) {
-  const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web' }));
+  const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web', numeroTeste: '' }));
   const [log, setLog] = useState(() => lerJson(CHAVE_LOG, {}));
   const [versoes, setVersoes] = useState({});
   const [editados, setEditados] = useState({});
@@ -63,6 +73,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
   const [aba, setAba] = useState('fila');
   const [selecionado, setSelecionado] = useState(null);
   const [abertos, setAbertos] = useState({});
+  const [editando, setEditando] = useState(null);
   // Ajustes começam abertos só enquanto falta o nome de quem assina.
   const [ajustesAbertos, setAjustesAbertos] = useState(() => !lerJson(CHAVE_CFG, { nome: '' }).nome);
   const hoje = chaveDoDia();
@@ -175,6 +186,19 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     setEditados((x) => { const { [chave]: _x, ...r } = x; return r; });
     setVersoes((v) => ({ ...v, [chave]: (v[chave] || 0) + 1 }));
   };
+  const testa = async (item) => {
+    const numero = digitosWhatsApp(cfg.numeroTeste, String(cfg.numeroTeste).trim().startsWith('+1') ? 'US' : 'BR');
+    if (!numero) {
+      setAjustesAbertos(true);
+      setAviso('Coloque seu número nos ajustes para receber o teste.');
+      return;
+    }
+    const url = linkWhatsApp(numero, textoDe(item), cfg.abrirEm);
+    if (window.electronAPI?.openExternal) await window.electronAPI.openExternal(url);
+    else window.open(url, '_blank', 'noopener');
+    setAviso('Abrindo a conversa com o seu número. Envie para ver como a mensagem chega.');
+  };
+
   const restaura = (chave) => setEditados((x) => { const { [chave]: _x, ...r } = x; return r; });
 
   const muda = (campo) => (e) => setCfg((c) => ({ ...c, [campo]: campo === 'limite' ? Number(e.target.value) : e.target.value }));
@@ -218,6 +242,15 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
                 <RotateCcw size={13} strokeWidth={2} aria-hidden="true" /> Desfazer edição
               </button>
             )}
+            <button
+              type="button"
+              className={`fa-mini${editando === chave ? ' fa-mini-forte' : ''}`}
+              // Sem isto, a caixa perde o foco antes do clique e o botão reabre a edição.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setEditando(editando === chave ? null : chave)}
+            >
+              <Pencil size={13} strokeWidth={2} aria-hidden="true" /> {editando === chave ? 'Ver como fica' : 'Editar'}
+            </button>
             <button type="button" className="fa-mini" onClick={() => outraVersao(chave)}>
               <RefreshCw size={13} strokeWidth={2} aria-hidden="true" /> Outra versão
             </button>
@@ -226,14 +259,31 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
             </button>
           </div>
           <div className="fa-balao-fundo">
-            <textarea
-              className="fa-balao"
-              value={texto}
-              onChange={(e) => setEditados((x) => ({ ...x, [chave]: e.target.value }))}
-              aria-label={`Mensagem para ${lead.name}`}
-              spellCheck
-            />
-            <span className="fa-contagem">{texto.length} caracteres</span>
+            {editando === chave ? (
+              <textarea
+                className="fa-balao"
+                value={texto}
+                onChange={(e) => setEditados((x) => ({ ...x, [chave]: e.target.value }))}
+                onBlur={() => setEditando(null)}
+                aria-label={`Mensagem para ${lead.name}`}
+                spellCheck
+                autoFocus
+              />
+            ) : (
+              <div
+                className="fa-balao fa-previa"
+                role="button"
+                tabIndex={0}
+                title="Clique para editar"
+                onClick={() => setEditando(chave)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setEditando(chave); } }}
+              >
+                <TextoWhatsApp texto={texto} />
+              </div>
+            )}
+            <span className="fa-contagem">
+              {editando === chave ? 'Negrito: *texto* · itálico: _texto_ · ' : ''}{texto.length} caracteres
+            </span>
           </div>
         </div>
 
@@ -246,6 +296,9 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
             <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
           </button>
           <span className="fa-espaco" />
+          <button type="button" className="fa-mini" onClick={() => testa(atual)} title={cfg.numeroTeste ? `Mandar esta mensagem para ${cfg.numeroTeste}` : 'Coloque seu número nos ajustes'}>
+            <Smartphone size={13} strokeWidth={2} aria-hidden="true" /> Testar no meu número
+          </button>
           <button type="button" className="fa-mini" onClick={() => marca(atual, 'sem_whatsapp')} title="O número não tem WhatsApp">
             <PhoneOff size={13} strokeWidth={2} aria-hidden="true" /> Sem WhatsApp
           </button>
@@ -307,6 +360,9 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
                 <option value="qualquer">O melhor de cada lead</option>
                 {ANGULOS.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
               </select>
+            </label>
+            <label>Seu WhatsApp (teste)
+              <input value={cfg.numeroTeste} onChange={muda('numeroTeste')} placeholder="Ex.: 27 99999-9999" autoComplete="off" inputMode="tel" />
             </label>
             <label>Abrir em
               <select value={cfg.abrirEm} onChange={muda('abrirEm')}>
@@ -380,7 +436,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
                   </div>
                   <span className={`mm-situacao ${e.status === 'respondeu' ? 'mm-aprovado' : 'mm-analise'}`}>{e.status === 'respondeu' ? 'Respondeu' : 'Aguardando'}</span>
                 </div>
-                {e.texto && <p className="fa-hist-texto">{e.texto}</p>}
+                {e.texto && <p className="fa-hist-texto"><TextoWhatsApp texto={e.texto} /></p>}
                 <div className="fa-hist-acoes">
                   {e.status === 'enviada' ? (
                     <button type="button" className="fa-mini fa-mini-forte" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'respondeu' } }))}>

@@ -1423,7 +1423,7 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 .fa-icone{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--fg-2,var(--fg));cursor:pointer}
 .fa-icone:hover{background:#fafafa}
 .fa-icone.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
-.fa-ajustes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:14px 24px;background:#fafafa;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.fa-ajustes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;padding:14px 24px;background:#fafafa;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
 .fa-ajustes label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--fg)}
 .fa-ajustes select,.fa-ajustes input{height:38px;border:1px solid var(--border);border-radius:9px;padding:0 10px;background:#fff;font:inherit;font-size:13.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--fg);min-width:0}
 .fa-abas{display:flex;align-items:center;gap:4px;padding:0 24px;border-bottom:1px solid var(--border)}
@@ -1470,6 +1470,9 @@ body.route-whatsapp .wa-qr{width:280px;height:280px;max-width:70vw;max-height:no
 /* Prévia no jeito do WhatsApp: balão verde-claro de mensagem enviada. */
 .fa-balao-fundo{position:relative;padding:16px;border:1px solid var(--border);border-radius:14px;background:#fafafa}
 .fa-balao{display:block;width:100%;min-height:220px;border:0;resize:vertical;border-radius:12px 12px 4px 12px;padding:14px 16px 28px;background:color-mix(in srgb,var(--pal-verde) 13%,#fff);box-shadow:0 1px 1px rgba(16,24,40,.08);font-family:var(--font-body),"Noto Color Emoji";font-size:14.5px;line-height:1.55;color:var(--fg)}
+.fa-previa{white-space:pre-wrap;word-break:break-word;cursor:text;text-align:left}
+.fa-previa strong{font-weight:700}
+.fa-previa:hover{box-shadow:0 1px 1px rgba(16,24,40,.08),0 0 0 1px var(--border)}
 .fa-contagem{position:absolute;right:30px;bottom:24px;font-size:11px;color:var(--muted);pointer-events:none}
 .fa-passos{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .fa-passos .btn{display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 18px;border-radius:10px;font-size:14px;font-weight:600}

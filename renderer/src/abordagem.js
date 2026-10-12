@@ -229,24 +229,31 @@ export function gerarAbordagem(lead = {}, q = {}, cfg = {}, versao = 0) {
   const indice = (hashTexto(lead.id || lead.name) + Math.max(0, versao)) % lista.length;
   const modelo = lista[indice];
 
-  const empresa = nomeCurto(lead.name || lead.n) || (idioma === 'en' ? 'your business' : 'a empresa de vocês');
+  // Formatação do WhatsApp: a marca, o nome da empresa e a nota vão sempre em
+  // negrito (*assim*), e a nota ganha uma estrela. cfg.formatar = false desliga.
+  const negrito = (t) => (cfg.formatar === false || !t ? t : `*${t}*`);
+  const estrela = cfg.formatar === false ? '' : ' ⭐';
+
+  const nomeEmpresa = nomeCurto(lead.name || lead.n);
+  const empresa = nomeEmpresa ? negrito(nomeEmpresa) : (idioma === 'en' ? 'your business' : 'a empresa de vocês');
   const nome = String(cfg.nome || '').trim();
-  const marca = String(cfg.empresa || 'Grow+').trim();
+  const marca = negrito(String(cfg.empresa || 'Grow+').trim());
   const quem = idioma === 'en'
     ? (nome ? `This is ${nome} from ${marca}` : `This is ${marca}`)
     : (nome ? `${nome} aqui, da ${marca}` : `Aqui é da ${marca}`);
 
   const { nota, avaliacoes } = q.google || {};
   const temNota = Number(nota) >= 4 && Number(avaliacoes) >= 5;
-  const elogio = temNota
-    ? (idioma === 'en' ? `, with ${nota1(nota)} stars` : `, com nota ${nota1(nota)}`)
-    : '';
+  // Só o número em negrito: "nota *4,7* ⭐".
+  const notaPt = `nota ${negrito(nota1(nota))}${estrela}`;
+  const notaEn = `${negrito(nota1(nota).replace(',', '.'))} stars${estrela}`;
+  const elogio = temNota ? (idioma === 'en' ? `, with ${notaEn}` : `, com ${notaPt}`) : '';
   // Sem "Vi" e sem "Google": as frases em volta já usam as duas palavras.
-  const parabens = temNota ? `Parabéns pela nota ${nota1(nota)}, dá para ver que o trabalho é bem feito. ` : '';
+  const parabens = temNota ? `Parabéns pela ${notaPt}, dá para ver que o trabalho é bem feito. ` : '';
   const notaFrase = Number(nota) > 0 && Number(avaliacoes) > 0
     ? (idioma === 'en'
-      ? `, with ${nota1(nota)} stars and ${avaliacoes} reviews`
-      : `, com nota ${nota1(nota)} e ${avaliacoes} avaliações`)
+      ? `, with ${notaEn} and ${avaliacoes} reviews`
+      : `, com ${notaPt} e ${avaliacoes} avaliações`)
     : '';
 
   const cidade = lead.city || lead.cidade || q.cidade || (idioma === 'en' ? 'your area' : 'a região');
@@ -273,6 +280,27 @@ export function gerarAbordagem(lead = {}, q = {}, cfg = {}, versao = 0) {
     .trim();
 
   return { texto, angulo, idioma, versao: indice, total: lista.length };
+}
+
+/**
+ * Quebra o texto nas marcas de formatação do WhatsApp, para a prévia mostrar a
+ * mensagem como ela vai chegar: *negrito*, _itálico_, ~riscado~.
+ * A marca só vale colada no texto ("*Grow+*"), como no próprio WhatsApp.
+ * @returns {{ texto: string, estilo: ''|'negrito'|'italico'|'riscado' }[]}
+ */
+const MARCAS = { '*': 'negrito', _: 'italico', '~': 'riscado' };
+export function partesWhatsApp(texto = '') {
+  const partes = [];
+  const re = /([*_~])(\S(?:[^\n]*?\S)?)\1/g;
+  let ultimo = 0;
+  let m;
+  while ((m = re.exec(texto))) {
+    if (m.index > ultimo) partes.push({ texto: texto.slice(ultimo, m.index), estilo: '' });
+    partes.push({ texto: m[2], estilo: MARCAS[m[1]] });
+    ultimo = m.index + m[0].length;
+  }
+  if (ultimo < texto.length) partes.push({ texto: texto.slice(ultimo), estilo: '' });
+  return partes;
 }
 
 /** Link que abre a conversa com o texto já escrito na caixa, sem enviar. */
