@@ -108,14 +108,15 @@ function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
   }, [open, onClose]);
   if (!open) return null;
   const items = [
-    { id: 'scraper', label: 'Ir para Scraper Maps', desc: 'Mapa + feed de leads', icon: MapPin, action: () => { onNavigate('scraper'); onClose(false); } },
-    { id: 'overview', label: 'Ir para Visão Geral', desc: 'Centro de comando', icon: LayoutDashboard, action: () => { onNavigate('overview'); onClose(false); } },
+    { id: 'scraper', label: 'Ir para Scraper Maps', desc: 'Mapa, leads e Fila do dia', icon: MapPin, action: () => { onNavigate('scraper'); onClose(false); } },
+    { id: 'overview', label: 'Ir para Visão Geral', desc: 'Resumo da base, público e temperatura', icon: LayoutDashboard, action: () => { onNavigate('overview'); onClose(false); } },
     { id: 'base', label: 'Ir para Base de Leads', desc: 'Filtrar, organizar e exportar', icon: Database, action: () => { onNavigate('base'); onClose(false); } },
-    { id: 'scoring', label: 'Ir para Lead Scoring', desc: 'Quem ligar primeiro', icon: Target, action: () => { onNavigate('scoring'); onClose(false); } },
+    { id: 'scoring', label: 'Ir para Lead Scoring', desc: 'Presença digital e oportunidades de venda', icon: Target, action: () => { onNavigate('scoring'); onClose(false); } },
     { id: 'kanban', label: 'Ir para Kanban', desc: 'Funil comercial de todos os leads', icon: Columns3, action: () => { onNavigate('kanban'); onClose(false); } },
     { id: 'whatsapp', label: 'Ir para WhatsApp', desc: 'Chats e campanhas', icon: MessageCircle, action: () => { onNavigate('whatsapp'); onClose(false); } },
     { id: 'email', label: 'Ir para E-mail', desc: 'Campanhas pelo Gmail', icon: Mail, action: () => { onNavigate('email'); onClose(false); } },
-    { id: 'dashboard', label: 'Ir para Dashboard', desc: 'Métricas e categorias', icon: BarChart3, action: () => { onNavigate('dashboard'); onClose(false); } },
+    { id: 'dashboard', label: 'Ir para Resultados', desc: 'O que foi enviado e quem respondeu', icon: BarChart3, action: () => { onNavigate('dashboard'); onClose(false); } },
+    { id: 'settings', label: 'Ir para Configurações', desc: 'Empresa e sincronização, chave de IA', icon: Settings, action: () => { onNavigate('settings'); onClose(false); } },
     { id: 'new', label: 'Nova Extração…', desc: 'Criar busca no Google Maps', icon: Plus, action: () => { onClose(false); onNewExtraction(); } },
   ];
   const filtered = q.trim() ? items.filter(i => (`${i.label} ${i.desc}`.toLowerCase().includes(q.toLowerCase()))) : items;

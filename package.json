@@ -1,7 +1,7 @@
 {
   "name": "grow-prospect",
   "version": "2.0.0",
-  "description": "Prospector 2.0: aplicativo desktop de prospecção B2B que coleta empresas no Google Maps, qualifica leads e dispara campanhas no WhatsApp.",
+  "description": "Prospector 2.0: aplicativo desktop de prospecção que coleta empresas no Google Maps, qualifica os leads, prepara a primeira mensagem (Fila do dia) e acompanha as respostas, com sincronização entre computadores.",
   "author": {
     "name": "Grow+",
     "email": "contato.m2bstudio@gmail.com"

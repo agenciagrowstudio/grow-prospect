@@ -325,7 +325,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
       const saved = JSON.parse(localStorage.getItem('sigma_wa_profile') || 'null');
       if (saved && typeof saved === 'object') return saved;
     } catch (_) {}
-    return { name: 'Grow+ Comercial', about: 'Prospecção B2B no automático', phone: '' };
+    return { name: 'Grow+ Comercial', about: 'Prospecção de empresas locais', phone: '' };
   });
   const [isFindBarOpen, setIsFindBarOpen] = useState(false);
   const [inChatSearchTerm, setInChatSearchTerm] = useState('');

@@ -1959,7 +1959,7 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 
 /* Tour de boas-vindas */
 .ob-fundo{position:fixed;inset:0;z-index:9998;display:grid;place-items:center;padding:16px;background:rgba(15,23,42,.38);backdrop-filter:blur(2px)}
-.ob-card{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface,#fff);border:1px solid var(--border);border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,.22);animation:viewIn 200ms cubic-bezier(.16,1,.3,1)}
+.ob-card{width:min(480px,100%);max-height:calc(100vh - 32px);overflow-x:hidden;overflow-y:auto;background:var(--surface,#fff);border:1px solid var(--border);border-radius:20px;box-shadow:0 24px 60px rgba(15,23,42,.22);animation:viewIn 200ms cubic-bezier(.16,1,.3,1)}
 .ob-topo{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
 .ob-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
 .ob-fechar{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--muted);cursor:pointer}
@@ -1972,8 +1972,8 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .ob-etapas button{width:28px;height:28px;border:0;border-radius:50%;display:grid;place-items:center;background:#ececec;color:var(--fg);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;flex:none}
 .ob-etapas li.atual button{background:var(--accent);color:#fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,#fff)}
 .ob-etapas li.feito button{background:var(--pal-verde-forte);color:#fff}
-.ob-corpo{padding:22px 24px 6px;animation:ob-entra 220ms cubic-bezier(.16,1,.3,1)}
-@keyframes ob-entra{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.ob-corpo{padding:22px 24px 6px;min-height:368px;animation:ob-entra 180ms ease-out}
+@keyframes ob-entra{from{opacity:0}to{opacity:1}}
 .ob-icone{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;margin-bottom:14px}
 .ob-azul .ob-icone{background:color-mix(in srgb,var(--pal-azul) 14%,#fff);color:var(--pal-azul-forte)}
 .ob-amarelo .ob-icone{background:color-mix(in srgb,var(--pal-amarelo) 22%,#fff);color:#9a5b00}
@@ -2003,3 +2003,15 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .app-sidebar .brand-text-col{flex-direction:row!important;align-items:center;gap:7px;min-width:0}
 .app-sidebar .brand-name{font-size:17px;line-height:1.1}
 .app-sidebar .brand-tag{display:inline-flex;align-items:center;height:18px;padding:0 7px;margin:2px 0 0;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:700;letter-spacing:.2px;text-transform:none}
+
+/* Menu lateral: textos mais escuros (contraste alto sobre o fundo claro) */
+.app-sidebar .nav-item{color:#27272a}
+.app-sidebar .nav-item .ico,.app-sidebar .nav-item svg{color:#3f3f46}
+.app-sidebar .nav-item:hover{color:#0a0a0a;background:#f0f0f0}
+.app-sidebar .nav-item:hover svg{color:#0a0a0a}
+.app-sidebar .nav-item.active,.app-sidebar .nav-item.active svg{color:#fff}
+.app-sidebar .sidebar-nav-label{color:#52525b}
+.app-sidebar .nav-kbd{color:#3f3f46;border-color:#cfcfcf}
+.app-sidebar .nav-item.active .nav-kbd{color:#fff;border-color:rgba(255,255,255,.55)}
+.app-sidebar .sidebar-release{color:#52525b}
+.app-sidebar .brand-name{color:#0a0a0a}

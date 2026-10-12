@@ -1498,32 +1498,32 @@ ipcMain.handle("cancel-scrape", async (_, { queryId } = {}) => {
 ipcMain.handle("save-file", async (_, { type, queryId }) => {
   const key = queryId || "_last";
   const entry = resultStore.get(key);
-  if (!entry) return { success: false, message: "No results to save." };
+  if (!entry) return { success: false, message: "Não há resultados para salvar." };
 
   const map = {
     json: {
-      name: `gmaps_${entry.query}_${entry.timestamp}.json`,
+      name: `prospector_${entry.query}_${entry.timestamp}.json`,
       path: entry.jsonPath,
     },
     csv: {
-      name: `gmaps_${entry.query}_${entry.timestamp}.csv`,
+      name: `prospector_${entry.query}_${entry.timestamp}.csv`,
       path: entry.csvPath,
     },
     report: {
-      name: `gmaps_${entry.query}_${entry.timestamp}_report.txt`,
+      name: `prospector_${entry.query}_${entry.timestamp}_relatorio.txt`,
       path: entry.reportPath,
     },
   };
 
-  if (!map[type]) return { success: false, message: "Invalid type." };
+  if (!map[type]) return { success: false, message: "Tipo inválido." };
 
   const { filePath, canceled } = await dialog.showSaveDialog({
-    title: `Save ${type.toUpperCase()}`,
+    title: `Salvar ${type.toUpperCase()}`,
     defaultPath: map[type].name,
   });
 
   if (canceled || !filePath)
-    return { success: false, message: "Save cancelled." };
+    return { success: false, message: "Salvamento cancelado." };
 
   fs.copyFileSync(map[type].path, filePath);
   return { success: true, savedTo: filePath };
@@ -1532,7 +1532,7 @@ ipcMain.handle("save-file", async (_, { type, queryId }) => {
 // ─── SAVE ALL (MERGED) ─────────────────────
 ipcMain.handle("save-all-files", async (_, { type }) => {
   if (resultStore.size === 0)
-    return { success: false, message: "No results to save." };
+    return { success: false, message: "Não há resultados para salvar." };
 
   // Merge all results
   const allData = [];
@@ -1546,62 +1546,62 @@ ipcMain.handle("save-all-files", async (_, { type }) => {
 
   if (type === "json") {
     const { filePath, canceled } = await dialog.showSaveDialog({
-      title: "Save All JSON",
-      defaultPath: `gmaps_all_${timestamp}.json`,
+      title: "Salvar todos os resultados (JSON)",
+      defaultPath: `prospector_busca_completa_${timestamp}.json`,
     });
     if (canceled || !filePath)
-      return { success: false, message: "Save cancelled." };
+      return { success: false, message: "Salvamento cancelado." };
     fs.writeFileSync(filePath, JSON.stringify(allData, null, 2));
     return { success: true, savedTo: filePath };
   }
 
   if (type === "csv") {
     const { filePath, canceled } = await dialog.showSaveDialog({
-      title: "Save All CSV",
-      defaultPath: `gmaps_all_${timestamp}.csv`,
+      title: "Salvar todos os resultados (CSV)",
+      defaultPath: `prospector_busca_completa_${timestamp}.csv`,
     });
     if (canceled || !filePath)
-      return { success: false, message: "Save cancelled." };
+      return { success: false, message: "Salvamento cancelado." };
     saveToCSV(allData, filePath, true);
     return { success: true, savedTo: filePath };
   }
 
-  return { success: false, message: "Invalid type." };
+  return { success: false, message: "Tipo inválido." };
 });
 
 // ─── EXPORT LEADS (cumulative from renderer) ─
 ipcMain.handle("export-leads", async (_, { leads, format }) => {
   if (!leads || !leads.length)
-    return { success: false, message: "No leads to export." };
+    return { success: false, message: "Não há leads para exportar." };
   if (!Array.isArray(leads) || leads.length > MAX_EXPORT_LEADS) {
-    return { success: false, message: "Too many leads to export at once." };
+    return { success: false, message: "Leads demais para exportar de uma vez." };
   }
 
   const timestamp = Date.now();
 
   if (format === "json") {
     const { filePath, canceled } = await dialog.showSaveDialog({
-      title: "Export Leads JSON",
-      defaultPath: `sigma_leads_${timestamp}.json`,
+      title: "Exportar leads (JSON)",
+      defaultPath: `prospector_leads_${timestamp}.json`,
     });
     if (canceled || !filePath)
-      return { success: false, message: "Save cancelled." };
+      return { success: false, message: "Salvamento cancelado." };
     fs.writeFileSync(filePath, JSON.stringify(leads, null, 2));
     return { success: true, savedTo: filePath };
   }
 
   if (format === "csv") {
     const { filePath, canceled } = await dialog.showSaveDialog({
-      title: "Export Leads CSV",
-      defaultPath: `sigma_leads_${timestamp}.csv`,
+      title: "Exportar leads (CSV)",
+      defaultPath: `prospector_leads_${timestamp}.csv`,
     });
     if (canceled || !filePath)
-      return { success: false, message: "Save cancelled." };
+      return { success: false, message: "Salvamento cancelado." };
     saveToCSV(leads, filePath);
     return { success: true, savedTo: filePath };
   }
 
-  return { success: false, message: "Invalid format." };
+  return { success: false, message: "Formato inválido." };
 });
 
 // ─── GET RESULT LIST ───────────────────────
@@ -1643,7 +1643,7 @@ ipcMain.handle("delete-temp-files", async () => {
     resultStore.clear();
 
     if (deleted.length === 0) {
-      return { success: false, message: "No files to delete." };
+      return { success: false, message: "Não há arquivos para apagar." };
     }
 
     return { success: true, message: `${deleted.length} files deleted.` };
@@ -3026,14 +3026,14 @@ ipcMain.handle("lead-scoring-update-outcome", async (_, { id, outcome } = {}) =>
 ipcMain.handle("lead-scoring-export", async (_, { filters, format } = {}) => {
   try {
     const { leads } = leadScoringService.getAll(filters || {});
-    if (!leads.length) return { success: false, message: "Nenhum lead para exportar" };
+    if (!leads.length) return { success: false, message: "Não há leads para exportar." };
     const timestamp = Date.now();
     const fmt = format === "json" ? "json" : "csv";
     const { filePath, canceled } = await dialog.showSaveDialog({
       title: "Exportar Lead Scoring",
-      defaultPath: `grow-prospect-lead-scoring-${timestamp}.${fmt}`,
+      defaultPath: `prospector-lead-scoring-${timestamp}.${fmt}`,
     });
-    if (canceled || !filePath) return { success: false, message: "Exportacao cancelada" };
+    if (canceled || !filePath) return { success: false, message: "Exportação cancelada." };
     if (fmt === "json") fs.writeFileSync(filePath, JSON.stringify(leads, null, 2), "utf-8");
     else saveProspectingCSV(leads, filePath);
     return { success: true, savedTo: filePath };
@@ -3360,7 +3360,7 @@ ipcMain.handle("campaign-get", async (_, { id }) => {
 ipcMain.handle("campaign-export", async (_, { id, format }) => {
   try {
     const campaign = campaignManager.get(id);
-    if (!campaign) return { success: false, message: "Campaign not found" };
+    if (!campaign) return { success: false, message: "Campanha não encontrada." };
 
     const timestamp = Date.now();
     const safeName = campaign.name
@@ -3369,11 +3369,11 @@ ipcMain.handle("campaign-export", async (_, { id, format }) => {
 
     if (format === "json") {
       const { filePath, canceled } = await dialog.showSaveDialog({
-        title: "Export Campaign JSON",
-        defaultPath: `campaign_${safeName}_${timestamp}.json`,
+        title: "Exportar campanha (JSON)",
+        defaultPath: `prospector_campanha_${safeName}_${timestamp}.json`,
       });
       if (canceled || !filePath)
-        return { success: false, message: "Save cancelled." };
+        return { success: false, message: "Salvamento cancelado." };
       fs.writeFileSync(filePath, JSON.stringify(campaign, null, 2));
       return { success: true, savedTo: filePath };
     }
@@ -3388,16 +3388,16 @@ ipcMain.handle("campaign-export", async (_, { id, format }) => {
         errorMessage: l.errorMessage || "",
       }));
       const { filePath, canceled } = await dialog.showSaveDialog({
-        title: "Export Campaign CSV",
-        defaultPath: `campaign_${safeName}_${timestamp}.csv`,
+        title: "Exportar campanha (CSV)",
+        defaultPath: `prospector_campanha_${safeName}_${timestamp}.csv`,
       });
       if (canceled || !filePath)
-        return { success: false, message: "Save cancelled." };
+        return { success: false, message: "Salvamento cancelado." };
       saveToCSV(rows, filePath);
       return { success: true, savedTo: filePath };
     }
 
-    return { success: false, message: "Invalid format." };
+    return { success: false, message: "Formato inválido." };
   } catch (err) {
     return { success: false, error: err.message };
   }

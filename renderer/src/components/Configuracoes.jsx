@@ -217,10 +217,15 @@ export default function Configuracoes({ versao, onNotificar }) {
           <div>
             <h2>Sobre esta instalação</h2>
             <p>
-              Os leads, as conversas e as sessões de WhatsApp ficam no perfil do
-              usuário, nesta máquina. Não existe servidor no meio. As chamadas
-              externas acontecem só para o Google Maps, para os sites analisados,
-              para o WhatsApp e para o provedor de IA configurado acima.
+              Os leads, as conversas e as sessões de WhatsApp ficam nesta máquina.
+              Se você conectar a empresa, os dados de trabalho (leads, buscas,
+              grupos, Fila do dia e histórico) também ficam guardados na nuvem da
+              Grow+, protegidos pelo seu login e pelo código da empresa, para
+              sincronizar com outros computadores e com a versão web. Sessão do
+              WhatsApp, senha do Gmail e chave de IA nunca saem deste computador.
+              As chamadas externas acontecem para o Google Maps, os sites
+              analisados, o WhatsApp, o provedor de IA configurado acima e a nuvem
+              da Grow+, quando conectada.
             </p>
           </div>
         </div>
