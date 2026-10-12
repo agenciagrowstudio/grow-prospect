@@ -179,13 +179,27 @@ function AppInner() {
         const res = await window.whatsappAPI?.listConnections?.();
         const lista = res?.connections || [];
         const ativa = lista.find((c) => c.active && c.connected) || lista.find((c) => c.connected);
-        if (vivo) setWaPhone(ativa?.phoneNumber || '');
+        if (!vivo) return;
+        setWaPhone(ativa?.phoneNumber || '');
+        // O texto do topo acompanha a realidade mesmo com a aba WhatsApp fechada
+        // (o app reconecta a sessão salva sozinho ao abrir).
+        if (ativa) setWaStatus('connected');
+        else setWaStatus((atual) => (atual === 'connected' ? 'disconnected' : atual));
       } catch { /* fora do Electron nao ha API */ }
     };
     carregar();
     const t = setInterval(carregar, 15000);
-    return () => { vivo = false; clearInterval(t); };
-  }, [waStatus]);
+    // Avisos de conexão em tempo real: a reconexão automática ao abrir acontece
+    // antes de qualquer tela ouvir, então a consulta acima cobre o que passou.
+    const parar = window.whatsappAPI?.onStatus?.((payload) => {
+      const { data, aggregateStatus, anyConnected, status } = payload || {};
+      const proximo = aggregateStatus || data?.aggregateStatus
+        || (anyConnected || data?.anyConnected ? 'connected' : null) || status || 'disconnected';
+      if (vivo) setWaStatus(proximo);
+      carregar();
+    });
+    return () => { vivo = false; clearInterval(t); if (typeof parar === 'function') parar(); };
+  }, []);
   const [leadsCount, setLeadsCount] = useState(() => dedupeLeads(organizeStoredLeads()).length);
   const [scoringCount, setScoringCount] = useState(0);
   const [activeExtraction, setActiveExtraction] = useState(null);
