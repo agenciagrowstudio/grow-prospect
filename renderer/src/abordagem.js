@@ -144,6 +144,50 @@ const TEXTOS_EUA = {
   ],
 };
 
+/**
+ * As mesmas versões de TEXTOS_EUA, traduzidas para o inglês, na mesma ordem:
+ * "traduzir" troca o idioma e mantém a versão que está na tela. Sem
+ * "empresas brasileiras": o texto serve para americano e para brasileiro
+ * que prefira inglês.
+ */
+const TEXTOS_EUA_EN = {
+  site: [
+    "🇺🇸 Hi! How are you? {quem}.\n\nI was looking for {nicho} companies in {local} and came across {empresa}. I checked you out on Google to learn more about the business, but I couldn't find a website for you.\n\nDo you not have a website yet, or do you use a different address?",
+    "Hi! All good? {quem}.\n\nI found {empresa} while searching for {nicho} in {local}. {parabens}I looked for your website to learn more about your services and couldn't find one.\n\nDo you already have a website, or haven't you gotten around to it yet?",
+    "Hello, how are you? {quem}. 🇺🇸\n\nI came across {empresa} on Google while looking for {nicho} companies in {local}. {parabens}But I didn't see a website for you, and these days most customers search online before calling.\n\nDo you have a website, or do you rely only on Google and social media?",
+    "Hi, how are you? {quem}.\n\nI've been getting to know the {nicho} companies in {local} and found {empresa}. {parabens}I couldn't find your website on Google and got curious.\n\nDo you have a website yet?",
+  ],
+  google: [
+    "🇺🇸 Hi! How are you? {quem}.\n\nI was looking for {nicho} companies in {local} and came across {empresa}{notaFrase}. I think your Google profile has a lot of room to show up better when someone searches for this service in your area.\n\nDo you already have someone handling that, or can I show you what I would change?",
+    "Hi! All good? {quem}.\n\nI searched Google for {nicho} in {local} and {empresa} came up{notaFrase}. I noticed two simple things on your profile that would help you show up ahead of competitors.\n\nCan I tell you what they are?",
+    "Hello, how are you? {quem}. 🇺🇸\n\nI found {empresa} on Google while looking for {nicho} companies in {local}. Your profile is already live, but a few tweaks could bring in more calls and more quote requests.\n\nWould it make sense for me to explain how?",
+    "Hi, how are you? {quem}.\n\nWhen someone searches for {nicho} in {local}, {empresa} shows up{notaFrase}, but I think you could rank higher and get more inquiries. I help local businesses here in the US with that.\n\nWant me to tell you what I would adjust?",
+  ],
+  redes: [
+    "🇺🇸 Hi! How are you? {quem}.\n\nI was looking for {nicho} companies in {local} and came across {empresa}. {parabens}I looked for your Instagram to see some of your work and couldn't find it.\n\nDo you have a profile, or are you not on social media yet?",
+    "Hi! All good? {quem}.\n\nI saw {empresa} on Google, in {local}. I couldn't find your Instagram profile, and these days many customers check photos of the work before asking for a quote.\n\nDo you already have a profile?",
+    "Hello, how are you? {quem}. 🇺🇸\n\nI found {empresa} while searching for {nicho} in {local}. {parabens}I wanted to see your work on Instagram, but couldn't find it.\n\nCan I show you how a well made profile usually brings in new customers?",
+    "Hi, how are you? {quem}.\n\nI help {nicho} companies in the US get customers through social media. I saw {empresa} in {local}, but couldn't find your Instagram.\n\nDo you have a profile, or haven't you had time to set one up?",
+  ],
+  conteudo: [
+    "🇺🇸 Hi! How are you? {quem}.\n\nI was looking for {nicho} companies in {local} and came across {empresa}. I checked out your Instagram and there is great work there.\n\nCan I give you a quick content idea that usually brings in more DMs?",
+    "Hi! All good? {quem}.\n\nI went through the {empresa} Instagram, in {local}. {parabens}I think with a few tweaks to your posts you would get more quote requests.\n\nWant to hear the idea?",
+    "Hello, how are you? {quem}. 🇺🇸\n\nI saw the {empresa} profile while looking for {nicho} companies in {local}. Your service looks good, but your content could do more to attract new customers.\n\nCan I explain in a minute?",
+    "Hi, how are you? {quem}.\n\nI was getting to know the {nicho} companies in {local} and the {empresa} Instagram caught my attention. I had an idea for turning your posts into more inquiries.\n\nCan I tell you about it?",
+  ],
+  sistema: [
+    "🇺🇸 Hi! How are you? {quem}.\n\nI was looking for {nicho} companies in {local} and came across {empresa}. I'm curious: do you book jobs and quotes all by text or WhatsApp, by hand?\n\nI ask because there is a way to organize that without losing the personal touch. Can I show you how?",
+    "Hi! All good? {quem}.\n\nI saw {empresa} in {local}. How do you keep track of your schedule, quotes and clients today: notebook, spreadsheet or text messages?\n\nI have a simple way to keep it all organized. Would it make sense to show you?",
+    "Hello, how are you? {quem}. 🇺🇸\n\nI work with {nicho} companies here in the US and found {empresa} in {local}. Many businesses lose customers because they forget to reply or to follow up on a quote.\n\nDo you have something in place to handle that?",
+    "Hi, how are you? {quem}.\n\nWhile searching for {nicho} in {local} I found {empresa}. Do you answer all your customer messages by hand? If so, the repetitive part can be automated without sounding like a robot.\n\nWant to see how?",
+  ],
+  geral: [
+    "🇺🇸 Hi! How are you? {quem}.\n\nI was looking for {nicho} companies in {local} and came across {empresa}. I wanted to ask you a quick question about how you get new customers today.\n\nMay I?",
+    "Hi! All good? {quem}.\n\nI found {empresa} while searching for {nicho} in {local}. {parabens}I have an idea to help you attract more customers.\n\nCan I tell you about it?",
+    "Hello, how are you? {quem}. 🇺🇸\n\nI'm helping {nicho} companies in the US get more quote requests. I found {empresa} in {local} and got curious about how you bring in customers today.\n\nCan I ask you a quick question?",
+  ],
+};
+
 // Estados dos EUA por extenso, como no modelo ("Milford, Massachusetts").
 const ESTADOS_EUA = {
   AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado',
@@ -169,7 +213,7 @@ const SERVICOS_EUA = [
 
 export function nichoDoLead(lead = {}, idioma = 'pt', eua = false) {
   const cat = String(lead.category || lead.cat || '').trim();
-  if (eua && idioma === 'pt') {
+  if (eua) {
     const achado = SERVICOS_EUA.find(([re]) => re.test(cat));
     if (achado) return achado[1];
   }
@@ -216,16 +260,19 @@ export function idiomaDoLead(lead) {
 /**
  * @param {object} lead registro da Base de Leads
  * @param {object} q qualificação (ver qualificacaoLead.js)
- * @param {{ nome?: string, empresa?: string, oferta?: string }} cfg quem escreve
+ * @param {{ nome?: string, empresa?: string, oferta?: string, idioma?: 'pt'|'en', formatar?: boolean }} cfg
+ *   quem escreve; idioma força português ou inglês (o botão de traduzir)
  * @param {number} [versao] 0 = a versão escolhida pelo lead; 1, 2... = as seguintes
  */
 export function gerarAbordagem(lead = {}, q = {}, cfg = {}, versao = 0) {
-  const idioma = idiomaDoLead(lead);
+  const idioma = cfg.idioma === 'pt' || cfg.idioma === 'en' ? cfg.idioma : idiomaDoLead(lead);
   const angulo = anguloDoLead(q, cfg.oferta);
   // Brasileiro nos EUA recebe no tom do modelo da Grow+; brasileiro no Brasil e
   // americano usam os bancos próprios.
   const eua = String(lead?.pais || 'BR').toUpperCase() === 'US';
-  const lista = idioma === 'pt' && eua ? TEXTOS_EUA[angulo] : TEXTOS[angulo][idioma];
+  // Nos EUA, português e inglês têm as mesmas versões na mesma ordem: traduzir
+  // mantém a versão da tela.
+  const lista = eua ? (idioma === 'pt' ? TEXTOS_EUA : TEXTOS_EUA_EN)[angulo] : TEXTOS[angulo][idioma];
   const indice = (hashTexto(lead.id || lead.name) + Math.max(0, versao)) % lista.length;
   const modelo = lista[indice];
 
@@ -239,7 +286,7 @@ export function gerarAbordagem(lead = {}, q = {}, cfg = {}, versao = 0) {
   const nome = String(cfg.nome || '').trim();
   const marca = negrito(String(cfg.empresa || 'Grow+').trim());
   const quem = idioma === 'en'
-    ? (nome ? `This is ${nome} from ${marca}` : `This is ${marca}`)
+    ? (nome ? `${nome} here, from ${marca}` : `This is ${marca}`)
     : (nome ? `${nome} aqui, da ${marca}` : `Aqui é da ${marca}`);
 
   const { nota, avaliacoes } = q.google || {};
@@ -249,7 +296,9 @@ export function gerarAbordagem(lead = {}, q = {}, cfg = {}, versao = 0) {
   const notaEn = `${negrito(nota1(nota).replace(',', '.'))} stars${estrela}`;
   const elogio = temNota ? (idioma === 'en' ? `, with ${notaEn}` : `, com ${notaPt}`) : '';
   // Sem "Vi" e sem "Google": as frases em volta já usam as duas palavras.
-  const parabens = temNota ? `Parabéns pela ${notaPt}, dá para ver que o trabalho é bem feito. ` : '';
+  const parabens = !temNota ? '' : idioma === 'en'
+    ? `Congrats on the ${notaEn.replace(' stars', '')} rating, it shows the work is well done. `
+    : `Parabéns pela ${notaPt}, dá para ver que o trabalho é bem feito. `;
   const notaFrase = Number(nota) > 0 && Number(avaliacoes) > 0
     ? (idioma === 'en'
       ? `, with ${notaEn} and ${avaliacoes} reviews`

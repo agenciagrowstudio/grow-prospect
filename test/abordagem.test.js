@@ -122,6 +122,33 @@ describe('primeira mensagem de abordagem', () => {
     assert.deepEqual(A.partesWhatsApp('5 * 3 = 15'), [{ texto: '5 * 3 = 15', estilo: '' }]);
   });
 
+  it('traduzir: inglês é a mesma versão, no mesmo tom, sem "empresas brasileiras"', async () => {
+    await carrega();
+    const lead = { ...semSite, id: 't1', name: 'RL Brazilian Cleaning', city: 'Milford', uf: 'MA', category: 'Serviço de limpeza', rating: 4.9, reviews: 37 };
+    const q = Q.qualificaLead(lead);
+    const base = { nome: 'Matheus', empresa: 'Grow+' };
+    for (const oferta of ['site', 'google', 'redes', 'conteudo', 'sistema', 'qualquer']) {
+      for (let v = 0; v < 4; v++) {
+        const pt = A.gerarAbordagem(lead, q, { ...base, oferta, idioma: 'pt' }, v);
+        const en = A.gerarAbordagem(lead, q, { ...base, oferta, idioma: 'en' }, v);
+        assert.equal(en.idioma, 'en');
+        assert.equal(en.versao, pt.versao, 'traduzir mantém a versão da tela');
+        assert.equal(en.total, pt.total, 'mesmo número de versões nos dois idiomas');
+        assert.doesNotMatch(en.texto, /brasileir|Brazilian companies|\b(você|vocês|nota)\b/i, en.texto);
+        assert.match(en.texto, /Matheus here, from \*Grow\+\*/);
+        assert.match(en.texto, /\*RL Brazilian Cleaning\*/);
+        assert.match(en.texto, /house cleaning|Milford/);
+        assert.match(en.texto, /\?/);
+        assert.ok(en.texto.length <= 420, `longa demais (${en.texto.length}): ${en.texto}`);
+        assert.doesNotMatch(en.texto, /—|–|\{[a-zA-Z]+\}/, en.texto);
+      }
+    }
+    const comNota = [0, 1, 2, 3].map((v) => A.gerarAbordagem(lead, q, { ...base, idioma: 'en' }, v).texto);
+    assert.ok(comNota.some((t) => t.includes('Congrats on the *4.9* ⭐ rating')), comNota.join('\n---\n'));
+    // sem escolha, brasileiro nos EUA continua em português
+    assert.equal(A.gerarAbordagem(lead, q, base).idioma, 'pt');
+  });
+
   it('o link abre a conversa com o texto já na caixa, em Web ou no aplicativo', async () => {
     await carrega();
     assert.equal(A.linkWhatsApp('+1 (407) 555-0101', 'Oi, tudo bem?'), 'https://web.whatsapp.com/send?phone=14075550101&text=Oi%2C%20tudo%20bem%3F');

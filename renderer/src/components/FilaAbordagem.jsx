@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone,
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages,
 } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
@@ -74,6 +74,9 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
   const [selecionado, setSelecionado] = useState(null);
   const [abertos, setAbertos] = useState({});
   const [editando, setEditando] = useState(null);
+  // Idioma escolhido no botão de traduzir; sem escolha, o do lead (português
+  // para brasileiro, inglês para americano).
+  const [idiomas, setIdiomas] = useState({});
   // Ajustes começam abertos só enquanto falta o nome de quem assina.
   const [ajustesAbertos, setAjustesAbertos] = useState(() => !lerJson(CHAVE_CFG, { nome: '' }).nome);
   const hoje = chaveDoDia();
@@ -131,8 +134,11 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
   const atual = fila.find((f) => f.chave === selecionado) || fila[0] || null;
   const posicao = atual ? fila.indexOf(atual) : -1;
 
-  const gerado = (item) => gerarAbordagem(leadParaTexto(item.lead), item.q, cfg, versoes[item.chave] || 0);
-  const textoDe = (item) => (editados[item.chave] !== undefined ? editados[item.chave] : gerado(item).texto);
+  const idiomaDe = (item) => idiomas[item.chave] || idiomaDoLead(item.lead);
+  // A edição é guardada por idioma: traduzir e voltar não perde o que foi escrito.
+  const chaveEdicao = (item) => `${item.chave}|${idiomaDe(item)}`;
+  const gerado = (item) => gerarAbordagem(leadParaTexto(item.lead), item.q, { ...cfg, idioma: idiomaDe(item) }, versoes[item.chave] || 0);
+  const textoDe = (item) => (editados[chaveEdicao(item)] !== undefined ? editados[chaveEdicao(item)] : gerado(item).texto);
 
   const marca = (item, status) => {
     const proximo = fila[posicao + 1] || fila[posicao - 1] || null;
@@ -182,9 +188,21 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     }
   };
 
+  // Outra versão vale para os dois idiomas, então descarta as edições dos dois.
   const outraVersao = (chave) => {
-    setEditados((x) => { const { [chave]: _x, ...r } = x; return r; });
+    setEditados((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !k.startsWith(`${chave}|`))));
     setVersoes((v) => ({ ...v, [chave]: (v[chave] || 0) + 1 }));
+  };
+
+  const traduz = (item, novo) => {
+    if (idiomaDe(item) === novo) return;
+    const tinhaEdicao = editados[chaveEdicao(item)] !== undefined;
+    setIdiomas((x) => ({ ...x, [item.chave]: novo }));
+    if (tinhaEdicao) {
+      setAviso(novo === 'en'
+        ? 'Sua edição em português continua guardada. Aqui está a tradução da versão do modelo.'
+        : 'Sua edição em inglês continua guardada. Aqui está a versão do modelo em português.');
+    }
   };
   const testa = async (item) => {
     const numero = digitosWhatsApp(cfg.numeroTeste, String(cfg.numeroTeste).trim().startsWith('+1') ? 'US' : 'BR');
@@ -199,7 +217,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     setAviso('Abrindo a conversa com o seu número. Envie para ver como a mensagem chega.');
   };
 
-  const restaura = (chave) => setEditados((x) => { const { [chave]: _x, ...r } = x; return r; });
+  const restaura = (item) => setEditados((x) => { const { [chaveEdicao(item)]: _x, ...r } = x; return r; });
 
   const muda = (campo) => (e) => setCfg((c) => ({ ...c, [campo]: campo === 'limite' ? Number(e.target.value) : e.target.value }));
   const progresso = Math.min(100, (enviadasHoje / cfg.limite) * 100);
@@ -208,9 +226,9 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     const { lead, q, chave } = atual;
     const g = gerado(atual);
     const texto = textoDe(atual);
-    const editado = editados[chave] !== undefined;
+    const editado = editados[chaveEdicao(atual)] !== undefined;
+    const idioma = idiomaDe(atual);
     const servico = q.servicos.find((s) => s.id === g.angulo);
-    const ingles = idiomaDoLead(lead) === 'en';
     const local = [lead.city || localDoEndereco(lead.address).cidade, lead.uf || lead.state || localDoEndereco(lead.address).uf].filter(Boolean).join(', ');
     const jaAbriu = abertos[chave];
     return (
@@ -229,7 +247,12 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
         <div className="fa-chips">
           <span className="fa-chip fa-chip-oferta">Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b></span>
           {servico?.motivo && <span className="fa-chip">{servico.motivo}</span>}
-          {ingles && <span className="fa-chip">Em inglês</span>}
+          <span className="fa-espaco" />
+          <div className="fa-idioma" role="group" aria-label="Idioma da mensagem" title="Traduzir a mensagem">
+            <Languages size={14} strokeWidth={2} aria-hidden="true" />
+            <button type="button" className={idioma === 'pt' ? 'on' : ''} aria-pressed={idioma === 'pt'} onClick={() => traduz(atual, 'pt')}>Português</button>
+            <button type="button" className={idioma === 'en' ? 'on' : ''} aria-pressed={idioma === 'en'} onClick={() => traduz(atual, 'en')}>English</button>
+          </div>
         </div>
 
         <div className="fa-msg">
@@ -238,7 +261,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
             <span className="fa-versao">{editado ? 'Editada por você' : `Versão ${g.versao + 1} de ${g.total}`}</span>
             <span className="fa-espaco" />
             {editado && (
-              <button type="button" className="fa-mini" onClick={() => restaura(chave)}>
+              <button type="button" className="fa-mini" onClick={() => restaura(atual)}>
                 <RotateCcw size={13} strokeWidth={2} aria-hidden="true" /> Desfazer edição
               </button>
             )}
@@ -263,7 +286,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
               <textarea
                 className="fa-balao"
                 value={texto}
-                onChange={(e) => setEditados((x) => ({ ...x, [chave]: e.target.value }))}
+                onChange={(e) => setEditados((x) => ({ ...x, [chaveEdicao(atual)]: e.target.value }))}
                 onBlur={() => setEditando(null)}
                 aria-label={`Mensagem para ${lead.name}`}
                 spellCheck
@@ -406,7 +429,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
                       <span className="fa-ordem">{abertos[chave] ? <Check size={12} strokeWidth={2.5} /> : i + 1}</span>
                       <span className="fa-linha-txt">
                         <b>{lead.name || 'Empresa'}</b>
-                        <span>{[lead.city || localDoEndereco(lead.address).cidade, ANGULOS.find((a) => a.id === gerado(item).angulo)?.nome].filter(Boolean).join(' · ')}</span>
+                        <span>{[lead.city || localDoEndereco(lead.address).cidade, ANGULOS.find((a) => a.id === gerado(item).angulo)?.nome, idiomaDe(item) === 'en' ? 'em inglês' : ''].filter(Boolean).join(' · ')}</span>
                       </span>
                       <span className={`fa-ponto fa-ponto-${q.temperatura.id}`} title={`${q.temperatura.rotulo} ${q.nota}`} />
                     </button>
