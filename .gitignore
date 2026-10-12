@@ -20,3 +20,5 @@ nul
 !renderer/src/assets/**/*.png
 renderer/mr*.png
 *.lnk
+.vercel
+.env*

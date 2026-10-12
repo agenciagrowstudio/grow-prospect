@@ -1,0 +1,9 @@
+# Só a interface vai para a Vercel; o app de PC e os instaladores ficam fora.
+dist
+node_modules
+renderer/dist
+*.exe
+*.zip
+*.lnk
+*.ipynb
+.claude
