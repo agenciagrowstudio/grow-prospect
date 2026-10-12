@@ -8,6 +8,7 @@ import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partes
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
 import Bandeira from './Bandeira';
+import { publicoDoLead } from '../resultados';
 
 /**
  * Fila do dia: leads qualificados com a primeira mensagem já escrita.
@@ -151,6 +152,8 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
         nome: item.lead.name || '',
         texto: status === 'enviada' ? textoDe(item) : '',
         angulo: gerado(item).angulo,
+        publico: publicoDoLead(item.lead),
+        idioma: idiomaDe(item),
       },
     }));
     setSelecionado(proximo?.chave || null);

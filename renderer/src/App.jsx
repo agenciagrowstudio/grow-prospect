@@ -360,7 +360,7 @@ function AppInner() {
       case 'dashboard':
         return (
           <ErrorBoundaryLite label="Dashboard">
-            <Dashboard />
+            <Dashboard onNavigate={navigate} />
           </ErrorBoundaryLite>
         );
       case 'settings':
@@ -479,7 +479,7 @@ function AppInner() {
             onClick={() => navigate('dashboard')}
           >
             <LineChart className="ico" size={18} aria-hidden="true" />
-            <span className="nav-label-text">Dashboard</span><span className="nav-kbd">7</span>
+            <span className="nav-label-text">Resultados</span><span className="nav-kbd">7</span>
           </button>
         </nav>
 

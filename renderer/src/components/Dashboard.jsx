@@ -1,208 +1,211 @@
-import React, { useMemo, useState } from 'react';
-import { Search, Activity, Users, Phone, Globe, Instagram, Clock, TrendingUp, TrendingDown, ArrowUpRight, Layers, Zap, Target } from 'lucide-react';
-import IconeNicho from './IconeNicho';
-import GraficoArea, { construirSerie, lerExtracoes, totalSerie, variacaoSerie } from './GraficoArea';
-import { dedupeLeads, getLeadStats, getSearchLeadCount, readLocalArray } from '../leadData';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Send, MessagesSquare, Percent, Target, ClipboardList, MessageCircle, Mail, Megaphone, Filter, Reply,
+} from 'lucide-react';
+import { readLocalArray } from '../leadData';
+import { chaveDoDia } from '../abordagem';
+import { resumoResultados } from '../resultados';
+import Bandeira from './Bandeira';
 
-function MiniSpark({ values }) {
-  const max = Math.max(...values, 1);
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * 60;
-    const y = 18 - (v / max) * 14;
-    return `${x},${y}`;
-  }).join(' ');
+/**
+ * Painel de Análises: resultados da prospecção (a Visão Geral cuida da base).
+ * O que foi enviado em cada canal, quem respondeu e o que funciona melhor
+ * por público e por oferta.
+ */
+
+const ICONE_CANAL = { fila: ClipboardList, wa: Megaphone, email: Mail };
+
+function lerJson(chave, padrao) {
+  try { return JSON.parse(localStorage.getItem(chave) || 'null') || padrao; } catch { return padrao; }
+}
+
+function Barras({ itens, rotulo, cor }) {
+  const maior = Math.max(1, ...itens.map((i) => i.enviadas));
   return (
-    <svg width="60" height="20" viewBox="0 0 60 20" style={{ display:'block' }}>
-      <polyline fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" points={pts} style={{ opacity:.9 }} />
-      <circle cx={pts.split(' ').pop().split(',')[0]} cy={pts.split(' ').pop().split(',')[1]} r="2.2" fill="var(--accent)" />
-    </svg>
+    <ul className="rs-barras">
+      {itens.map((i) => (
+        <li key={i.id}>
+          <div className="rs-barras-topo">
+            <span className="rs-barras-nome">{rotulo(i)}</span>
+            <span className="rs-barras-num"><b>{i.taxa}%</b> · {i.respostas} de {i.enviadas}</span>
+          </div>
+          <div className="rs-barra" aria-hidden="true">
+            <span className="rs-barra-env" style={{ width: `${(i.enviadas / maior) * 100}%`, background: cor ? cor(i) : undefined }} />
+            <span className="rs-barra-resp" style={{ width: `${(i.respostas / maior) * 100}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function Dashboard() {
+export default function Dashboard({ onNavigate }) {
+  const [campanhasWa, setCampanhasWa] = useState([]);
+  const [campanhasEmail, setCampanhasEmail] = useState([]);
   const leads = useMemo(() => readLocalArray('sigma_leads'), []);
-  const searches = useMemo(() => readLocalArray('sigma_searches'), []);
-  const dedupedLeads = useMemo(() => dedupeLeads(leads), [leads]);
-  const { total, phoneCount, webCount, igCount } = getLeadStats(dedupedLeads);
-  const getPct = (val) => (total > 0 ? Math.round((val / total) * 100) : 0);
+  const log = useMemo(() => lerJson('sigma_abordagem_log', {}), []);
+  const meta = useMemo(() => Number(lerJson('sigma_abordagem_cfg', {}).limite) || 20, []);
 
-  const categoryCounts = {};
-  dedupedLeads.forEach((l) => { if (l.category) categoryCounts[l.category] = (categoryCounts[l.category] || 0) + 1; });
-  const topCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const maxCategoryCount = topCategories[0]?.[1] || 1;
-  const recentSearches = [...searches].reverse().slice(0, 6);
-  const hasData = total > 0;
-  const [focoDash, setFocoDash] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    window.campaignAPI?.getAll?.().then((r) => { if (vivo) setCampanhasWa(r?.campaigns || []); }).catch(() => {});
+    window.emailAPI?.list?.().then((r) => { if (vivo && r?.success) setCampanhasEmail(r.campanhas || []); }).catch(() => {});
+    return () => { vivo = false; };
+  }, []);
 
-  // Mesma serie das outras telas: a origem do dado fica num lugar so.
-  const serieDash = useMemo(() => construirSerie(lerExtracoes(), 30), [leads]);
-  const variacaoDash = useMemo(() => variacaoSerie(serieDash), [serieDash]);
-  const totalSerieDash = useMemo(() => totalSerie(serieDash), [serieDash]);
-  const coverage = total ? Math.round(((phoneCount + webCount + igCount) / (total*3))*100) : 0;
-
-  // Minigráfico das últimas buscas; sem busca, linha zerada em vez de inventada.
-  const sparkVals = recentSearches.length ? recentSearches.map(s=> getSearchLeadCount(leads, s.id)).slice(0,5).reverse() : [0,0,0,0,0];
+  const r = useMemo(
+    () => resumoResultados({ log, leads, campanhasWa, campanhasEmail, dias: 30 }),
+    [log, leads, campanhasWa, campanhasEmail],
+  );
+  const filaHoje = Object.values(log).filter((e) => e?.status === 'enviada' && e.dia === chaveDoDia()).length;
+  const maiorDia = Math.max(1, ...r.serie.map((s) => s.enviadas));
+  // Pelo maior valor: campanhas podem ter leads que não estão na base.
+  const maiorFunil = Math.max(1, ...r.funil.map((f) => f.valor));
+  const abreFila = () => onNavigate?.('scraper');
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:16, maxWidth:1120, width:'100%' }}>
-      <header className="ov-head">
-        <div className="ov-head-txt">
-          <h1 className="ov-title">Painel de Análises</h1>
-          <p className="ov-sub tagline">Cobertura por canal e nichos que mais retornam.</p>
+    <section className="settings-open-design-view rs-view">
+      <div className="page-head rs-topo">
+        <div>
+          <h1>Resultados</h1>
+          <p>O que foi enviado em cada canal, quem respondeu e o que funciona melhor. A Visão Geral mostra a base de leads.</p>
         </div>
-        <div className="ov-actions">
-          <span className="ov-selo">{hasData ? 'Base pronta' : 'Base vazia'}</span>
+        <button type="button" className="btn btn-primary rs-cta" onClick={abreFila}>
+          <ClipboardList size={15} strokeWidth={2} /> Abrir Fila do dia
+        </button>
+      </div>
+
+      <div className="rs-kpis">
+        <article className="rs-kpi">
+          <span className="rs-kpi-icone rs-azul"><Send size={16} strokeWidth={2} /></span>
+          <span className="rs-kpi-rotulo">Abordagens enviadas</span>
+          <b>{r.enviadas}</b>
+          <small>{r.enviadasHoje} hoje</small>
+        </article>
+        <article className="rs-kpi">
+          <span className="rs-kpi-icone rs-verde"><MessagesSquare size={16} strokeWidth={2} /></span>
+          <span className="rs-kpi-rotulo">Responderam</span>
+          <b>{r.respostas}</b>
+          <small>em todos os canais</small>
+        </article>
+        <article className="rs-kpi">
+          <span className="rs-kpi-icone rs-roxo"><Percent size={16} strokeWidth={2} /></span>
+          <span className="rs-kpi-rotulo">Taxa de resposta</span>
+          <b>{r.taxa}%</b>
+          <small>{r.taxa >= 10 ? 'acima de 10%, bom sinal' : 'a média de primeira mensagem fica entre 5% e 15%'}</small>
+        </article>
+        <article className="rs-kpi">
+          <span className="rs-kpi-icone rs-amarelo"><Target size={16} strokeWidth={2} /></span>
+          <span className="rs-kpi-rotulo">Meta de hoje (Fila)</span>
+          <b>{filaHoje}<em> / {meta}</em></b>
+          <div className="rs-kpi-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, (filaHoje / meta) * 100)}%` }} /></div>
+        </article>
+      </div>
+
+      {r.enviadas === 0 ? (
+        <div className="cfg-card rs-vazio">
+          <MessageCircle size={30} strokeWidth={1.5} aria-hidden="true" />
+          <b>Nenhuma abordagem ainda</b>
+          <span>
+            Os resultados aparecem aqui conforme você envia mensagens pela Fila do dia, por campanhas de WhatsApp ou por e-mail.
+            Marque quem respondeu para acompanhar a taxa de resposta.
+          </span>
+          <button type="button" className="btn btn-primary rs-cta" onClick={abreFila}>
+            <ClipboardList size={15} strokeWidth={2} /> Começar pela Fila do dia
+          </button>
         </div>
-      </header>
-
-      <section className="ov-kpis" aria-label="Cobertura da base">
-        <article className="ov-kpi principal">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Total de leads</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><Users size={18} /></span>
-          </div>
-          <div className="ov-kpi-row"><span className="ov-kpi-val">{total}</span></div>
-          <div className="ov-kpi-foot">leads únicos na base</div>
-        </article>
-
-        <article className="ov-kpi">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Com telefone</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><Phone size={18} /></span>
-          </div>
-          <div className="ov-kpi-row">
-            <span className="ov-kpi-val">{phoneCount}</span>
-            <span className="ov-kpi-pill">{getPct(phoneCount)}%</span>
-          </div>
-          <div className="ov-kpi-foot">podem ser abordados</div>
-        </article>
-
-        <article className="ov-kpi">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Com site</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><Globe size={18} /></span>
-          </div>
-          <div className="ov-kpi-row">
-            <span className="ov-kpi-val">{webCount}</span>
-            <span className="ov-kpi-pill">{getPct(webCount)}%</span>
-          </div>
-          <div className="ov-kpi-foot">entram no lead scoring</div>
-        </article>
-
-        <article className="ov-kpi">
-          <div className="ov-kpi-top">
-            <span className="ov-kpi-label">Com Instagram</span>
-            <span className="ov-kpi-badge" aria-hidden="true"><Instagram size={18} /></span>
-          </div>
-          <div className="ov-kpi-row">
-            <span className="ov-kpi-val">{igCount}</span>
-            <span className="ov-kpi-pill">{getPct(igCount)}%</span>
-          </div>
-          <div className="ov-kpi-foot">presença social</div>
-        </article>
-      </section>
-
-      <section className="ov-chart" aria-label="Leads captados nos últimos 30 dias">
-        <div className="ov-chart-head">
-          <div>
-            <h3 className="ov-chart-title">Leads captados</h3>
-            <div className="ov-chart-val">
-              <span className="ov-chart-big">{totalSerieDash.toLocaleString('pt-BR')}</span>
-              {variacaoDash !== null ? (
-                <span className={`ov-delta${variacaoDash < 0 ? ' baixa' : ''}`}>
-                  {variacaoDash < 0 ? <TrendingDown size={13} /> : <TrendingUp size={13} />}
-                  {Math.abs(variacaoDash)}%
-                </span>
-              ) : null}
-              <span className="ov-chart-ctx">nos últimos 30 dias</span>
-            </div>
-          </div>
-        </div>
-        <GraficoArea id="grDash" pontos={serieDash} foco={focoDash} onFoco={setFocoDash} />
-      </section>
-
-      {/* Bento grid */}
-      <div style={{ display:'grid', gridTemplateColumns:'1.35fr .85fr', gap:12 }}>
-        {/* Categorias — horizontal bars modernas */}
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:14 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <h3 style={{ fontSize:12.5, fontWeight:700, display:'flex', alignItems:'center', gap:7 }}><Activity size={14} style={{ color:'var(--accent)' }}/> Categorias que mais retornam</h3>
-            <span style={{ fontSize:11, color:'var(--muted)', display:'flex', alignItems:'center', gap:4 }}><TrendingUp size={12}/> Top 6</span>
-          </div>
-          {topCategories.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'22px 16px', color:'var(--muted)' }}>
-              <div style={{ width:40, height:40, borderRadius:999, background:'var(--surface-2)', border:'1px solid var(--border)', display:'grid', placeItems:'center', margin:'0 auto' }}><Search size={16}/></div>
-              <div style={{ fontSize:12, fontWeight:600, marginTop:8, color:'var(--fg)' }}>Sem categorias ainda</div>
-              <div style={{ fontSize:11, marginTop:2 }}>Faça uma extração e volte aqui — o gráfico aparece sozinho.</div>
-            </div>
-          ) : (
-            <div style={{ marginTop:12, display:'flex', flexDirection:'column', gap:10 }}>
-              {topCategories.map(([name, count], idx)=>(
-                <div key={name} style={{ display:'grid', gridTemplateColumns:'24px 26px 1fr 36px', gap:8, alignItems:'center' }}>
-                  <span style={{ fontSize:11, fontWeight:700, color: idx===0?'var(--accent)':'var(--muted)' }}>#{idx+1}</span>
-                  <IconeNicho categoria={name} size={26} />
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:12, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }} title={name}>{name}</div>
-                    <div style={{ height:6, background:'var(--track-bg)', borderRadius:999, marginTop:4, overflow:'hidden' }}>
-                      <div style={{ width:`${Math.round((count/maxCategoryCount)*100)}%`, height:'100%', borderRadius:999, background: 'var(--accent)', opacity: idx === 0 ? 1 : 0.55, transition:'width 500ms ease' }}/>
-                    </div>
-                  </div>
-                  <span style={{ fontSize:12, fontWeight:700, textAlign:'right' }}>{count}</span>
+      ) : (
+        <>
+          <div className="rs-linha rs-linha-2">
+            <article className="cfg-card rs-card">
+              <header className="rs-card-topo">
+                <h2>Abordagens nos últimos 30 dias</h2>
+                <div className="rs-legenda">
+                  <span><i className="rs-l-env" /> Enviadas</span>
+                  <span><i className="rs-l-resp" /> Responderam</span>
                 </div>
-              ))}
-            </div>
-          )}
-          <div style={{ marginTop:10, display:'flex', gap:6, flexWrap:'wrap' }}>
-            <span style={{ fontSize:11, padding:'4px 8px', borderRadius:999, background:'var(--accent-soft)', color:'var(--accent)', border:'1px solid rgba(99,102,241,.18)' }}>{coverage}% cobertura média</span>
-            <span style={{ fontSize:11, padding:'4px 8px', borderRadius:999, background:'var(--surface-2)', border:'1px solid var(--border)', color:'var(--muted)' }}>{Object.keys(categoryCounts).length} nichos únicos</span>
-          </div>
-        </div>
-
-        {/* Coluna direita — histórico + atalhos */}
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:14, flex:1 }}>
-            <h3 style={{ fontSize:12.5, fontWeight:700, display:'flex', alignItems:'center', gap:7 }}><Clock size={14} style={{ color:'var(--accent)' }}/> Histórico de buscas</h3>
-            <div style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>{recentSearches.length ? 'Últimas extrações — clique para filtrar' : 'Suas buscas aparecerão aqui'}</div>
-            {recentSearches.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'18px 12px', marginTop:8, border:'1px dashed var(--border)', borderRadius:8, background:'var(--surface-2)' }}>
-                <div style={{ fontSize:12, fontWeight:600 }}>Nenhuma busca ainda</div>
-                <div style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>Ex: “Clínicas em Pinheiros · 30 leads”</div>
-              </div>
-            ) : (
-              <div style={{ marginTop:10, display:'flex', flexDirection:'column', gap:6 }}>
-                {recentSearches.map(s=>{
-                  const c = getSearchLeadCount(leads, s.id);
-                  return (
-                    <div key={s.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', border:'1px solid var(--border)', borderRadius:8, background:'var(--surface)', transition:'border-color 120ms' }}>
-                      <div style={{ width:22, height:22, borderRadius:6, background:'var(--accent-soft)', color:'var(--accent)', display:'grid', placeItems:'center', flexShrink:0 }}><Search size={11}/></div>
-                      <span style={{ fontSize:12, fontWeight:500, minWidth:0, flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }} title={s.label||s.query}>{s.label||s.query}</span>
-                      <span style={{ fontSize:11, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'var(--surface-2)', border:'1px solid var(--border)' }}>{c} <span style={{ fontWeight:500, color:'var(--muted)' }}>leads</span></span>
+              </header>
+              <div className="rs-grafico" role="img" aria-label={`${r.serie.reduce((n, s) => n + s.enviadas, 0)} abordagens nos últimos 30 dias`}>
+                {r.serie.map((s, i) => (
+                  <div key={s.dia} className="rs-coluna" title={`${new Date(s.ts).toLocaleDateString('pt-BR')}: ${s.enviadas} enviadas, ${s.respostas} responderam`}>
+                    <div className="rs-coluna-area">
+                      <span className="rs-col-env" style={{ height: `${(s.enviadas / maiorDia) * 100}%` }} />
+                      <span className="rs-col-resp" style={{ height: `${(s.respostas / maiorDia) * 100}%` }} />
                     </div>
+                    <span className="rs-coluna-dia">{i % 5 === 4 || i === r.serie.length - 1 ? new Date(s.ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="rs-nota">Fila do dia e campanhas de WhatsApp. O e-mail entra nos totais, mas não guarda a data de cada envio.</p>
+            </article>
+
+            <article className="cfg-card rs-card">
+              <header className="rs-card-topo"><h2><Filter size={15} strokeWidth={2} /> Funil</h2></header>
+              <ol className="rs-funil">
+                {r.funil.map((f, i) => (
+                  <li key={f.id}>
+                    <div className="rs-funil-topo">
+                      <span>{f.nome}</span>
+                      <b>{f.valor}</b>
+                    </div>
+                    <div className="rs-funil-barra"><span className={`rs-f${i}`} style={{ width: `${Math.max(2, (f.valor / maiorFunil) * 100)}%` }} /></div>
+                  </li>
+                ))}
+              </ol>
+            </article>
+          </div>
+
+          <div className="rs-linha rs-linha-3">
+            <article className="cfg-card rs-card">
+              <header className="rs-card-topo"><h2>Por canal</h2></header>
+              <ul className="rs-canais">
+                {r.canais.map((c) => {
+                  const Icone = ICONE_CANAL[c.id];
+                  return (
+                    <li key={c.id} className={c.enviadas ? '' : 'rs-apagado'}>
+                      <span className={`rs-canal-icone rs-canal-${c.id}`}><Icone size={15} strokeWidth={2} /></span>
+                      <span className="rs-canal-nome">{c.nome}</span>
+                      <span className="rs-canal-num"><b>{c.taxa}%</b><small>{c.respostas} de {c.enviadas}</small></span>
+                    </li>
                   );
                 })}
-              </div>
-            )}
+              </ul>
+            </article>
+
+            <article className="cfg-card rs-card">
+              <header className="rs-card-topo"><h2>Por público</h2><span className="rs-fonte">Fila do dia</span></header>
+              {r.porPublico.length
+                ? <Barras itens={r.porPublico} rotulo={(p) => <><Bandeira pais={p.pais} /> {p.nome}</>} />
+                : <p className="rs-nota">Aparece quando houver abordagens pela Fila do dia.</p>}
+            </article>
+
+            <article className="cfg-card rs-card">
+              <header className="rs-card-topo"><h2>Por oferta</h2><span className="rs-fonte">Fila do dia</span></header>
+              {r.porOferta.length
+                ? <Barras itens={r.porOferta} rotulo={(o) => <><i className={`rs-ponto rs-svc-${o.id}`} /> {o.nome}</>} cor={(o) => `var(--svc-${o.id}, var(--pal-azul))`} />
+                : <p className="rs-nota">Aparece quando houver abordagens pela Fila do dia.</p>}
+            </article>
           </div>
 
-          {/* Quick actions — amigável */}
-          <div style={{ background:'var(--accent-soft)', border:'1px solid rgba(0,100,224,.18)', borderRadius:10, padding:12, display:'flex', flexDirection:'column', gap:8 }}>
-            <div style={{ fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}><Target size={12} style={{ color:'var(--accent)' }}/> Próximo passo sugerido</div>
-            {!hasData ? (
-              <div style={{ fontSize:11.5, color:'var(--muted)', lineHeight:1.5 }}>Comece com 1 extração de 30 leads. Depois veja “Quem ligar primeiro”.</div>
-            ) : coverage < 50 ? (
-              <div style={{ fontSize:11.5, color:'var(--muted)', lineHeight:1.5 }}>Cobertura baixa ({coverage}%). Tente enriquecer mais telefones + sites na próxima extração.</div>
+          <article className="cfg-card rs-card">
+            <header className="rs-card-topo"><h2><Reply size={15} strokeWidth={2} /> Últimos que responderam</h2></header>
+            {r.ultimasRespostas.length ? (
+              <ul className="rs-respostas">
+                {r.ultimasRespostas.map((u) => (
+                  <li key={`${u.canal}-${u.id}`}>
+                    <span className={`rs-canal-icone rs-canal-${u.canal}`}>{u.canal === 'fila' ? <ClipboardList size={14} strokeWidth={2} /> : <Megaphone size={14} strokeWidth={2} />}</span>
+                    <b>{u.nome}</b>
+                    <span>{u.canal === 'fila' ? 'Fila do dia' : 'Campanha de WhatsApp'}</span>
+                    <time>{u.ts ? new Date(u.ts).toLocaleDateString('pt-BR') : ''}</time>
+                  </li>
+                ))}
+              </ul>
             ) : (
-              <div style={{ fontSize:11.5, color:'var(--muted)', lineHeight:1.5 }}>Base saudável! Vá em <b style={{ color:'var(--fg)' }}>Lead Scoring</b> para priorizar quem ligar.</div>
+              <p className="rs-nota">Ninguém respondeu ainda. Na Fila do dia, aba Já abordados, marque quem respondeu.</p>
             )}
-            <div style={{ display:'flex', gap:6, marginTop:2 }}>
-              <span style={{ fontSize:11, padding:'5px 10px', borderRadius:999, background:'var(--surface)', border:'1px solid var(--border)', display:'inline-flex', alignItems:'center', gap:4 }}><Target size={11}/> Lead Scoring <ArrowUpRight size={11}/></span>
-              <span style={{ fontSize:11, padding:'5px 10px', borderRadius:999, background:'var(--accent)', color:'#fff', display:'inline-flex', alignItems:'center', gap:4 }}><Zap size={11}/> Nova extração</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          </article>
+        </>
+      )}
+    </section>
   );
 }
-
-export default Dashboard;
