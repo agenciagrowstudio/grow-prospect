@@ -3,9 +3,7 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   CheckCircle2,
-  ChevronDown,
   CircleAlert,
-  Filter,
   GripVertical,
   Mail,
   MapPin,
@@ -15,12 +13,15 @@ import {
   RotateCcw,
   Search,
   Settings2,
-  SlidersHorizontal,
   X,
+  Star,
+  MessageCircle,
+  Globe,
+  Instagram,
+  Hand,
+  Users,
 } from 'lucide-react';
 import AvatarLead from './AvatarLead';
-import SeloNota from './SeloNota';
-import ChipsCanais from './ChipsCanais';
 import { readLocalArray } from '../leadData';
 
 const FIELD_OPTIONS = [
@@ -299,6 +300,7 @@ export default function KanbanBoard({ onNavigate, addLog }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [draggingKey, setDraggingKey] = useState(null);
+  const [alvo, setAlvo] = useState(null);
 
   const applyBoard = useCallback((result) => {
     if (!result?.success || !result.board) {
@@ -366,6 +368,7 @@ export default function KanbanBoard({ onNavigate, addLog }) {
     } finally {
       setBusy(false);
       setDraggingKey(null);
+      setAlvo(null);
     }
   };
 
@@ -416,69 +419,138 @@ export default function KanbanBoard({ onNavigate, addLog }) {
   }
 
   return (
-    <section className="kanban-view" data-od-id="global-kanban">
-      <header className="kanban-topbar">
+    <section className="kanban-view kb-view" data-od-id="global-kanban">
+      <header className="page-head kb-topo">
         <div>
-          <span className="eyebrow">Pipeline comercial</span>
           <h1>Kanban</h1>
-          <p>Todos os leads conectados às suas fontes, em um único funil.</p>
+          <p>Arraste os leads entre as etapas do funil. Clique num card para ver os detalhes.</p>
         </div>
-        <div className="kanban-actions">
-          <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => loadBoard()}><RefreshCw size={14} /> Atualizar</button>
-          <button type="button" className="btn btn-secondary" disabled={busy} onClick={applyRules}><RotateCcw size={14} /> Reaplicar regras</button>
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => setSettingsOpen(true)}><Settings2 size={15} /> Configurar Kanban</button>
+        <div className="kb-acoes">
+          <button type="button" className="kb-icone" disabled={busy} onClick={() => loadBoard()} title="Atualizar com a Base de Leads" aria-label="Atualizar"><RefreshCw size={15} strokeWidth={2} /></button>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={applyRules}><RotateCcw size={15} strokeWidth={1.75} /> Reaplicar regras</button>
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => setSettingsOpen(true)}><Settings2 size={15} strokeWidth={2} /> Configurar</button>
         </div>
       </header>
 
-      <div className="kanban-toolbar">
-        <label className="kanban-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar empresa, cidade ou telefone…" aria-label="Buscar no Kanban" /></label>
-        <label className="kanban-filter"><Filter size={14} /><select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Filtrar cards"><option value="all">Todos os leads</option><option value="high-score">Score 80+</option><option value="phone">Com telefone</option><option value="manual">Movidos manualmente</option></select><ChevronDown size={13} aria-hidden="true" /></label>
-        <span className="kanban-total">{cards.length} lead{cards.length === 1 ? '' : 's'} visível{cards.length === 1 ? '' : 'eis'}</span>
+      {/* Distribuição dos leads pelo funil */}
+      {(() => {
+        const cols = (board?.board?.columns || []);
+        const total = Math.max(1, cards.length);
+        return cols.length > 0 && (
+          <div className="kb-funil" aria-label="Leads por etapa">
+            <div className="kb-funil-barra" aria-hidden="true">
+              {cols.map((c) => {
+                const n = cards.filter((card) => card.columnId === c.id).length;
+                return n ? <span key={c.id} style={{ width: `${(n / total) * 100}%`, background: c.color }} title={`${c.name}: ${n}`} /> : null;
+              })}
+            </div>
+            <ul className="kb-funil-legenda">
+              {cols.map((c) => {
+                const n = cards.filter((card) => card.columnId === c.id).length;
+                return (
+                  <li key={c.id}>
+                    <i style={{ background: c.color }} />
+                    <span>{c.name}</span>
+                    <b>{n}</b>
+                    <small>{Math.round((n / total) * 100)}%</small>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })()}
+
+      <div className="kb-barra">
+        <label className="kb-busca"><Search size={15} strokeWidth={2} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar empresa, cidade ou telefone" aria-label="Buscar no Kanban" /></label>
+        <div className="kb-filtros" role="group" aria-label="Filtrar cards">
+          {[
+            { id: 'all', nome: 'Todos', Icone: Users },
+            { id: 'high-score', nome: 'Score 80+', Icone: Star },
+            { id: 'phone', nome: 'Com telefone', Icone: Phone },
+            { id: 'manual', nome: 'Movidos à mão', Icone: Hand },
+          ].map(({ id, nome, Icone }) => (
+            <button key={id} type="button" className={`bl-rapido${filter === id ? ' on' : ''}`} aria-pressed={filter === id} onClick={() => setFilter(id)}>
+              <Icone size={14} strokeWidth={2} /> {nome}
+            </button>
+          ))}
+        </div>
+        <span className="kb-total">{cards.length} lead{cards.length === 1 ? '' : 's'}</span>
       </div>
 
       {error ? <div className="kanban-feedback error" role="alert"><CircleAlert size={16} /> {error}</div> : null}
       {notice ? <div className="kanban-feedback success" role="status"><CheckCircle2 size={16} /> {notice}<button type="button" aria-label="Fechar mensagem" onClick={() => setNotice('')}><X size={14} /></button></div> : null}
 
-      <div className="kanban-columns" aria-label="Quadro Kanban">
+      <div className="kanban-columns kb-colunas" aria-label="Quadro Kanban">
         {(board?.board?.columns || []).map((column) => {
           const stageCards = cards.filter((card) => card.columnId === column.id);
+          const estourou = column.wipLimit && stageCards.length > column.wipLimit;
           return (
             <section
               key={column.id}
-              className="kanban-column"
+              className={`kanban-column kb-coluna${alvo === column.id ? ' kb-alvo' : ''}`}
               style={{ '--kanban-stage': column.color }}
-              onDragOver={(event) => event.preventDefault()}
+              onDragOver={(event) => { event.preventDefault(); if (alvo !== column.id) setAlvo(column.id); }}
+              onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setAlvo(null); }}
               onDrop={(event) => {
                 event.preventDefault();
                 const card = cards.find((item) => item.entityKey === draggingKey);
                 if (card) moveCard(card, column.id);
+                setAlvo(null);
               }}
             >
-              <header className="kanban-column-head">
-                <div><span className="kanban-stage-dot" /><h2>{column.name}</h2>{column.wipLimit ? <small>limite {column.wipLimit}</small> : null}</div>
-                <b>{stageCards.length}</b>
+              <header className="kb-coluna-topo">
+                <span className="kb-ponto" />
+                <h2>{column.name}</h2>
+                {column.terminal ? <span className="kb-final">Final</span> : null}
+                <span className={`kb-conta${estourou ? ' kb-estourou' : ''}`} title={column.wipLimit ? `Limite de ${column.wipLimit}` : undefined}>
+                  {stageCards.length}{column.wipLimit ? `/${column.wipLimit}` : ''}
+                </span>
               </header>
-              <div className="kanban-column-cards">
-                {stageCards.length === 0 ? <div className="kanban-column-empty">Arraste um lead para esta etapa</div> : stageCards.map((card) => {
+              <div className="kanban-column-cards kb-cards">
+                {stageCards.length === 0 ? <div className="kb-vazio">Arraste um lead para cá</div> : stageCards.map((card) => {
                   const profile = card.entity.profile || {};
+                  const score = Number(profile.score || 0);
+                  const nivel = score >= 80 ? 'alto' : score >= 50 ? 'medio' : 'baixo';
+                  const canais = [
+                    { id: 'tel', tem: Boolean(profile.phone), Icone: MessageCircle, nome: 'WhatsApp ou telefone' },
+                    { id: 'mail', tem: Boolean(profile.email), Icone: Mail, nome: 'E-mail' },
+                    { id: 'site', tem: Boolean(profile.website), Icone: Globe, nome: 'Site' },
+                    { id: 'ig', tem: Boolean(profile.instagram), Icone: Instagram, nome: 'Instagram' },
+                  ];
                   return (
-                    <article key={card.entityKey} className="kanban-card" draggable onDragStart={() => setDraggingKey(card.entityKey)} onDragEnd={() => setDraggingKey(null)} onClick={() => setSelectedCard(card)}>
-                      <div className="kanban-card-topo">
-                        <GripVertical size={15} className="kanban-grip" aria-hidden="true" />
-                        <AvatarLead lead={profile} size={34} />
-                        <div className="kanban-card-texto">
+                    <article
+                      key={card.entityKey}
+                      className={`kb-card${draggingKey === card.entityKey ? ' kb-arrastando' : ''}`}
+                      draggable
+                      tabIndex={0}
+                      aria-label={`${cardName(card)}, score ${score}. Enter para abrir`}
+                      onDragStart={() => setDraggingKey(card.entityKey)}
+                      onDragEnd={() => { setDraggingKey(null); setAlvo(null); }}
+                      onClick={() => setSelectedCard(card)}
+                      onKeyDown={(event) => { if (event.key === 'Enter') setSelectedCard(card); }}
+                    >
+                      <div className="kb-card-topo">
+                        <AvatarLead lead={profile} size={36} />
+                        <div className="kb-card-txt">
                           <strong>{cardName(card)}</strong>
-                          <span>{profile.category || 'Sem categoria'}{profile.city ? ` · ${profile.city}` : ''}</span>
+                          <span>{[profile.category, profile.city].filter(Boolean).join(' · ') || 'Sem categoria'}</span>
                         </div>
-                        {profile.rating ? <SeloNota nota={profile.rating} avaliacoes={profile.reviewCount} size="sm" /> : null}
-                        {card.manualOverride ? <span className="kanban-manual" title="Movido manualmente">Manual</span> : null}
                       </div>
-                      <ChipsCanais lead={profile} limite={3} />
-                      <div className="kanban-card-bottom"><span className="kanban-score">Score <b>{Number(profile.score || 0)}</b></span><span className="kanban-source-chips">{cardSources(card).map((source) => <i key={source}>{source}</i>)}</span></div>
-                      <label className="kanban-card-move" onClick={(event) => event.stopPropagation()}>
-                        <span className="sr-only">Mover {cardName(card)} para</span>
-                        <select value={card.columnId} disabled={busy} onChange={(event) => moveCard(card, event.target.value)}>{board.board.columns.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select>
-                      </label>
+                      <div className="kb-card-meio">
+                        {profile.rating ? (
+                          <span className="kb-nota"><Star size={12} strokeWidth={0} fill="currentColor" /> {String(profile.rating).replace('.', ',')}<small>({profile.reviewCount || 0})</small></span>
+                        ) : <span className="kb-nota kb-sem">Sem nota</span>}
+                        {card.manualOverride ? <span className="kb-manual" title="Movido à mão: as regras não mexem neste lead"><Hand size={11} strokeWidth={2} /> Manual</span> : null}
+                        <span className={`kb-score kb-score-${nivel}`}>{score}</span>
+                      </div>
+                      <div className="kb-canais">
+                        {canais.map(({ id, tem, Icone, nome }) => (
+                          <span key={id} className={`kb-canal kb-canal-${id}${tem ? ' tem' : ''}`} title={tem ? nome : `Sem ${nome.toLowerCase()}`}>
+                            <Icone size={13} strokeWidth={2} />
+                          </span>
+                        ))}
+                      </div>
                     </article>
                   );
                 })}
