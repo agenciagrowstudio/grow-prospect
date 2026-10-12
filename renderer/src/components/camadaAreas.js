@@ -35,10 +35,10 @@ export function desenhaAreas(camada, areas, op = {}) {
     const estilo = {
       color: AZUL,
       weight: forte ? 2.5 : 1.5,
-      opacity: forte ? 0.95 : 0.7,
+      opacity: forte ? 1 : 0.85,
       fillColor: AZUL,
-      fillOpacity: forte ? 0.16 : 0.09,
-      dashArray: op.tracejado ? '6 5' : null,
+      // Azul pouco transparente: a área feita salta aos olhos, os pinos continuam por cima.
+      fillOpacity: forte ? 0.36 : 0.26,
     };
     const raio = a.raioKm || RAIO_PROVISORIO_KM[a.tipo] || 4;
     const circulo = L.circle([a.lat, a.lng], { ...estilo, radius: raio * 1000 });

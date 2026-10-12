@@ -61,9 +61,9 @@ export default function MapaRaio({ local, raioKm, onClique, areas = [], contorno
     }
     const ponto = [local.lat, local.lng];
     if (contorno) {
-      // A cidade inteira, tracejada: é exatamente o que a extração vai cobrir.
+      // A cidade inteira pintada de azul: é exatamente o que a extração vai cobrir.
       const forma = L.geoJSON(contorno, {
-        style: () => ({ color: '#111827', weight: 2, dashArray: '6 5', fillColor: '#111827', fillOpacity: 0.04 }),
+        style: () => ({ color: COR, weight: 2, fillColor: COR, fillOpacity: 0.32 }),
         interactive: false,
       }).addTo(camada.current);
       L.circleMarker(ponto, { radius: 6, weight: 3, color: '#fff', fillColor: COR, fillOpacity: 1 }).addTo(camada.current);
