@@ -28,7 +28,8 @@ import {
   List,
   Brain,
   CircleHelp,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 import { dedupeLeads, normalizeLeadCategory, normalizeLeadCollection, readLocalArray } from '../leadData';
 
@@ -39,7 +40,7 @@ const DEFAULT_COLS = [
   { id: 'wa', label: 'WhatsApp' },
   { id: 'ig', label: 'Instagram' },
   { id: 'fb', label: 'Facebook' },
-  { id: 'br', label: 'Brasileiro' },
+  { id: 'br', label: 'Público' },
   { id: 'site', label: 'Site' },
   { id: 'mail', label: 'E-mail' },
   { id: 'av', label: 'Avaliação' },
@@ -169,10 +170,27 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   const [newGroupName, setNewGroupName] = useState('');
 
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
+  const [confirmaApagar, setConfirmaApagar] = useState(false);
   const [groupSearch, setGroupSearch] = useState('');
 
   const [activeLead, setActiveLead] = useState(null);
   const [leadModalTab, setLeadModalTab] = useState('dados');
+
+  // Apaga os selecionados da base, dos grupos e das análises. O registro da
+  // Fila do dia fica: é histórico de contato, e evita abordar de novo.
+  const handleApagarSelecionados = () => {
+    const ids = new Set([...sel].map(String));
+    setLeads((atual) => atual.filter((l, idx) => !ids.has(String(getLeadId(l, idx)))));
+    setGroups((atual) => atual.map((g) => ({ ...g, members: (g.members || []).filter((m) => !ids.has(String(m))) })));
+    try {
+      const analises = JSON.parse(localStorage.getItem('sigma_analysis') || '{}') || {};
+      ids.forEach((id) => { delete analises[id]; });
+      localStorage.setItem('sigma_analysis', JSON.stringify(analises));
+    } catch { /* sem análise salva */ }
+    setSel(new Set());
+    setConfirmaApagar(false);
+    window.dispatchEvent(new Event('sigma:leads-updated'));
+  };
 
   // Persist state
   useEffect(() => {
@@ -204,7 +222,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   const getLeadUf = (l) => l.state || l.uf || '';
   const getLeadHood = (l) => l.neighborhood || l.hood || '';
   const getLeadRating = (l) => l.rating || l.rn || '—';
-  const getLeadReviews = (l) => l.reviews || 0;
+  const getLeadReviews = (l) => l.reviewCount || l.reviews || Number(l.totalReviews) || 0;
   const getLeadOrig = (l) => l.searchQuery || l.orig || '—';
 
   const leadHasChan = (l, ch) => {
@@ -660,10 +678,11 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           <Users size={15} strokeWidth={2} /> Todos <b>{leads.length}</b>
         </button>
         {[
-          { ch: 'wa', nome: 'WhatsApp', Icone: MessageCircle, n: stats.withWa, cor: 'verde' },
-          { ch: 'mail', nome: 'E-mail', Icone: Mail, n: stats.withMail, cor: 'roxo' },
-          { ch: 'ig', nome: 'Instagram', Icone: Instagram, n: stats.withIg, cor: 'rosa' },
-          { ch: 'site', nome: 'Site', Icone: Globe, n: stats.withSite, cor: 'azul' },
+          // "Com": o número é de quantos leads TÊM o canal (não quantos faltam).
+          { ch: 'wa', nome: 'Com WhatsApp', Icone: MessageCircle, n: stats.withWa, cor: 'verde' },
+          { ch: 'mail', nome: 'Com e-mail', Icone: Mail, n: stats.withMail, cor: 'roxo' },
+          { ch: 'ig', nome: 'Com Instagram', Icone: Instagram, n: stats.withIg, cor: 'rosa' },
+          { ch: 'site', nome: 'Com site', Icone: Globe, n: stats.withSite, cor: 'azul' },
         ].map(({ ch, nome, Icone, n, cor }) => (
           <button
             key={ch}
@@ -671,6 +690,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
             className={`bl-rapido bl-${cor}${bChans.includes(ch) ? ' on' : ''}`}
             onClick={() => handleChannelToggle(ch)}
             aria-pressed={bChans.includes(ch)}
+            title={`${n} de ${leads.length} leads ${nome.toLowerCase()}. Clique para ver só eles`}
           >
             <Icone size={15} strokeWidth={2} /> {nome} <b>{n}</b>
           </button>
@@ -1022,7 +1042,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
         <div className="selbar" id="selBar">
           <b id="selCount">{sel.size}</b>
           <span>selecionados</span>
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setSel(new Set())} style={{ color: 'var(--fg)', borderColor: 'var(--border)' }}>
+          <button type="button" className="btn btn-sm selbar-limpar" onClick={() => setSel(new Set())}>
             Limpar
           </button>
           <span style={{ flex: 1 }} />
@@ -1035,6 +1055,34 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           <button type="button" className="btn btn-sm btn-primary" onClick={() => setIsExportOpen(true)}>
             Exportar
           </button>
+          <button type="button" className="btn btn-sm bl-apagar" onClick={() => setConfirmaApagar(true)}>
+            <Trash2 size={14} strokeWidth={2} aria-hidden="true" /> Apagar
+          </button>
+        </div>
+      )}
+
+      {/* CONFIRMAR APAGAR */}
+      {confirmaApagar && (
+        <div className="overlay on" onClick={() => setConfirmaApagar(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="blApagarTitulo" onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 94vw)' }}>
+            <div className="modal-head">
+              <h2 id="blApagarTitulo">Apagar {sel.size} lead{sel.size === 1 ? '' : 's'}?</h2>
+            </div>
+            <div className="modal-body" style={{ gridTemplateColumns: '1fr', gap: '10px' }}>
+              <p className="bl-apagar-txt">
+                Eles saem da Base de Leads, do mapa, dos grupos e das análises, neste computador e nos outros conectados à empresa.
+                O histórico de quem já recebeu mensagem continua guardado. Não dá para desfazer.
+              </p>
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirmaApagar(false)} autoFocus>
+                Cancelar
+              </button>
+              <button type="button" className="btn bl-apagar-confirma" onClick={handleApagarSelecionados}>
+                <Trash2 size={15} strokeWidth={2} aria-hidden="true" /> Apagar {sel.size}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1160,12 +1208,19 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       if (colId === 'ig') return <td key={colId}>{getLeadIg(l) || '—'}</td>;
                       if (colId === 'fb') return <td key={colId}>{getLeadFb(l) || '—'}</td>;
                       if (colId === 'br') {
-                        const nivel = getSinalBr(l);
-                        if (!nivel) return <td key={colId}>—</td>;
+                        const pub = publicoDoLead(l);
+                        const sinais = (l.sinalBr?.sinais || []).join(' · ');
+                        const dica = l.publicoConfirmado
+                          ? 'Marcado por você na Fila do dia'
+                          : pub === 'verificar'
+                            ? 'Nenhum sinal na ficha do Google. Marque quem é na Fila do dia'
+                            : sinais ? `Sinais: ${sinais}` : '';
+                        const rotulo = { br: 'No Brasil', brus: 'Brasileiro', us: 'Americano', verificar: 'A verificar' }[pub];
                         return (
                           <td key={colId}>
-                            <span className={`sinal-br sinal-br-${nivel}`} title={(l.sinalBr.sinais || []).join(' · ')}>
-                              {nivel === 'alto' ? 'Alto' : nivel === 'medio' ? 'Médio' : 'Baixo'}
+                            <span className={`bl-quem bl-quem-${pub}`} title={dica}>
+                              {pub === 'verificar' ? <CircleHelp size={13} strokeWidth={2} aria-hidden="true" /> : <Bandeira pais={pub === 'us' ? 'US' : 'BR'} />}
+                              {rotulo}
                             </span>
                           </td>
                         );

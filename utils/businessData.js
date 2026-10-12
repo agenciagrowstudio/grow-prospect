@@ -70,13 +70,23 @@ async function extractBusinessData(page) {
     const ratingEl = document.querySelector('div.F7nice span[aria-hidden="true"]');
     if (ratingEl) data.rating = parseFloat(ratingEl.textContent.replace(',', '.')) || 0;
 
-    const reviewBtn = document.querySelector('div.F7nice button[aria-label*="review"]');
-    const reviewText = reviewBtn?.getAttribute('aria-label') || 
-                       document.querySelector('div.F7nice span[aria-label*="review"]')?.textContent || '';
-    const match = reviewText.match(/([\d.,]+)/);
+    // O Maps abre no idioma do sistema: "60 avaliações", "60 reviews",
+    // "60 reseñas". Antes só procurava "review" e, em português, vinha sempre 0.
+    // Sem o rótulo, vale o número entre parênteses ao lado da nota: "4,9(60)".
+    const blocoNota = document.querySelector('div.F7nice');
+    const rotulos = blocoNota
+      ? [...blocoNota.querySelectorAll('[aria-label]')].map((el) => el.getAttribute('aria-label') || '')
+      : [];
+    const rotuloAvaliacoes = rotulos.find((t) => /review|avalia|rese[nñ]a|opini/i.test(t)) || '';
+    const entreParenteses = (blocoNota?.textContent || '').match(/\(([\d.,\s]+(?:\s?(?:mil|k))?)\)/i);
+    const reviewText = rotuloAvaliacoes || (entreParenteses ? entreParenteses[1] : '');
+    const match = reviewText.match(/([\d.,]+)\s*(mil|k)?/i);
     if (match) {
       data.totalReviews = match[1];
-      data.reviewCount = parseInt(match[1].replace(/[.,]/g,'')) || 0;
+      const base = match[2]
+        ? parseFloat(match[1].replace(',', '.')) * 1000
+        : parseInt(match[1].replace(/[.,\s]/g, ''), 10);
+      data.reviewCount = Math.round(base) || 0;
     }
 
    // --- DESCRIPTION ---

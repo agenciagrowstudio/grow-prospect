@@ -40,7 +40,7 @@ import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData
 import { mascaraTelefone } from './telefone';
 import IconePng from './components/IconePng';
 import { iniciarSincronizacao, lerSessao, lerEmpresa } from './nuvem';
-import { separaNovos } from './cobertura';
+import { separaNovos, atualizaExistentes } from './cobertura';
 import { ehWeb } from './ambiente';
 import EntradaWeb from './components/EntradaWeb';
 import SoNoComputador from './components/SoNoComputador';
@@ -312,7 +312,8 @@ function AppInner() {
       if (!resultLeads.length) throw new Error('A busca foi concluída, mas não retornou leads válidos.');
 
       // O que já está na base não entra de novo: fica na extração em que apareceu primeiro.
-      const current = readLocalArray('sigma_leads');
+      // Quem reapareceu tem os dados do Google atualizados (nota, avaliações...).
+      const { base: current } = atualizaExistentes(readLocalArray('sigma_leads'), resultLeads);
       const { novos, repetidos } = separaNovos(resultLeads, current);
       const combined = normalizeLeadCollection([
         ...novos.map((lead) => ({ ...lead, searchId, pais, id: lead.id || Math.random().toString(36).slice(2) })),

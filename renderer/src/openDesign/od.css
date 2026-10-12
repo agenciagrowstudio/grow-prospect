@@ -2010,6 +2010,10 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .app-sidebar .nav-item:hover{color:#0a0a0a;background:#f0f0f0}
 .app-sidebar .nav-item:hover svg{color:#0a0a0a}
 .app-sidebar .nav-item.active,.app-sidebar .nav-item.active svg{color:#fff}
+/* Item ativo continua azul com o mouse em cima (o hover acima não pode apagar o fundo) */
+.app-sidebar .nav-item.active:hover{background:var(--brand);color:#fff}
+.app-sidebar .nav-item.active:hover svg,.app-sidebar .nav-item.active:hover .ico{color:#fff}
+.app-sidebar .nav-item.active:hover .nav-kbd{color:#fff;border-color:rgba(255,255,255,.55)}
 .app-sidebar .sidebar-nav-label{color:#52525b}
 .app-sidebar .nav-kbd{color:#3f3f46;border-color:#cfcfcf}
 .app-sidebar .nav-item.active .nav-kbd{color:#fff;border-color:rgba(255,255,255,.55)}
@@ -2156,3 +2160,18 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 #feedCount[hidden]{display:none}
 .ja-extraida-repetir input[type="checkbox"]{flex:none;width:15px!important;height:15px;min-height:0!important;margin:0;padding:0;accent-color:#0E6BEC}
 .ja-extraida-repetir{flex-direction:row!important;text-align:left}
+
+/* Base de Leads: quem é quem e apagar */
+.bl-quem{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--fg);white-space:nowrap}
+.bl-quem .bandeira{flex:none;width:17px;height:12px;border-radius:2px;overflow:hidden;display:inline-flex;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.bl-quem .bandeira svg{width:17px!important;height:12px!important}
+.bl-quem-verificar{color:var(--muted);font-weight:500}
+.selbar .bl-apagar{display:inline-flex;align-items:center;gap:6px;background:transparent;color:#fca5a5;border-color:rgba(252,165,165,.45)}
+.selbar .bl-apagar:hover{background:#b91c1c;color:#fff;border-color:#b91c1c}
+.bl-apagar-txt{margin:0;font-size:13.5px;line-height:1.55;color:var(--muted)}
+.bl-apagar-confirma{display:inline-flex;align-items:center;gap:6px;background:#b91c1c;color:#fff;border-color:#b91c1c}
+.bl-apagar-confirma:hover{background:#991b1b;border-color:#991b1b}
+
+/* Barra preta da seleção: Limpar sempre visível, com e sem o mouse em cima */
+.selbar .selbar-limpar{background:#fff;color:#0a0a0a;border-color:#fff}
+.selbar .selbar-limpar:hover{background:#e5e7eb;color:#0a0a0a;border-color:#e5e7eb}

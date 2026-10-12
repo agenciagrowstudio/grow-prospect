@@ -146,6 +146,34 @@ export function identidadeLead(lead) {
   return `n:${norm(lead?.name)}|${norm(lead?.address)}`;
 }
 
+// Dados do Google que mudam com o tempo (ou que versões antigas não pegavam,
+// como o número de avaliações): o resultado novo atualiza o lead que já existe.
+const CAMPOS_ATUALIZAVEIS = ['rating', 'reviews', 'reviewCount', 'totalReviews', 'phone', 'website', 'photos', 'openingHours'];
+
+/**
+ * Atualiza na base os leads que reapareceram, sem mexer no que é do usuário
+ * (id, extração de origem, marcação de público, análise).
+ * @returns {{base: object[], atualizados: number}}
+ */
+export function atualizaExistentes(base = [], resultado = []) {
+  const porId = new Map(resultado.map((l) => [identidadeLead(l), l]));
+  let atualizados = 0;
+  const nova = base.map((l) => {
+    const veio = porId.get(identidadeLead(l));
+    if (!veio) return l;
+    const mudou = {};
+    CAMPOS_ATUALIZAVEIS.forEach((c) => {
+      const v = veio[c];
+      const vazio = v === undefined || v === null || v === '' || v === 0 || v === '0';
+      if (!vazio && JSON.stringify(v) !== JSON.stringify(l[c])) mudou[c] = v;
+    });
+    if (!Object.keys(mudou).length) return l;
+    atualizados += 1;
+    return { ...l, ...mudou };
+  });
+  return { base: nova, atualizados };
+}
+
 /** Separa o que é novo do que já estava na base. */
 export function separaNovos(resultado = [], base = []) {
   const vistos = new Set(base.map(identidadeLead));

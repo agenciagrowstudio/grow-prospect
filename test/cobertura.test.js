@@ -61,4 +61,13 @@ describe('cobertura das extrações', () => {
     assert.deepEqual(novos.map((l) => l.placeId), ['B']);
     assert.equal(repetidos, 3);
   });
+
+  it('lead que reaparece ganha os dados novos do Google sem perder o que é do usuário', async () => {
+    await carrega();
+    const base = [{ id: 'x', placeId: 'A', searchId: 's1', rating: 4.9, reviews: 0, reviewCount: 0, publicoConfirmado: 'brus' }];
+    const { base: nova, atualizados } = C.atualizaExistentes(base, [{ placeId: 'A', rating: 4.9, reviews: 60, reviewCount: 60, phone: '' }]);
+    assert.equal(atualizados, 1);
+    assert.deepEqual(nova[0], { id: 'x', placeId: 'A', searchId: 's1', rating: 4.9, reviews: 60, reviewCount: 60, publicoConfirmado: 'brus' });
+    assert.equal(C.atualizaExistentes(nova, [{ placeId: 'A', reviews: 0 }]).atualizados, 0, 'zero não apaga o que já tinha');
+  });
 });
