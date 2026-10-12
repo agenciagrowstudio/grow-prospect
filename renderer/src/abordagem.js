@@ -254,12 +254,14 @@ export function anguloDoLead(q, preferido) {
 
 /**
  * Nos EUA a grande maioria dos leads é de brasileiros, então a mensagem nasce
- * em português. Só vai em inglês quando a análise de sinais brasileiros rodou
- * e não achou nada (nível baixo). O botão de traduzir troca na hora.
+ * em português. O sinal brasileiro "baixo" não serve para mandar em inglês: ele
+ * quer dizer "a ficha do Google não tinha nada para ler", não "é americano".
+ * Só vai em inglês quem foi marcado como americano; o botão de traduzir troca
+ * na hora.
  */
 export function idiomaDoLead(lead) {
   const eua = String(lead?.pais || 'BR').toUpperCase() === 'US';
-  return eua && lead?.sinalBr?.nivel === 'baixo' ? 'en' : 'pt';
+  return eua && lead?.publicoConfirmado === 'us' ? 'en' : 'pt';
 }
 
 /**

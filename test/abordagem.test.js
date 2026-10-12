@@ -61,13 +61,15 @@ describe('primeira mensagem de abordagem', () => {
 
   it('americano de verdade recebe em inglês; o ângulo respeita o que o usuário quer oferecer', async () => {
     await carrega();
-    const americano = { ...semSite, id: 'u1', sinalBr: { nivel: 'baixo' } };
+    const americano = { ...semSite, id: 'u1', sinalBr: { nivel: 'baixo' }, publicoConfirmado: 'us' };
     const q = Q.qualificaLead(americano);
     assert.equal(A.gerarAbordagem(americano, q, cfg).idioma, 'en');
     // nos EUA, sem análise de sinais (ou sinal médio), presume brasileiro: português
     assert.equal(A.idiomaDoLead({ pais: 'US' }), 'pt');
     assert.equal(A.idiomaDoLead({ pais: 'US', sinalBr: { nivel: 'medio' } }), 'pt');
     assert.equal(A.idiomaDoLead({ pais: 'BR', sinalBr: { nivel: 'baixo' } }), 'pt');
+    // "baixo" só quer dizer que a ficha não tinha o que ler: continua português
+    assert.equal(A.idiomaDoLead({ pais: 'US', sinalBr: { nivel: 'baixo', pontos: 0 } }), 'pt');
     assert.equal(A.gerarAbordagem(semSite, Q.qualificaLead(semSite), { ...cfg, oferta: 'conteudo' }).angulo, 'conteudo');
     // pediu um ângulo que o lead não tem: cai no principal
     assert.equal(A.gerarAbordagem({ ...semSite, instagram: '' }, Q.qualificaLead({ ...semSite, instagram: '' }), { ...cfg, oferta: 'conteudo' }).angulo, 'site');
