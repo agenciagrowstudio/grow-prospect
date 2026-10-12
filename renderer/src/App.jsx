@@ -158,7 +158,23 @@ function AppInner() {
   // Sincronização com a empresa na nuvem: quando chega dado novo de outro
   // computador, a tela atual é montada de novo para ler os dados atualizados.
   const [versaoDados, setVersaoDados] = useState(0);
-  useEffect(() => iniciarSincronizacao(() => setVersaoDados((v) => v + 1)), []);
+  // Dado novo da nuvem recarrega a tela, mas nunca com uma janela aberta (Fila
+  // do dia, detalhes) ou alguém digitando: espera fechar para não perder nada.
+  useEffect(() => {
+    let pendente = false;
+    const ocupado = () => Boolean(
+      document.querySelector('.overlay.on, [aria-modal="true"]')
+      || document.activeElement?.matches?.('input, textarea, select, [contenteditable="true"]'),
+    );
+    const aplica = () => {
+      if (!pendente || ocupado()) return;
+      pendente = false;
+      setVersaoDados((v) => v + 1);
+    };
+    const parar = iniciarSincronizacao(() => { pendente = true; aplica(); });
+    const relogio = setInterval(aplica, 1500);
+    return () => { parar(); clearInterval(relogio); };
+  }, []);
 
   const [isSidebarLocked, setIsSidebarLocked] = useState(() => {
     try { return localStorage.getItem('sigma_menu_aberto') === '1'; } catch { return false; }

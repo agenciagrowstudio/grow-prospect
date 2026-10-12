@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { PROVIDERS, readAiConfig, saveAiConfig } from '../configIA';
 import AvatarLead from './AvatarLead';
+import { ChipOportunidade } from './IconeServico';
 import {
   Target,
   Settings,
@@ -721,7 +722,7 @@ export default function LeadScoring({ onUpdateScoringCount, addLog, onAbrirConfi
                         <td style={{ fontSize: 12.5, maxWidth: 220 }} title={an ? an.opp.join('; ') : ''}>
                           {an && an.opp.length > 0 ? (
                             <span className="sc-opps">
-                              {an.opp.slice(0, 2).map((o) => <span key={o} className="sc-opp">{o}</span>)}
+                              {an.opp.slice(0, 2).map((o) => <ChipOportunidade key={o} texto={o} />)}
                               {an.opp.length > 2 && <span className="sc-opp sc-opp-mais">+{an.opp.length - 2}</span>}
                             </span>
                           ) : <span className="sc-traco">—</span>}

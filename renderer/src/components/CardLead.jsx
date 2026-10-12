@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Mail, MapPin, Thermometer, Snowflake, ChevronDown,
-  CalendarCheck, Store, Megaphone, Clapperboard,
 } from 'lucide-react';
 import AvatarLead from './AvatarLead';
 import IconePng, { ImagemPng } from './IconePng';
 import { ICONES } from '../assets/icones';
+import { ICONE_SERVICO } from './IconeServico';
 
 /**
  * Card do lead na lista do mapa, no formato de vitrine: foto grande à
@@ -18,15 +18,7 @@ import { ICONES } from '../assets/icones';
  */
 
 const IconeQuente = ({ size }) => <IconePng src={ICONES.quente} size={size + 1} />;
-const IconeSiteServico = ({ size }) => <IconePng src={ICONES.site} size={size + 3} />;
 const ICONE_TEMPERATURA = { quente: IconeQuente, morno: Thermometer, frio: Snowflake };
-const ICONE_SERVICO = {
-  site: IconeSiteServico,
-  sistema: CalendarCheck,
-  google: Store,
-  redes: Megaphone,
-  conteudo: Clapperboard,
-};
 
 const LogoWhatsApp = ({ size }) => <IconePng src={ICONES.whatsapp} size={size + 3} />;
 const LogoInstagram = ({ size }) => <IconePng src={ICONES.instagram} size={size + 3} />;

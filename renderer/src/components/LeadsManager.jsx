@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import AvatarLead from './AvatarLead';
+import { ChipOportunidade } from './IconeServico';
 import IconeNicho from './IconeNicho';
 import {
   Globe,
@@ -1549,9 +1550,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                                 Oportunidades ({a.opp.length})
                               </div>
                               <div className="acc-body" style={{ display: 'block' }}>
-                                <ul>
-                                  {a.opp.map((o, i) => <li key={i}>{o}</li>)}
-                                </ul>
+                                <span className="sc-opps sc-opps-lista">
+                                  {a.opp.map((o, i) => <ChipOportunidade key={i} texto={o} />)}
+                                </span>
                               </div>
                             </div>
                           )}

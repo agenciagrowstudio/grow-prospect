@@ -2045,3 +2045,13 @@ body.side-locked .app-sidebar .sidebar-nav-label{opacity:1;max-height:28px;paddi
 .bx-app{display:inline-flex;align-items:center;gap:6px}
 .en-baixar{margin-top:6px}
 .sc-vazio .bx-app{margin-top:8px}
+
+/* Oportunidades com o ícone do serviço (o mesmo da extração) */
+.cl-servico-outro{--ic:#6B7280}
+.sc-opp{display:inline-flex;align-items:center;gap:5px;padding:2px 8px 2px 3px}
+.sc-opp-ic{width:18px;height:18px;border-radius:50%;flex:none}
+.sc-opp-ic img{width:12px!important;height:12px!important}
+.sc-opp-txt{overflow:hidden;text-overflow:ellipsis}
+.sc-opp-mais{padding:2px 8px}
+.sc-opps-lista{padding:10px 12px}
+.sc-opps-lista .sc-opp{max-width:100%;white-space:normal}

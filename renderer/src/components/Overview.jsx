@@ -91,11 +91,25 @@ function getCampaignsFromResponse(response) {
   return Array.isArray(response?.campaigns) ? response.campaigns : [];
 }
 
-function getCampaignCategoryMetrics(campaigns) {
+/**
+ * Categoria do lead no painel: o nicho que a pessoa buscou ("house cleaning"),
+ * não a categoria do Google, que vem traduzida e picada ("Serviços de faxina",
+ * "Limpeza"). Lead sem extração conhecida fica com a categoria do Google.
+ */
+function nichoPorBusca(searches) {
+  const porId = new Map();
+  searches.forEach((s) => {
+    const termo = String(s?.query || s?.label || '').replace(/\s+/g, ' ').trim();
+    if (s?.id && termo) porId.set(String(s.id), termo.charAt(0).toUpperCase() + termo.slice(1));
+  });
+  return (lead) => porId.get(String(lead?.searchId || '')) || normalizeLeadCategory(lead?.category || lead?.company?.category);
+}
+
+function getCampaignCategoryMetrics(campaigns, categoriaDe) {
   const byCategory = new Map();
   campaigns.forEach((campaign) => {
     (Array.isArray(campaign?.leads) ? campaign.leads : []).forEach((lead) => {
-      const category = normalizeLeadCategory(lead?.category || lead?.company?.category);
+      const category = categoriaDe(lead);
       const current = byCategory.get(category) || { sent: 0, replies: 0 };
       const status = String(lead?.status || '').toLowerCase();
       const sent = Boolean(lead?.sentAt || lead?.messageId || ['sent', 'delivered', 'read', 'replied'].includes(status));
@@ -140,11 +154,16 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
     const leads = dedupeLeads(normalizeLeadCollection(readLocalArray('sigma_leads')));
     const searches = getExtractionSearches(readLocalArray('sigma_searches'));
     const stats = getLeadStats(leads);
-    const campaignMetrics = getCampaignCategoryMetrics(campaigns);
+    const nichoDe = nichoPorBusca(searches);
+    const nichoPorLead = new Map(leads.map((lead) => [String(lead.id), nichoDe(lead)]));
+    const campaignMetrics = getCampaignCategoryMetrics(
+      campaigns,
+      (lead) => nichoPorLead.get(String(lead?.id || lead?.leadId || '')) || nichoDe(lead),
+    );
     const categoryMap = new Map();
 
     leads.forEach((lead) => {
-      const name = normalizeLeadCategory(lead.category);
+      const name = nichoPorLead.get(String(lead.id));
       categoryMap.set(name, (categoryMap.get(name) || 0) + 1);
     });
 

@@ -59,6 +59,21 @@ describe('sincronização entre computadores (mescla em três vias)', () => {
     assert.equal(N.mesclar3(v, v, [{ id: 1 }]), v);
   });
 
+  it('a nuvem devolve as chaves em outra ordem: não conta como mudança', async () => {
+    await carrega();
+    const local = [{ id: 1, nome: 'Onix', pais: 'US' }];
+    const daNuvem = [{ pais: 'US', id: 1, nome: 'Onix' }];
+    assert.equal(N.mesclar3(local, local, daNuvem), local, 'devolve o local, sem recarregar a tela');
+    const cfg = { nome: 'Matheus', oferta: 'site' };
+    assert.equal(N.mesclar3(cfg, cfg, { oferta: 'site', nome: 'Matheus' }), cfg);
+  });
+
+  it('limpeza feita na nuvem chega aqui', async () => {
+    await carrega();
+    const base = [{ id: 'd0' }, { id: 'real' }];
+    assert.deepEqual(ids(N.mesclar3(base, base, [{ id: 'real' }])), ['real']);
+  });
+
   it('só dados de trabalho sincronizam; segredos e preferências ficam no computador', async () => {
     await carrega();
     assert.ok(N.CHAVES_SINCRONIZADAS.includes('sigma_leads'));

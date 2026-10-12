@@ -252,9 +252,14 @@ export function anguloDoLead(q, preferido) {
   return ids[0] || 'geral';
 }
 
+/**
+ * Nos EUA a grande maioria dos leads é de brasileiros, então a mensagem nasce
+ * em português. Só vai em inglês quando a análise de sinais brasileiros rodou
+ * e não achou nada (nível baixo). O botão de traduzir troca na hora.
+ */
 export function idiomaDoLead(lead) {
   const eua = String(lead?.pais || 'BR').toUpperCase() === 'US';
-  return eua && lead?.sinalBr?.nivel !== 'alto' ? 'en' : 'pt';
+  return eua && lead?.sinalBr?.nivel === 'baixo' ? 'en' : 'pt';
 }
 
 /**

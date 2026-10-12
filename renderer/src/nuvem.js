@@ -40,8 +40,18 @@ const CHAVE_LOGO_LEMBRADA = 'prospector_lembrar_logo';
 /* Mescla em três vias (pura, testada)                                  */
 /* ------------------------------------------------------------------ */
 
-const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const ehObjeto = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+// O Postgres (jsonb) devolve as chaves dos objetos em outra ordem. Comparar o
+// texto puro dava "mudou" em todo dado vindo da nuvem e recarregava a tela.
+function textoEstavel(v) {
+  if (Array.isArray(v)) return `[${v.map(textoEstavel).join(',')}]`;
+  if (ehObjeto(v)) {
+    return `{${Object.keys(v).filter((k) => v[k] !== undefined).sort()
+      .map((k) => `${JSON.stringify(k)}:${textoEstavel(v[k])}`).join(',')}}`;
+  }
+  return v === undefined ? 'null' : JSON.stringify(v);
+}
+const igual = (a, b) => textoEstavel(a) === textoEstavel(b);
 const idDe = (item) => (ehObjeto(item) && (item.id !== undefined && item.id !== null) ? String(item.id) : null);
 const listaComId = (v) => Array.isArray(v) && v.length > 0 && v.every((item) => idDe(item) !== null);
 
