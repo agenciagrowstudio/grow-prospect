@@ -15,7 +15,10 @@ import {
   Thermometer,
   Snowflake,
   ClipboardList,
+  CircleHelp,
+  ChevronRight,
 } from 'lucide-react';
+import { pedirMapa } from '../pedidoMapa';
 import IconeNicho from './IconeNicho';
 import Bandeira from './Bandeira';
 import { qualificaLead, lerAnalisesSalvas } from '../qualificacaoLead';
@@ -122,7 +125,7 @@ function getCampaignCategoryMetrics(campaigns, categoriaDe) {
   return byCategory;
 }
 
-function Overview({ onNewExtraction, leadsCount = 0 }) {
+function Overview({ onNavigate, onNewExtraction, leadsCount = 0 }) {
   const [categoryView, setCategoryView] = useState(() => localStorage.getItem('sigma_overview_category_view') || 'bars');
   const [searchView, setSearchView] = useState(() => localStorage.getItem('sigma_overview_search_view') || 'bars');
   const [selectedMetrics, setSelectedMetrics] = useState(['leads']);
@@ -368,7 +371,7 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
   const perfil = useMemo(() => {
     const lista = dedupeLeads(normalizeLeadCollection(readLocalArray('sigma_leads')));
     const analises = lerAnalisesSalvas();
-    const pub = { br: 0, brus: 0, us: 0 };
+    const pub = { br: 0, brus: 0, us: 0, verificar: 0 };
     const temp = { quente: 0, morno: 0, frio: 0 };
     lista.forEach((l) => {
       const p = publicoDoLead(l);
@@ -377,6 +380,12 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
     });
     return { total: lista.length, pub, temp };
   }, [data]);
+
+  // Clicou num número da base: abre o mapa com todas as buscas, já filtrado.
+  const verNoMapa = (pedido) => {
+    pedirMapa({ todasBuscas: true, ...pedido });
+    onNavigate?.('scraper');
+  };
 
   return (
     <div className="overview-view">
@@ -413,26 +422,43 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
           <article className="cfg-card rs-card">
             <header className="rs-card-topo"><h2>Público</h2><span className="rs-fonte">{perfil.total} leads</span></header>
             <ul className="ov-pub">
-              {PUBLICOS_RESULTADO.map((p) => {
+              {PUBLICOS_RESULTADO.filter((p) => p.id !== 'verificar' || perfil.pub.verificar).map((p) => {
                 const n = perfil.pub[p.id];
                 const pct = Math.round((n / perfil.total) * 100);
                 return (
                   <li key={p.id}>
-                    <div className="ov-pub-topo">
-                      <span><Bandeira pais={p.pais} /> {p.nome}</span>
-                      <span><b>{n}</b> · {pct}%</span>
-                    </div>
-                    <div className="ov-pub-barra" aria-hidden="true"><i className={`ov-pub-${p.id}`} style={{ width: `${Math.max(n ? 3 : 0, pct)}%` }} /></div>
+                    <button
+                      type="button"
+                      className="ov-pub-item"
+                      disabled={!n}
+                      title={n ? `Ver ${p.nome.toLowerCase()} no mapa` : undefined}
+                      onClick={() => verNoMapa({ publico: p.id })}
+                    >
+                      <div className="ov-pub-topo">
+                        <span>
+                          {p.id === 'brus' && <Bandeira pais="BR" />}
+                          {p.bandeira || p.id === 'brus' ? <Bandeira pais={p.pais} /> : <CircleHelp size={14} strokeWidth={2} className="ov-pub-duvida" aria-hidden="true" />}
+                          {p.nome}
+                        </span>
+                        <span><b>{n}</b> · {pct}%{n ? <ChevronRight size={13} strokeWidth={2} className="ov-ir" aria-hidden="true" /> : null}</span>
+                      </div>
+                      <div className="ov-pub-barra" aria-hidden="true"><i className={`ov-pub-${p.id}`} style={{ width: `${Math.max(n ? 3 : 0, pct)}%` }} /></div>
+                    </button>
                   </li>
                 );
               })}
             </ul>
+            {perfil.pub.verificar > 0 && (
+              <p className="rs-nota">
+                "A verificar" são leads dos EUA sem nenhum sinal na ficha do Google. Na Fila do dia você marca quem é brasileiro e quem é americano.
+              </p>
+            )}
           </article>
 
           <article className="cfg-card rs-card">
             <header className="rs-card-topo">
               <h2>Temperatura</h2>
-              <button type="button" className="btn btn-sm ov-fila" onClick={() => onNavigate?.('scraper')}>
+              <button type="button" className="btn btn-sm ov-fila" onClick={() => verNoMapa({ abrirFila: true, todasBuscas: false })}>
                 <ClipboardList size={14} strokeWidth={2} /> Abrir Fila do dia
               </button>
             </header>
@@ -448,8 +474,16 @@ function Overview({ onNewExtraction, leadsCount = 0 }) {
                 { id: 'frio', nome: 'Frios', Icone: Snowflake, dica: 'baixa prioridade' },
               ].map(({ id, nome, Icone, dica }) => (
                 <li key={id}>
-                  <span className={`ov-temp-icone ov-temp-${id}`}><Icone size={14} strokeWidth={2} /></span>
-                  <span className="ov-temp-txt"><b>{perfil.temp[id]}</b> {nome}<small>{dica}</small></span>
+                  <button
+                    type="button"
+                    className="ov-temp-item"
+                    disabled={!perfil.temp[id]}
+                    title={perfil.temp[id] ? `Ver os ${nome.toLowerCase()} no mapa` : undefined}
+                    onClick={() => verNoMapa({ temperatura: id })}
+                  >
+                    <span className={`ov-temp-icone ov-temp-${id}`}><Icone size={14} strokeWidth={2} /></span>
+                    <span className="ov-temp-txt"><b>{perfil.temp[id]}</b> {nome}<small>{dica}</small></span>
+                  </button>
                 </li>
               ))}
             </ul>

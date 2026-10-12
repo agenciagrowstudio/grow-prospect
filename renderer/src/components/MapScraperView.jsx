@@ -28,6 +28,8 @@ import CardLead from './CardLead';
 import CabecalhoRegiao from './CabecalhoRegiao';
 import FilaAbordagem from './FilaAbordagem';
 import { qualificaLead, resumoTemperaturas, lerAnalisesSalvas } from '../qualificacaoLead';
+import { publicoDoLead } from '../resultados';
+import { pegarPedidoMapa } from '../pedidoMapa';
 import { digitosWhatsApp } from '../telefone';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -248,6 +250,9 @@ export default function MapScraperView({
   const [isLocPopOpen, setIsLocPopOpen] = useState(false);
   const [isListPopOpen, setIsListPopOpen] = useState(false);
   const [filaAberta, setFilaAberta] = useState(false);
+  // Chips do banner: clicou em "Frios" ou na bandeira, a lista mostra só esses.
+  const [filtroTemp, setFiltroTemp] = useState('');
+  const [filtroPublico, setFiltroPublico] = useState('');
 
   // Filtros do Map Filter Drawer
   const [filterCat, setFilterCat] = useState('');
@@ -401,7 +406,7 @@ export default function MapScraperView({
     return mapa;
   }, [leads]);
 
-  const visibleLeads = useMemo(() => {
+  const leadsDoRecorte = useMemo(() => {
     const nq = norm(feedSearch.trim());
 
     return leads.filter((lead) => {
@@ -453,6 +458,31 @@ export default function MapScraperView({
     listBairro,
     buscaAtiva,
   ]);
+
+  // O recorte acima decide os números dos chips; o filtro do chip só esconde.
+  const visibleLeads = useMemo(() => {
+    if (!filtroTemp && !filtroPublico) return leadsDoRecorte;
+    return leadsDoRecorte.filter((lead) => {
+      if (filtroTemp && (qualificacoes.get(lead) || qualificaLead(lead)).temperatura.id !== filtroTemp) return false;
+      if (filtroPublico && publicoDoLead(lead) !== filtroPublico) return false;
+      return true;
+    });
+  }, [leadsDoRecorte, filtroTemp, filtroPublico, qualificacoes]);
+
+  // Outra tela pediu: abrir a Fila do dia ou chegar filtrado.
+  useEffect(() => {
+    const atende = () => {
+      const p = pegarPedidoMapa();
+      if (!p) return;
+      if (p.todasBuscas) setBuscaAtiva('');
+      setFiltroTemp(p.temperatura || '');
+      setFiltroPublico(p.publico || '');
+      if (p.abrirFila) setFilaAberta(true);
+    };
+    atende();
+    window.addEventListener('prospector:pedido-mapa', atende);
+    return () => window.removeEventListener('prospector:pedido-mapa', atende);
+  }, [setBuscaAtiva]);
 
   // Quantos leads cada busca tem, para o seletor.
   const leadsPorBusca = useMemo(() => {
@@ -773,22 +803,24 @@ export default function MapScraperView({
   // Cabeçalho da lista: cidade que mais aparece no recorte e as temperaturas.
   const regiao = useMemo(() => {
     const contagem = new Map();
-    visibleLeads.forEach((l) => {
+    leadsDoRecorte.forEach((l) => {
       const c = getLeadCity(l);
       if (c) contagem.set(c, (contagem.get(c) || 0) + 1);
     });
     const [cidade, qtd = 0] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0] || [];
     // Recorte misturado: dizer "Várias cidades" é melhor que eleger uma.
-    const domina = cidade && qtd / Math.max(1, visibleLeads.length) >= 0.6;
+    const domina = cidade && qtd / Math.max(1, leadsDoRecorte.length) >= 0.6;
     const varias = !listCidade && !domina && contagem.size > 1;
     const titulo = listCidade || (varias ? 'Várias cidades' : (cidade || ''));
-    const amostra = visibleLeads.find((l) => getLeadCity(l) === titulo) || visibleLeads[0] || {};
-    const paises = new Set(visibleLeads.map((l) => (String(l.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil')));
+    const amostra = leadsDoRecorte.find((l) => getLeadCity(l) === titulo) || leadsDoRecorte[0] || {};
+    const paises = new Set(leadsDoRecorte.map((l) => (String(l.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil')));
     const pais = paises.size > 1 ? 'Brasil e EUA' : (String(amostra.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil');
     const uf = varias ? '' : getLeadState(amostra);
-    const qs = visibleLeads.map((l) => qualificacoes.get(l) || qualificaLead(l));
+    const qs = leadsDoRecorte.map((l) => qualificacoes.get(l) || qualificaLead(l));
+    const publicos = { br: 0, brus: 0, us: 0, verificar: 0 };
+    leadsDoRecorte.forEach((l) => { publicos[publicoDoLead(l)] += 1; });
     const pontos = [];
-    visibleLeads.forEach((l, i) => {
+    leadsDoRecorte.forEach((l, i) => {
       const loc = getExactLeadLocation(l);
       if (loc) pontos.push({ lat: loc.lat, lng: loc.lng, temp: qs[i].temperatura.id });
     });
@@ -799,9 +831,10 @@ export default function MapScraperView({
       pais: String(amostra.pais || 'BR').toUpperCase(),
       subtitulo: [varias ? `${contagem.size} cidades` : (titulo ? 'Cidade' : ''), uf, pais].filter(Boolean).join(' · '),
       resumo: resumoTemperaturas(qs),
+      publicos,
       pontos,
     };
-  }, [visibleLeads, qualificacoes, listCidade]);
+  }, [leadsDoRecorte, qualificacoes, listCidade]);
 
   const handleWhatsAppLead = (lead) => {
     const name = getLeadName(lead);
@@ -1004,6 +1037,8 @@ export default function MapScraperView({
     setListUf('');
     setListCidade('');
     setListBairro('');
+    setFiltroTemp('');
+    setFiltroPublico('');
     setIsListPopOpen(false);
   };
 
@@ -1450,7 +1485,12 @@ export default function MapScraperView({
             subtitulo={regiao.subtitulo}
             total={visibleLeads.length}
             resumo={regiao.resumo}
+            publicos={regiao.publicos}
             pontos={regiao.pontos}
+            filtroTemp={filtroTemp}
+            filtroPublico={filtroPublico}
+            onFiltroTemp={(t) => setFiltroTemp((atual) => (atual === t ? '' : t))}
+            onFiltroPublico={(p) => setFiltroPublico((atual) => (atual === p ? '' : p))}
           />
         </div>
 

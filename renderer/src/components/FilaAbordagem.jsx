@@ -65,6 +65,16 @@ function TextoWhatsApp({ texto }) {
   });
 }
 
+/** Grava no lead quem ele é. O mapa relê a base pelo evento e a Fila se atualiza. */
+function marcaPublico(leadId, publico) {
+  try {
+    const lista = JSON.parse(localStorage.getItem('sigma_leads') || '[]');
+    const nova = lista.map((l) => (String(l.id) === String(leadId) ? { ...l, publicoConfirmado: publico } : l));
+    localStorage.setItem('sigma_leads', JSON.stringify(nova));
+    window.dispatchEvent(new Event('sigma:leads-updated'));
+  } catch { /* sem espaço: a marcação vale só nesta abertura */ }
+}
+
 export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFechar }) {
   const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web', numeroTeste: '' }));
   const [log, setLog] = useState(() => lerJson(CHAVE_LOG, {}));
@@ -221,6 +231,13 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     setAviso('Abrindo a conversa com o seu número. Envie para ver como a mensagem chega.');
   };
 
+  // Marcou brasileiro ou americano: a mensagem troca de idioma junto.
+  const defineQuemE = (item, publico) => {
+    marcaPublico(item.lead.id, publico);
+    setIdiomas((x) => ({ ...x, [item.chave]: publico === 'us' ? 'en' : 'pt' }));
+    setAviso(publico === 'us' ? `${item.lead.name || 'Lead'} marcado como americano.` : `${item.lead.name || 'Lead'} marcado como brasileiro.`);
+  };
+
   const restaura = (item) => setEditados((x) => { const { [chaveEdicao(item)]: _x, ...r } = x; return r; });
 
   const muda = (campo) => (e) => setCfg((c) => ({ ...c, [campo]: campo === 'limite' ? Number(e.target.value) : e.target.value }));
@@ -252,6 +269,19 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
           <span className="fa-chip fa-chip-oferta">Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b></span>
           {servico?.motivo && <span className="fa-chip">{servico.motivo}</span>}
           <span className="fa-espaco" />
+          {String(lead.pais || 'BR').toUpperCase() === 'US' && (() => {
+            const quem = publicoDoLead(lead);
+            return (
+              <div className="fa-idioma fa-quem" role="group" aria-label="Quem é o lead" title={quem === 'verificar' ? 'Ainda não sabemos: marque quem é' : 'Quem é o lead'}>
+                <button type="button" className={quem === 'brus' ? 'on' : ''} aria-pressed={quem === 'brus'} onClick={() => defineQuemE(atual, 'brus')}>
+                  <Bandeira pais="BR" /> Brasileiro
+                </button>
+                <button type="button" className={quem === 'us' ? 'on' : ''} aria-pressed={quem === 'us'} onClick={() => defineQuemE(atual, 'us')}>
+                  <Bandeira pais="US" /> Americano
+                </button>
+              </div>
+            );
+          })()}
           <div className="fa-idioma" role="group" aria-label="Idioma da mensagem" title="Traduzir a mensagem">
             <Languages size={14} strokeWidth={2} aria-hidden="true" />
             <button type="button" className={idioma === 'pt' ? 'on' : ''} aria-pressed={idioma === 'pt'} onClick={() => traduz(atual, 'pt')}>Português</button>

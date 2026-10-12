@@ -31,7 +31,7 @@ function abreFora(url) {
 function publicoDoLead(lead) {
   const pais = String(lead?.pais || 'BR').toUpperCase();
   if (pais === 'BR') return 'br';
-  return lead?.sinalBr?.nivel === 'alto' ? 'brus' : 'us';
+  return lead?.publicoConfirmado === 'us' ? 'us' : 'brus';
 }
 
 const MODELOS_PADRAO = {

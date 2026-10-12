@@ -10,10 +10,13 @@
 
 const DIA_MS = 86400000;
 
+// `bandeira` é a do chip de filtro: no recorte dos EUA, a do Brasil marca o
+// brasileiro e a dos EUA o americano. "A verificar" não tem bandeira.
 export const PUBLICOS_RESULTADO = [
-  { id: 'br', nome: 'Brasileiros no Brasil', pais: 'BR' },
-  { id: 'brus', nome: 'Brasileiros nos EUA', pais: 'US' },
-  { id: 'us', nome: 'Americanos', pais: 'US' },
+  { id: 'br', nome: 'Brasileiros no Brasil', curto: 'No Brasil', pais: 'BR', bandeira: 'BR' },
+  { id: 'brus', nome: 'Brasileiros nos EUA', curto: 'Brasileiros', pais: 'US', bandeira: 'BR' },
+  { id: 'us', nome: 'Americanos', curto: 'Americanos', pais: 'US', bandeira: 'US' },
+  { id: 'verificar', nome: 'A verificar', curto: 'A verificar', pais: 'US', bandeira: null },
 ];
 
 export const OFERTAS_RESULTADO = [
@@ -25,12 +28,19 @@ export const OFERTAS_RESULTADO = [
   { id: 'geral', nome: 'Abordagem geral' },
 ];
 
-// Mesma regra da tela de e-mail e de email/publico.js.
+/**
+ * Quem é quem nos EUA. A marcação feita à mão (na Fila do dia) vale mais que
+ * tudo. Sem ela, sinal brasileiro alto ou médio conta como brasileiro. Sem
+ * sinal nenhum fica "a verificar": a ficha do Google não tinha o que ler, e
+ * isso não faz de ninguém americano.
+ */
 export function publicoDoLead(lead) {
   if (!lead) return null;
   const pais = String(lead.pais || 'BR').toUpperCase();
   if (pais === 'BR') return 'br';
-  return lead.sinalBr?.nivel === 'alto' ? 'brus' : 'us';
+  if (lead.publicoConfirmado === 'brus' || lead.publicoConfirmado === 'us') return lead.publicoConfirmado;
+  const nivel = lead.sinalBr?.nivel;
+  return nivel === 'alto' || nivel === 'medio' ? 'brus' : 'verificar';
 }
 
 function chaveDia(ts) {

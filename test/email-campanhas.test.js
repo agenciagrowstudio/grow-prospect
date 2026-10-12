@@ -35,12 +35,13 @@ function montar(dir, relogio, recebidas = []) {
 }
 
 describe('público do lead', () => {
-  it('separa os três públicos e só põe em português nos EUA com sinal alto', () => {
+  it('nos EUA vai em português, salvo quem foi marcado como americano', () => {
     assert.equal(publicoDoLead({ pais: 'BR' }), 'br');
     assert.equal(publicoDoLead({}), 'br');
     assert.equal(publicoDoLead({ pais: 'US', sinalBr: { nivel: 'alto' } }), 'brus');
-    assert.equal(publicoDoLead({ pais: 'US', sinalBr: { nivel: 'medio' } }), 'us');
-    assert.equal(publicoDoLead({ pais: 'US' }), 'us');
+    assert.equal(publicoDoLead({ pais: 'US', sinalBr: { nivel: 'medio' } }), 'brus');
+    assert.equal(publicoDoLead({ pais: 'US' }), 'brus', 'sem sinal: a maioria é brasileira');
+    assert.equal(publicoDoLead({ pais: 'US', publicoConfirmado: 'us' }), 'us');
   });
 
   it('rodapé no idioma do público, com endereço e descadastro', () => {
@@ -57,7 +58,7 @@ describe('campanha de e-mail', () => {
   it('exige texto para cada público presente na lista', () => {
     const { motor } = montar(dir, { t: SEG_10H });
     assert.throws(
-      () => motor.criar({ leads: [{ email: 'a@b.com', pais: 'US' }], modelos: { br: modelos.br } }),
+      () => motor.criar({ leads: [{ email: 'a@b.com', pais: 'US', publicoConfirmado: 'us' }], modelos: { br: modelos.br } }),
       /Americanos nos EUA/,
     );
   });
@@ -69,8 +70,8 @@ describe('campanha de e-mail', () => {
       modelos,
       leads: [
         { email: 'ana@loja.com.br', name: 'Loja Ana', pais: 'BR' },
-        { email: 'joe@shop.com', name: 'Joe Shop', pais: 'US' },
-        { email: 'JOE@shop.com', name: 'Repetido', pais: 'US' },
+        { email: 'joe@shop.com', name: 'Joe Shop', pais: 'US', publicoConfirmado: 'us' },
+        { email: 'JOE@shop.com', name: 'Repetido', pais: 'US', publicoConfirmado: 'us' },
         { email: 'invalido', name: 'X' },
         { email: 'bia@acai.com', name: 'Acai Bia', pais: 'US', sinalBr: { nivel: 'alto' } },
       ],

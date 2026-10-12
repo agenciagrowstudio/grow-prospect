@@ -20,7 +20,9 @@ function publicoDoLead(lead) {
   if (lead?.publico && PUBLICOS[lead.publico]) return lead.publico;
   const pais = String(lead?.pais || 'BR').toUpperCase();
   if (pais === 'BR') return 'br';
-  return lead?.sinalBr?.nivel === 'alto' ? 'brus' : 'us';
+  // Americano só quem foi marcado à mão. Nos EUA a maioria é brasileira, então
+  // sem marcação o e-mail vai em português (mesma regra da Fila do dia).
+  return lead?.publicoConfirmado === 'us' ? 'us' : 'brus';
 }
 
 /**

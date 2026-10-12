@@ -36,9 +36,9 @@ describe('painel de resultados', () => {
 
   it('série diária dos últimos dias e recortes por público e oferta', async () => {
     await carrega();
-    const leads = [{ id: 'x', pais: 'US', sinalBr: { nivel: 'baixo' } }, { id: 'y', pais: 'BR' }];
+    const leads = [{ id: 'x', pais: 'US', sinalBr: { nivel: 'baixo' }, publicoConfirmado: 'us' }, { id: 'y', pais: 'BR' }];
     const log = {
-      x: { status: 'respondeu', ts: agora, angulo: 'google' }, // público sai do lead: americano
+      x: { status: 'respondeu', ts: agora, angulo: 'google' }, // público sai do lead: marcado americano
       y: { status: 'enviada', ts: agora - 3 * DIA, angulo: 'site' },
     };
     const r = R.resumoResultados({ log, leads, agora, dias: 7 });
@@ -48,6 +48,17 @@ describe('painel de resultados', () => {
     assert.deepEqual(r.porPublico.map((p) => [p.id, p.enviadas, p.taxa]), [['br', 1, 0], ['us', 1, 100]]);
     assert.deepEqual(r.porOferta.map((p) => p.id), ['site', 'google']);
     assert.equal(r.ultimasRespostas[0].id, 'x');
+  });
+
+  it('público nos EUA: marcação manual, depois sinal, senão a verificar', async () => {
+    await carrega();
+    assert.equal(R.publicoDoLead({ pais: 'BR' }), 'br');
+    assert.equal(R.publicoDoLead({ pais: 'US' }), 'verificar', 'sem sinal não é americano');
+    assert.equal(R.publicoDoLead({ pais: 'US', sinalBr: { nivel: 'baixo', pontos: 0 } }), 'verificar');
+    assert.equal(R.publicoDoLead({ pais: 'US', sinalBr: { nivel: 'medio' } }), 'brus');
+    assert.equal(R.publicoDoLead({ pais: 'US', sinalBr: { nivel: 'alto' } }), 'brus');
+    assert.equal(R.publicoDoLead({ pais: 'US', sinalBr: { nivel: 'alto' }, publicoConfirmado: 'us' }), 'us', 'a marcação manual vence');
+    assert.equal(R.publicoDoLead({ pais: 'US', publicoConfirmado: 'brus' }), 'brus');
   });
 
   it('sem nada enviado, tudo zerado e sem divisão por zero', async () => {

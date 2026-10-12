@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import AvatarLead from './AvatarLead';
 import { ChipOportunidade } from './IconeServico';
+import Bandeira from './Bandeira';
+import { publicoDoLead, PUBLICOS_RESULTADO } from '../resultados';
 import IconeNicho from './IconeNicho';
 import {
   Globe,
@@ -25,7 +27,7 @@ import {
   AlignLeft,
   List,
   Brain,
-  Flag,
+  CircleHelp,
   Users
 } from 'lucide-react';
 import { dedupeLeads, normalizeLeadCategory, normalizeLeadCollection, readLocalArray } from '../leadData';
@@ -250,7 +252,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
       const ig = getLeadIg(l);
       const rn = parseFloat(String(getLeadRating(l)).replace(',', '.')) || 0;
 
-      if (bSinalBr) {
+      if (bSinalBr.startsWith('pub:')) {
+        if (publicoDoLead(l) !== bSinalBr.slice(4)) return false;
+      } else if (bSinalBr) {
         const nivel = getSinalBr(l);
         if (bSinalBr === 'alto' && nivel !== 'alto') return false;
         if (bSinalBr === 'medio+' && nivel !== 'alto' && nivel !== 'medio') return false;
@@ -671,15 +675,25 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
             <Icone size={15} strokeWidth={2} /> {nome} <b>{n}</b>
           </button>
         ))}
-        <button
-          type="button"
-          className={`bl-rapido bl-amarelo${bSinalBr === 'alto' ? ' on' : ''}`}
-          onClick={() => setBSinalBr(bSinalBr === 'alto' ? '' : 'alto')}
-          aria-pressed={bSinalBr === 'alto'}
-          title="Leads com sinal brasileiro alto"
-        >
-          <Flag size={15} strokeWidth={2} /> Brasileiros <b>{filteredLeads.filter((l) => l?.sinalBr?.nivel === 'alto').length}</b>
-        </button>
+        {/* Quem é quem: a mesma regra da Visão Geral e da Fila do dia */}
+        {PUBLICOS_RESULTADO.map((p) => {
+          const n = leads.filter((l) => publicoDoLead(l) === p.id).length;
+          if (!n) return null;
+          const id = `pub:${p.id}`;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              className={`bl-rapido bl-pub${bSinalBr === id ? ' on' : ''}`}
+              onClick={() => setBSinalBr(bSinalBr === id ? '' : id)}
+              aria-pressed={bSinalBr === id}
+              title={p.id === 'verificar' ? 'Leads dos EUA sem nenhum sinal. Marque quem é na Fila do dia' : p.nome}
+            >
+              {p.id === 'verificar' ? <CircleHelp size={15} strokeWidth={2} /> : <Bandeira pais={p.bandeira} />}
+              {p.curto} <b>{n}</b>
+            </button>
+          );
+        })}
       </div>
 
       {/* TOOLBAR */}

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { pedirMapa } from '../pedidoMapa';
 import {
   Send, MessagesSquare, Percent, Target, ClipboardList, MessageCircle, Mail, Megaphone, Filter, Reply,
 } from 'lucide-react';
@@ -61,7 +62,10 @@ export default function Dashboard({ onNavigate }) {
   const maiorDia = Math.max(1, ...r.serie.map((s) => s.enviadas));
   // Pelo maior valor: campanhas podem ter leads que não estão na base.
   const maiorFunil = Math.max(1, ...r.funil.map((f) => f.valor));
-  const abreFila = () => onNavigate?.('scraper');
+  const abreFila = () => {
+    pedirMapa({ abrirFila: true });
+    onNavigate?.('scraper');
+  };
 
   return (
     <section className="settings-open-design-view rs-view">
