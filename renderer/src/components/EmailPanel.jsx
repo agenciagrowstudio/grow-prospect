@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Mail, Send, Pause, Play, Trash2, Check, X, Loader, Eye, EyeOff, Plus, Inbox,
+  Pencil, PlugZap, Clock, Gauge, MessagesSquare, ExternalLink, ShieldCheck, UserRound,
 } from 'lucide-react';
 import { readLocalArray } from '../leadData';
+import Bandeira from './Bandeira';
 
 /**
  * Tela de E-mail: conta Gmail (senha de app) e campanhas por público.
@@ -12,10 +14,18 @@ import { readLocalArray } from '../leadData';
  */
 
 const PUBLICOS = [
-  { id: 'br', nome: 'Brasileiros no Brasil', curto: 'BR no Brasil', idioma: 'Português' },
-  { id: 'brus', nome: 'Brasileiros nos EUA', curto: 'BR nos EUA', idioma: 'Português' },
-  { id: 'us', nome: 'Americanos nos EUA', curto: 'Americanos', idioma: 'Inglês' },
+  { id: 'br', nome: 'Brasileiros no Brasil', curto: 'BR no Brasil', idioma: 'Português', pais: 'BR' },
+  { id: 'brus', nome: 'Brasileiros nos EUA', curto: 'BR nos EUA', idioma: 'Português', pais: 'US' },
+  { id: 'us', nome: 'Americanos nos EUA', curto: 'Americanos', idioma: 'Inglês', pais: 'US' },
 ];
+
+// Página do Google onde se gera a senha de app.
+const URL_SENHA_APP = 'https://myaccount.google.com/apppasswords';
+
+function abreFora(url) {
+  if (window.electronAPI?.openExternal) window.electronAPI.openExternal(url);
+  else window.open(url, '_blank', 'noopener');
+}
 
 // Mesma regra de email/publico.js. Mudou lá, muda aqui.
 function publicoDoLead(lead) {
@@ -90,6 +100,7 @@ export default function EmailPanel() {
   const [ocupado, setOcupado] = useState('');
   const [campanhas, setCampanhas] = useState([]);
   const [criando, setCriando] = useState(false);
+  const [editandoConta, setEditandoConta] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!api) return;
@@ -124,11 +135,14 @@ export default function EmailPanel() {
     }
   };
 
-  const salvarConta = () => acao('salvar', async () => {
-    const r = await api.saveSettings({ ...conta, senha });
-    if (r?.success) setSenha('');
-    return r;
-  }, 'Conta salva.');
+  const salvarConta = async () => {
+    const r = await acao('salvar', async () => {
+      const salvo = await api.saveSettings({ ...conta, senha });
+      if (salvo?.success) setSenha('');
+      return salvo;
+    }, 'Conta salva.');
+    if (r?.success) setEditandoConta(false);
+  };
 
   const testarConta = () => acao('testar', async () => {
     const salvo = await api.saveSettings({ ...conta, senha });
@@ -146,37 +160,113 @@ export default function EmailPanel() {
   }
 
   const set = (campo) => (e) => setConta((c) => ({ ...c, [campo]: e.target.value }));
+  const contaPronta = Boolean(conta?.user && conta?.temSenha);
+  const mostraFormulario = conta && (!contaPronta || editandoConta);
+  const limite = conta?.limite24h || 40;
+  const ativas = campanhas.filter((c) => c.status === 'running').length;
+  const totalEnviados = campanhas.reduce((n, c) => n + (c.enviados || 0), 0);
+  const totalRespostas = campanhas.reduce((n, c) => n + (c.respondidos || 0), 0);
+  const taxa = totalEnviados ? Math.round((totalRespostas / totalEnviados) * 100) : 0;
 
   return (
     <section className="settings-open-design-view cfg-view email-view">
-      <div className="page-head">
+      <div className="page-head em-topo">
         <div>
-          <h1 style={{ fontSize: 20 }}>E-mail</h1>
+          <h1>E-mail</h1>
           <p className="cfg-tagline">
-            Abordagem por e-mail pelo seu Gmail, com texto em português para brasileiros e em inglês para americanos.
+            Abordagem pelo seu Gmail: português para brasileiros, inglês para americanos.
           </p>
+        </div>
+        <div className="em-topo-acoes">
+          <button type="button" className="btn btn-ghost" onClick={() => acao('respostas', () => api.checkReplies(), 'Caixa de entrada verificada.')} disabled={!!ocupado || !contaPronta}>
+            {ocupado === 'respostas' ? <Loader size={15} strokeWidth={1.75} className="cfg-girando" /> : <Inbox size={15} strokeWidth={1.75} />}
+            Verificar respostas
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => setCriando(true)} disabled={criando || !contaPronta} title={contaPronta ? '' : 'Configure a conta Gmail primeiro'}>
+            <Plus size={15} strokeWidth={2} /> Nova campanha
+          </button>
         </div>
       </div>
 
       {aviso && (
-        <div className={`cfg-resultado ${aviso.ok ? 'ok' : 'erro'}`}>
+        <div className={`cfg-resultado ${aviso.ok ? 'ok' : 'erro'}`} role="status">
           {aviso.ok ? <Check size={15} strokeWidth={2} /> : <X size={15} strokeWidth={2} />}
           <span>{aviso.texto}</span>
         </div>
       )}
 
-      {conta && (
+      {/* Números do momento */}
+      <div className="em-kpis">
+        <div className="em-kpi">
+          <span className="em-kpi-icone em-k-azul"><Gauge size={16} strokeWidth={2} /></span>
+          <div className="em-kpi-txt">
+            <span>Enviados nas últimas 24h</span>
+            <b>{usados}<small> / {limite}</small></b>
+            <div className="em-kpi-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, (usados / limite) * 100)}%` }} /></div>
+          </div>
+        </div>
+        <div className="em-kpi">
+          <span className="em-kpi-icone em-k-roxo"><Send size={16} strokeWidth={2} /></span>
+          <div className="em-kpi-txt">
+            <span>Campanhas</span>
+            <b>{campanhas.length}<small>{ativas ? ` · ${ativas} enviando` : ''}</small></b>
+          </div>
+        </div>
+        <div className="em-kpi">
+          <span className="em-kpi-icone em-k-verde"><MessagesSquare size={16} strokeWidth={2} /></span>
+          <div className="em-kpi-txt">
+            <span>Responderam</span>
+            <b>{totalRespostas}<small>{totalEnviados ? ` · ${taxa}% de ${totalEnviados}` : ''}</small></b>
+          </div>
+        </div>
+      </div>
+
+      {/* Conta: resumo quando pronta, formulário ao configurar ou editar */}
+      {conta && !mostraFormulario && (
+        <div className="cfg-card em-conta">
+          <span className="em-conta-icone"><ShieldCheck size={20} strokeWidth={1.75} /></span>
+          <div className="em-conta-info">
+            <span className="em-conta-rotulo">Gmail conectado</span>
+            <b>{conta.user}</b>
+            <div className="em-conta-chips">
+              <span><UserRound size={13} strokeWidth={2} /> {conta.fromName || 'Sem nome de remetente'}</span>
+              <span><Gauge size={13} strokeWidth={2} /> Até {limite} por 24h</span>
+              <span><Clock size={13} strokeWidth={2} /> Dias úteis, {conta.horarioInicio || '08:00'} às {conta.horarioFim || '18:00'}</span>
+            </div>
+          </div>
+          <div className="em-conta-acoes">
+            <button type="button" className="btn btn-ghost" onClick={testarConta} disabled={!!ocupado}>
+              {ocupado === 'testar' ? <Loader size={15} strokeWidth={1.75} className="cfg-girando" /> : <PlugZap size={15} strokeWidth={1.75} />}
+              {ocupado === 'testar' ? 'Testando…' : 'Testar conexão'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setEditandoConta(true)}>
+              <Pencil size={15} strokeWidth={1.75} /> Editar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mostraFormulario && (
         <div className="cfg-card">
           <div className="cfg-card-head">
             <span className="cfg-icone"><Mail size={18} strokeWidth={1.5} /></span>
             <div>
-              <h2>Conta Gmail</h2>
-              <p>
-                Use uma senha de app, não a senha normal. No Google: Conta, Segurança, ative a
-                verificação em duas etapas e depois gere uma "Senha de app". A senha fica cifrada nesta máquina.
-              </p>
+              <h2>{contaPronta ? 'Editar conta Gmail' : 'Conectar sua conta Gmail'}</h2>
+              <p>O envio sai do seu próprio Gmail, com uma senha de app. A senha fica cifrada neste computador.</p>
             </div>
           </div>
+
+          {!contaPronta && (
+            <ol className="em-passos">
+              <li><b>1</b><span>No Google, ative a <strong>verificação em duas etapas</strong> da conta.</span></li>
+              <li><b>2</b><span>Gere uma <strong>senha de app</strong> (16 letras).</span>
+                <button type="button" className="em-link" onClick={() => abreFora(URL_SENHA_APP)}>
+                  Abrir a página do Google <ExternalLink size={13} strokeWidth={2} />
+                </button>
+              </li>
+              <li><b>3</b><span>Cole a senha abaixo, salve e clique em <strong>Testar conexão</strong>.</span></li>
+            </ol>
+          )}
 
           <div className="email-grade">
             <div className="field">
@@ -185,7 +275,7 @@ export default function EmailPanel() {
             </div>
             <div className="field">
               <label htmlFor="emNome">Nome do remetente</label>
-              <input id="emNome" autoComplete="off" value={conta.fromName || ''} onChange={set('fromName')} placeholder="Alex | Grow+" />
+              <input id="emNome" autoComplete="off" value={conta.fromName || ''} onChange={set('fromName')} placeholder="Matheus | Grow+" />
             </div>
             <div className="field">
               <label htmlFor="emSenha">Senha de app</label>
@@ -207,14 +297,14 @@ export default function EmailPanel() {
             <div className="field">
               <label htmlFor="emEnd">Endereço comercial (vai no rodapé)</label>
               <input id="emEnd" autoComplete="off" value={conta.endereco || ''} onChange={set('endereco')} placeholder="Rua, número, cidade, estado" />
-              <span className="cfg-dica">Obrigatório pela lei anti-spam dos EUA (CAN-SPAM). Pode ser endereço comercial ou caixa postal.</span>
+              <span className="cfg-dica">Exigido pela lei anti-spam dos EUA (CAN-SPAM). Vale endereço comercial ou caixa postal.</span>
             </div>
             <div className="field">
               <label htmlFor="emLim">Limite a cada 24h</label>
               <select id="emLim" value={conta.limite24h} onChange={(e) => setConta((c) => ({ ...c, limite24h: Number(e.target.value) }))}>
                 {[20, 40, 80, 150, 300, 450].map((n) => <option key={n} value={n}>{n} e-mails</option>)}
               </select>
-              <span className="cfg-dica">Usados nas últimas 24h: {usados}. Conta nova: comece com 20 a 40 e suba aos poucos.</span>
+              <span className="cfg-dica">Conta nova: comece com 20 a 40 e suba aos poucos.</span>
             </div>
             <div className="field">
               <label>Horário de envio (dias úteis)</label>
@@ -230,30 +320,21 @@ export default function EmailPanel() {
           <div className="cfg-acoes">
             <button type="button" className="btn btn-primary" onClick={salvarConta} disabled={!!ocupado}>Salvar</button>
             <button type="button" className="btn btn-ghost" onClick={testarConta} disabled={!!ocupado || !conta.user}>
-              {ocupado === 'testar' ? <Loader size={15} strokeWidth={1.5} className="cfg-girando" /> : null}
+              {ocupado === 'testar' ? <Loader size={15} strokeWidth={1.5} className="cfg-girando" /> : <PlugZap size={15} strokeWidth={1.75} />}
               {ocupado === 'testar' ? 'Testando…' : 'Testar conexão'}
             </button>
+            {contaPronta && <button type="button" className="btn btn-ghost" onClick={() => { setEditandoConta(false); setSenha(''); carregar(); }}>Cancelar</button>}
           </div>
         </div>
       )}
 
+      {/* Campanhas */}
       <div className="cfg-card">
-        <div className="cfg-card-head email-cab">
+        <div className="cfg-card-head">
           <span className="cfg-icone"><Send size={18} strokeWidth={1.5} /></span>
-          <div style={{ flex: 1 }}>
+          <div>
             <h2>Campanhas</h2>
             <p>Um envio por vez, com intervalo variado. Quem responde, pede para sair ou tem o e-mail devolvido sai da fila sozinho.</p>
-          </div>
-          <div className="cfg-acoes">
-            <button type="button" className="btn btn-ghost" onClick={() => acao('respostas', () => api.checkReplies(), 'Caixa de entrada verificada.')} disabled={!!ocupado}>
-              {ocupado === 'respostas' ? <Loader size={15} strokeWidth={1.5} className="cfg-girando" /> : <Inbox size={15} strokeWidth={1.5} />}
-              Verificar respostas
-            </button>
-            {!criando && (
-              <button type="button" className="btn btn-primary" onClick={() => setCriando(true)}>
-                <Plus size={15} strokeWidth={2} /> Nova campanha
-              </button>
-            )}
           </div>
         </div>
 
@@ -269,57 +350,82 @@ export default function EmailPanel() {
         )}
 
         {!campanhas.length && !criando && (
-          <p className="email-vazio">Nenhuma campanha ainda. Os leads com e-mail da Base de Leads aparecem ao criar uma.</p>
+          <div className="em-vazio">
+            <Inbox size={28} strokeWidth={1.5} aria-hidden="true" />
+            <b>Nenhuma campanha ainda</b>
+            <span>
+              {contaPronta
+                ? 'Crie a primeira com os leads que têm e-mail na Base de Leads.'
+                : 'Conecte a conta Gmail acima para criar a primeira campanha.'}
+            </span>
+            {contaPronta && (
+              <button type="button" className="btn btn-primary" onClick={() => setCriando(true)}>
+                <Plus size={15} strokeWidth={2} /> Nova campanha
+              </button>
+            )}
+          </div>
         )}
 
         <div className="email-lista">
-          {campanhas.map((c) => (
-            <div key={c.id} className="email-camp">
-              <div className="email-camp-topo">
-                <div>
-                  <b>{c.nome}</b>
-                  <span className={`email-status st-${c.status}`}>{rotuloStatus(c)}</span>
-                </div>
-                <div className="cfg-acoes">
-                  {c.status === 'running' ? (
-                    <button type="button" className="btn btn-ghost btn-compact" onClick={() => acao('p' + c.id, () => api.pause(c.id))}>
-                      <Pause size={14} strokeWidth={1.5} /> Pausar
+          {campanhas.map((c) => {
+            const pct = c.total ? Math.round((c.enviados / c.total) * 100) : 0;
+            return (
+              <article key={c.id} className="em-camp">
+                <div className="em-camp-topo">
+                  <div className="em-camp-nome">
+                    <b>{c.nome}</b>
+                    <span className={`email-status st-${c.status}`}>{rotuloStatus(c)}</span>
+                  </div>
+                  <div className="em-camp-acoes">
+                    {c.status === 'running' ? (
+                      <button type="button" className="btn btn-ghost btn-compact" onClick={() => acao('p' + c.id, () => api.pause(c.id))}>
+                        <Pause size={14} strokeWidth={1.75} /> Pausar
+                      </button>
+                    ) : c.status !== 'completed' ? (
+                      <button type="button" className="btn btn-primary btn-compact" onClick={() => acao('i' + c.id, () => api.start(c.id), 'Campanha iniciada.')}>
+                        <Play size={14} strokeWidth={1.75} /> {c.status === 'paused' ? 'Retomar' : 'Iniciar'}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="em-lixo"
+                      aria-label="Excluir campanha"
+                      title="Excluir campanha"
+                      onClick={() => {
+                        if (window.confirm(`Excluir a campanha "${c.nome}"? O histórico dela some.`)) acao('x' + c.id, () => api.remove(c.id));
+                      }}
+                    >
+                      <Trash2 size={15} strokeWidth={1.75} />
                     </button>
-                  ) : c.status !== 'completed' ? (
-                    <button type="button" className="btn btn-primary btn-compact" onClick={() => acao('i' + c.id, () => api.start(c.id), 'Campanha iniciada.')}>
-                      <Play size={14} strokeWidth={1.5} /> Iniciar
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-compact"
-                    aria-label="Excluir campanha"
-                    onClick={() => {
-                      if (window.confirm(`Excluir a campanha "${c.nome}"? O histórico dela some.`)) acao('x' + c.id, () => api.remove(c.id));
-                    }}
-                  >
-                    <Trash2 size={14} strokeWidth={1.5} />
-                  </button>
+                  </div>
                 </div>
-              </div>
-              <div className="email-barra" aria-hidden="true">
-                <span style={{ width: `${c.total ? (c.enviados / c.total) * 100 : 0}%` }} />
-              </div>
-              <div className="email-numeros">
-                <span>{c.enviados}/{c.total} enviados</span>
-                <span className="n-resp">{c.respondidos} responderam</span>
-                {c.followUp?.ativo && <span>{c.followUps} follow-ups</span>}
-                {c.descadastrados > 0 && <span className="n-alerta">{c.descadastrados} pediram para sair</span>}
-                {c.voltaram > 0 && <span className="n-alerta">{c.voltaram} voltaram</span>}
-                {c.falhas > 0 && <span className="n-erro">{c.falhas} falharam</span>}
-              </div>
-              <div className="email-publicos">
-                {PUBLICOS.filter((p) => c.porPublico?.[p.id]).map((p) => (
-                  <span key={p.id} className={`email-pub pub-${p.id}`}>{p.curto}: {c.porPublico[p.id]}</span>
-                ))}
-              </div>
-            </div>
-          ))}
+
+                <div className="em-camp-progresso">
+                  <div className="email-barra" aria-hidden="true"><span style={{ width: `${pct}%` }} /></div>
+                  <span>{pct}%</span>
+                </div>
+
+                <dl className="em-camp-numeros">
+                  <div><dt>Enviados</dt><dd>{c.enviados}<small>/{c.total}</small></dd></div>
+                  <div className="ok"><dt>Responderam</dt><dd>{c.respondidos}</dd></div>
+                  {c.followUp?.ativo && <div><dt>Follow-ups</dt><dd>{c.followUps}</dd></div>}
+                  {c.descadastrados > 0 && <div className="alerta"><dt>Pediram para sair</dt><dd>{c.descadastrados}</dd></div>}
+                  {c.voltaram > 0 && <div className="alerta"><dt>Voltaram</dt><dd>{c.voltaram}</dd></div>}
+                  {c.falhas > 0 && <div className="erro"><dt>Falharam</dt><dd>{c.falhas}</dd></div>}
+                </dl>
+
+                {PUBLICOS.some((p) => c.porPublico?.[p.id]) && (
+                  <div className="email-publicos">
+                    {PUBLICOS.filter((p) => c.porPublico?.[p.id]).map((p) => (
+                      <span key={p.id} className={`email-pub pub-${p.id}`}>
+                        <Bandeira pais={p.pais} /> {p.curto}: {c.porPublico[p.id]}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
