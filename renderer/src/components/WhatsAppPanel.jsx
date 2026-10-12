@@ -36,6 +36,16 @@ import {
   MoreVertical,
   Pause as PauseIcon,
   Play as PlayIcon,
+  Star,
+  Send,
+  Plus,
+  ChevronUp,
+  ChevronDown,
+  ChevronRight,
+  QrCode,
+  ShieldCheck,
+  ClipboardList,
+  Smartphone,
 } from 'lucide-react';
 import TriggersManagerModal from './TriggersManagerModal';
 import { mascaraTelefone } from '../telefone';
@@ -4112,8 +4122,9 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
             id="waNewCamp"
             data-od-id="wa-new-campaign"
             onClick={openCreateCampaign}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            + Nova campanha
+            <Plus size={14} strokeWidth={2.25} aria-hidden="true" /> Nova campanha
           </button>
         </div>
       </header>
@@ -4344,9 +4355,9 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                   <span>{new Date(viewedStatus.ts).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                 </div>
                 <div className="wa-viewer-nav">
-                  <button type="button" className="btn btn-sm" disabled={statusViewerIndex >= localStatuses.length - 1} onClick={() => setStatusViewerIndex((index) => Math.min(localStatuses.length - 1, index + 1))}>‹ Anterior</button>
+                  <button type="button" className="btn btn-sm" disabled={statusViewerIndex >= localStatuses.length - 1} onClick={() => setStatusViewerIndex((index) => Math.min(localStatuses.length - 1, index + 1))}><ChevronLeft size={14} strokeWidth={2} /> Anterior</button>
                   <span style={{ flex: 1 }} />
-                  <button type="button" className="btn btn-sm" disabled={statusViewerIndex <= 0} onClick={() => setStatusViewerIndex((index) => Math.max(0, index - 1))}>Próximo ›</button>
+                  <button type="button" className="btn btn-sm" disabled={statusViewerIndex <= 0} onClick={() => setStatusViewerIndex((index) => Math.max(0, index - 1))}>Próximo <ChevronRight size={14} strokeWidth={2} /></button>
                 </div>
               </div>
             </div>
@@ -5212,7 +5223,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                     data-od-id="wa-new-chat"
                     onClick={openNewChat}
                   >
-                    ✎ Nova conversa
+                    <Pencil size={14} strokeWidth={2} aria-hidden="true" /> Nova conversa
                   </button>
                 </div>
                 <div className="chat-filter-tabs">
@@ -5220,7 +5231,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                     { id: 'all', label: 'Todas', count: chatCounts.all },
                     { id: 'unread', label: 'Não lidas', count: chatCounts.unread },
                     { id: 'archived', label: 'Arquivadas', count: chatCounts.archived },
-                    { id: 'favorites', label: '★ Favoritas', count: chatCounts.favorites },
+                    { id: 'favorites', label: 'Favoritas', count: chatCounts.favorites, Icone: Star },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -5228,6 +5239,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                       className={`chat-filter-tab ${chatFilter === tab.id ? 'act' : ''}`}
                       onClick={() => setChatFilter(tab.id)}
                     >
+                      {tab.Icone && <tab.Icone size={12} strokeWidth={2.25} aria-hidden="true" />}
                       {tab.label}
                       {tab.count > 0 && <span className="chat-filter-count">{tab.count}</span>}
                     </button>
@@ -5240,7 +5252,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                     {chatFilter === 'unread' && 'Nenhuma conversa não lida.'}
                     {chatFilter === 'archived' && 'Nenhuma conversa arquivada.'}
                     {chatFilter === 'favorites' && 'Nenhuma conversa favorita.'}
-                    {chatFilter === 'all' && 'Nenhuma conversa sincronizada.'}
+                    {chatFilter === 'all' && (connectedSessions.length ? 'Nenhuma conversa sincronizada.' : 'Conecte o WhatsApp para ver as conversas aqui.')}
                   </div>
                 ) : (
                   filteredChats.map((c) => {
@@ -5350,7 +5362,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                         aria-expanded={isConvMenuOpen}
                         onClick={() => setIsConvMenuOpen((open) => !open)}
                       >
-                        ⋯
+                        <MoreVertical size={18} strokeWidth={2} />
                       </button>
                       {isConvMenuOpen && (
                         <div className="wa-menu" id="waConvMenu">
@@ -5392,7 +5404,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                                   }}
                                   onClick={() => toggleContactTag(tag.id)}
                                 >
-                                  {tag.name}{on ? ' ✓' : ''}
+                                  {tag.name}{on ? <Check size={12} strokeWidth={2.5} className="wa-tag-ok" /> : null}
                                 </button>
                               );
                             })}
@@ -5433,8 +5445,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                       <span id="waFindCount" aria-live="polite">
                         {inChatMatches.length > 0 ? `${inChatMatchIdx + 1}/${inChatMatches.length}` : (inChatSearchTerm ? '0' : '')}
                       </span>
-                      <button type="button" id="waFindPrev" aria-label="Ocorrência anterior" onClick={handleFindPrev}>↑</button>
-                      <button type="button" id="waFindNext" aria-label="Próxima ocorrência" onClick={handleFindNext}>↓</button>
+                      <button type="button" id="waFindPrev" aria-label="Ocorrência anterior" onClick={handleFindPrev}><ChevronUp size={15} strokeWidth={2} /></button>
+                      <button type="button" id="waFindNext" aria-label="Próxima ocorrência" onClick={handleFindNext}><ChevronDown size={15} strokeWidth={2} /></button>
                       <button type="button" id="waFindX" aria-label="Fechar busca" onClick={() => setIsFindBarOpen(false)}>×</button>
                     </div>
                   )}
@@ -5535,8 +5547,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
 
                   {/* Message Input Bar */}
                   <form onSubmit={handleSendMessage} className="chat-room-footer">
-                    <button type="button" className="btn btn-secondary" style={{ padding: '8px' }} title="Anexar mídia ou áudio" onClick={handleAttachMedia} disabled={isRecording || sendingAudio}>
-                      ＋
+                    <button type="button" className="btn btn-secondary" style={{ padding: '8px' }} title="Anexar mídia ou áudio" aria-label="Anexar mídia ou áudio" onClick={handleAttachMedia} disabled={isRecording || sendingAudio}>
+                      <Plus size={18} strokeWidth={2} />
                     </button>
                     {isRecording ? (
                       <div className="chat-recording-bar">
@@ -5589,34 +5601,52 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                       </button>
                     )}
                     {!isRecording && !humanizeProgress && (
-                      <button type="submit" className="btn btn-primary" style={{ padding: '8px 12px' }} disabled={!inputText.trim() || sendingAudio || sendingHumanized}>
-                        ↑
+                      <button type="submit" className="btn btn-primary" style={{ padding: '8px 12px' }} disabled={!inputText.trim() || sendingAudio || sendingHumanized} aria-label="Enviar mensagem">
+                        <Send size={16} strokeWidth={2} />
                       </button>
                     )}
                   </form>
                 </>
               ) : (
                 <>
-                  <div className="chat-room-header wa-conv-head">
-                    <div className="chat-avatar" aria-hidden="true">?</div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <strong>Selecione uma conversa</strong>
-                      <span>—</span>
+                  {connectedSessions.length === 0 ? (
+                    <div className="wa-boas-vindas">
+                      <span className="wa-bv-icone"><Smartphone size={26} strokeWidth={1.75} /></span>
+                      <h2>Conecte seu WhatsApp</h2>
+                      <p>Para ver as conversas e mandar campanhas por aqui, conecte um número. Escolha o jeito:</p>
+                      <div className="wa-bv-opcoes">
+                        <button type="button" className="wa-bv-opcao" onClick={openQrModal}>
+                          <span className="wa-bv-op-icone wa-bv-verde"><QrCode size={20} strokeWidth={2} /></span>
+                          <span className="wa-bv-op-txt">
+                            <b>WhatsApp Web (QR code)</b>
+                            <small>Sem custo. Lê o QR com o celular, como no WhatsApp Web.</small>
+                          </span>
+                          <ChevronRight size={16} strokeWidth={2} className="wa-bv-seta" />
+                        </button>
+                        <button type="button" className="wa-bv-opcao" onClick={openMetaModal}>
+                          <span className="wa-bv-op-icone wa-bv-azul"><ShieldCheck size={20} strokeWidth={2} /></span>
+                          <span className="wa-bv-op-txt">
+                            <b>API oficial da Meta</b>
+                            <small>Pago por mensagem, sem risco de bloqueio. Exige modelos aprovados.</small>
+                          </span>
+                          <ChevronRight size={16} strokeWidth={2} className="wa-bv-seta" />
+                        </button>
+                      </div>
+                      <p className="wa-bv-dica">
+                        <ClipboardList size={14} strokeWidth={2} aria-hidden="true" />
+                        <span>Para a primeira abordagem, o mais seguro é a <b>Fila do dia</b> (no Scraper Maps): você envia à mão, sem conectar nada aqui.</span>
+                      </p>
                     </div>
-                    <button type="button" className="wa-iconbtn" disabled aria-label="Opções da conversa">⋯</button>
-                  </div>
-                  <div className="chat-messages wa-msgs">
-                    <div className="empty">
-                      <b>Nenhuma conversa aberta</b>
-                      <span>Escolha um contato ao lado para ver o histórico.</span>
+                  ) : (
+                    <div className="wa-boas-vindas wa-bv-conectado">
+                      <span className="wa-bv-icone"><MessageSquare size={26} strokeWidth={1.75} /></span>
+                      <h2>Nenhuma conversa aberta</h2>
+                      <p>Escolha uma conversa ao lado ou comece uma nova.</p>
+                      <button type="button" className="btn btn-primary wa-bv-nova" onClick={openNewChat}>
+                        <Pencil size={15} strokeWidth={2} /> Nova conversa
+                      </button>
                     </div>
-                  </div>
-                  <div className="chat-room-footer wa-composer">
-                    <button type="button" className="wa-iconbtn" disabled aria-label="Anexar">＋</button>
-                    <button type="button" className="wa-iconbtn" disabled aria-label="Gravar áudio"><Mic size={18} /></button>
-                    <input type="text" placeholder="Escrever mensagem…" disabled />
-                    <button type="button" className="wa-send" disabled aria-label="Enviar mensagem">↑</button>
-                  </div>
+                  )}
                 </>
               )}
             </section>
@@ -5689,7 +5719,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                             title={on ? 'Remover só deste contato' : 'Adicionar só neste contato'}
                           >
                             {tag.name}
-                            {on ? ' ✓' : ''}
+                            {on ? <Check size={12} strokeWidth={2.5} className="wa-tag-ok" /> : null}
                           </button>
                         );
                       })}
@@ -5741,8 +5771,8 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                         <span>{job.snippetLabel}</span>
                       </div>
                       <div className="funnel-job-status">
-                        {job.status === 'done' && '✓ Enviado'}
-                        {job.status === 'error' && `✕ ${job.label}`}
+                        {job.status === 'done' && <><Check size={12} strokeWidth={2.5} /> Enviado</>}
+                        {job.status === 'error' && <><X size={12} strokeWidth={2.5} /> {job.label}</>}
                         {job.status === 'running' && (
                           <>
                             {job.mode === 'audio' ? '🎤' : '⌨️'} {job.label}{' '}
