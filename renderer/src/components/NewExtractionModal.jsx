@@ -123,6 +123,23 @@ const ATALHOS_EUA = [
   'Remodeling', 'Moving company', 'Carpet cleaning', 'Pressure washing', 'Roofing',
   'Nail salon', 'Hair salon', 'Auto repair', 'Restaurante brasileiro', 'Padaria brasileira',
 ];
+// Tradução que aparece com o mouse em cima; o nicho buscado continua em inglês.
+const TRADUCAO_EUA = {
+  'House cleaning': 'Limpeza residencial',
+  'Landscaping': 'Paisagismo e jardinagem',
+  'Painting contractor': 'Pintura',
+  'Handyman': 'Pequenos reparos',
+  'Flooring': 'Instalação de pisos',
+  'Remodeling': 'Reformas',
+  'Moving company': 'Mudanças',
+  'Carpet cleaning': 'Limpeza de carpetes',
+  'Pressure washing': 'Lavagem a jato',
+  'Roofing': 'Telhados',
+  'Nail salon': 'Manicure',
+  'Hair salon': 'Salão de cabelo',
+  'Auto repair': 'Mecânica',
+};
+
 const ATALHOS_BR = [
   'Dentistas', 'Clínicas de estética', 'Salão de beleza', 'Barbearias', 'Academias',
   'Restaurantes', 'Pet shops', 'Advogados', 'Contabilidade', 'Imobiliárias',
@@ -556,11 +573,21 @@ export default function NewExtractionModal({
                       {g.dica && <small>{g.dica}</small>}
                     </h3>
                     <div className="wz-nichos-chips" role="list">
-                      {g.lista.map((t) => (
-                        <button key={t} type="button" className={`chip${nicho === t ? ' on' : ''}`} onClick={() => pickNicho(t, g.pais)}>
-                          {t}
-                        </button>
-                      ))}
+                      {g.lista.map((t) => {
+                        const traducao = g.pais === 'US' ? TRADUCAO_EUA[t] : null;
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            className={`chip wz-nicho${traducao ? ' com-traducao' : ''}${nicho === t ? ' on' : ''}`}
+                            onClick={() => pickNicho(t, g.pais)}
+                            aria-label={traducao ? `${t} (${traducao})` : t}
+                            data-traducao={traducao || undefined}
+                          >
+                            {t}
+                          </button>
+                        );
+                      })}
                     </div>
                   </section>
                 ))}

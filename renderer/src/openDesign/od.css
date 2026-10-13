@@ -2211,3 +2211,11 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 .wz-nichos-titulo .bandeira svg{width:18px!important;height:12px!important}
 .wz-nichos-chips{display:flex;flex-wrap:wrap;gap:6px}
 .wz-nichos-chips .chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,#fff)}
+
+/* Chips de nicho: azul com o mouse em cima; nos EUA, a tradução no lugar do nome */
+.wz-nichos-chips .chip.wz-nicho{transition:border-color .12s,color .12s,background-color .12s}
+.wz-nichos-chips .chip.wz-nicho:hover,.wz-nichos-chips .chip.wz-nicho:focus-visible{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,#fff)}
+/* Tradução num balão acima do chip: o chip não muda de tamanho. */
+.chip.wz-nicho.com-traducao{position:relative}
+.chip.wz-nicho.com-traducao::after{content:attr(data-traducao);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translate(-50%,3px);padding:4px 9px;border-radius:7px;background:#111827;color:#fff;font-size:11.5px;font-weight:600;line-height:1.3;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s,transform .12s;z-index:5}
+.chip.wz-nicho.com-traducao:hover::after,.chip.wz-nicho.com-traducao:focus-visible::after{opacity:1;transform:translate(-50%,0)}
