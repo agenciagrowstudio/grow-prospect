@@ -200,6 +200,23 @@ function getLeadRating(l) { return l.rating != null ? l.rating : (l.rn != null ?
 function getLeadReviews(l) { return l.reviews != null ? l.reviews : (l.reviewCount != null ? l.reviewCount : (l.rc != null ? l.rc : 0)); }
 function getLeadScore(l) { return l.score != null ? l.score : (l.s != null ? l.s : 0); }
 
+/**
+ * Cidade (ou bairro) de uma extração: da área guardada ou, nas antigas, do
+ * rótulo "nicho · Cidade, UF · EUA". Raio não tem cidade única.
+ */
+function lugarDaBusca(busca) {
+  if (!busca) return null;
+  const a = busca.area;
+  if (a && !a.raioKm && ['cidade', 'bairro'].includes(a.tipo) && (a.cidade || a.nome)) {
+    return { cidade: a.tipo === 'bairro' ? a.nome : (a.cidade || a.nome), uf: a.uf || '', pais: String(a.pais || busca.pais || '').toUpperCase(), tipo: a.tipo };
+  }
+  const onde = String(busca.label || '').split(' · ')[1] || '';
+  if (!onde || /\bkm de\b|bairros?\b/i.test(onde)) return null;
+  const [cidade, uf] = onde.split(',').map((x) => x.trim());
+  if (!cidade || !uf || uf.length > 3) return null;
+  return { cidade, uf, pais: String(busca.pais || '').toUpperCase(), tipo: 'cidade' };
+}
+
 export default function MapScraperView({
   onUpdateLeadsCount,
   addLog,
@@ -862,14 +879,19 @@ export default function MapScraperView({
       if (c) contagem.set(c, (contagem.get(c) || 0) + 1);
     });
     const [cidade, qtd = 0] = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0] || [];
+    // Extração de uma cidade: o banner é dela, mesmo que o Google traga
+    // negócios das cidades vizinhas que atendem a região.
+    const lugar = !listCidade ? lugarDaBusca(searches.find((b) => String(b.id) === buscaAtiva)) : null;
     // Recorte misturado: dizer "Várias cidades" é melhor que eleger uma.
     const domina = cidade && qtd / Math.max(1, leadsDoRecorte.length) >= 0.6;
-    const varias = !listCidade && !domina && contagem.size > 1;
-    const titulo = listCidade || (varias ? 'Várias cidades' : (cidade || ''));
+    const varias = !lugar && !listCidade && !domina && contagem.size > 1;
+    const titulo = listCidade || lugar?.cidade || (varias ? 'Várias cidades' : (cidade || ''));
     const amostra = leadsDoRecorte.find((l) => getLeadCity(l) === titulo) || leadsDoRecorte[0] || {};
     const paises = new Set(leadsDoRecorte.map((l) => (String(l.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil')));
-    const pais = paises.size > 1 ? 'Brasil e EUA' : (String(amostra.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil');
-    const uf = varias ? '' : getLeadState(amostra);
+    const paisDoLugar = lugar?.pais ? (lugar.pais === 'US' ? 'EUA' : 'Brasil') : null;
+    const pais = paisDoLugar || (paises.size > 1 ? 'Brasil e EUA' : (String(amostra.pais || 'BR').toUpperCase() === 'US' ? 'EUA' : 'Brasil'));
+    const uf = lugar?.uf || (varias ? '' : getLeadState(amostra));
+    const vizinhas = lugar ? [...contagem.keys()].filter((c) => c.toLowerCase() !== lugar.cidade.toLowerCase()).length : 0;
     const qs = leadsDoRecorte.map((l) => qualificacoes.get(l) || qualificaLead(l));
     const publicos = { br: 0, brus: 0, us: 0, verificar: 0 };
     leadsDoRecorte.forEach((l) => { publicos[publicoDoLead(l)] += 1; });
@@ -882,13 +904,18 @@ export default function MapScraperView({
       titulo,
       cidadeFoto: varias ? '' : titulo,
       uf,
-      pais: String(amostra.pais || 'BR').toUpperCase(),
-      subtitulo: [varias ? `${contagem.size} cidades` : (titulo ? 'Cidade' : ''), uf, pais].filter(Boolean).join(' · '),
+      pais: lugar?.pais || String(amostra.pais || 'BR').toUpperCase(),
+      subtitulo: [
+        varias ? `${contagem.size} cidades` : (titulo ? (lugar?.tipo === 'bairro' ? 'Bairro' : 'Cidade') : ''),
+        uf,
+        pais,
+        vizinhas ? `+ ${vizinhas} vizinha${vizinhas === 1 ? '' : 's'}` : '',
+      ].filter(Boolean).join(' · '),
       resumo: resumoTemperaturas(qs),
       publicos,
       pontos,
     };
-  }, [leadsDoRecorte, qualificacoes, listCidade]);
+  }, [leadsDoRecorte, qualificacoes, listCidade, searches, buscaAtiva]);
 
   const handleWhatsAppLead = (lead) => {
     const name = getLeadName(lead);
