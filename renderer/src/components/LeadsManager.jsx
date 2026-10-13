@@ -12,6 +12,7 @@ import MenuStatusLead from './MenuStatusLead';
 import { ImagemPng } from './IconePng';
 import { ICONES } from '../assets/icones';
 import { statusDoLead, aplicaStatus, nomeDoStatus, ordemDoStatus } from '../statusLead';
+import { canalDa, nomeDoCanal } from '../funil';
 import {
   Globe,
   Instagram,
@@ -279,10 +280,11 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   });
   const leadStatus = (leadId) => statusDoLead(leadId, logFila, hist[leadId] || []);
 
-  const mudaStatus = (lista, status) => {
+  const canalDoLead = (leadId) => canalDa(logFila[String(leadId)]);
+  const mudaStatus = (lista, status, canal = '') => {
     if (!lista.length) return;
     let proximo = logFila;
-    lista.forEach((l) => { proximo = aplicaStatus(proximo, { id: getLeadId(l, 0), name: getLeadName(l) }, status); });
+    lista.forEach((l) => { proximo = aplicaStatus(proximo, { id: getLeadId(l, 0), name: getLeadName(l) }, status, new Date(), canal); });
     try { localStorage.setItem('sigma_abordagem_log', JSON.stringify(proximo)); } catch { /* sem espaço: vale nesta sessão */ }
     setLogFila(proximo);
     window.dispatchEvent(new Event('sigma:leads-updated'));
@@ -291,8 +293,8 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
       category: 'system',
       title: 'Estado atualizado',
       message: lista.length === 1
-        ? `${getLeadName(lista[0])}: ${nomeDoStatus(status)}.`
-        : `${lista.length} leads: ${nomeDoStatus(status)}.`,
+        ? `${getLeadName(lista[0])}: ${nomeDoStatus(status)}${canal ? ` por ${nomeDoCanal(canal)}` : ''}.`
+        : `${lista.length} leads: ${nomeDoStatus(status)}${canal ? ` por ${nomeDoCanal(canal)}` : ''}.`,
     });
   };
 
@@ -1124,8 +1126,8 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           </button>
           <MenuStatusLead
             rotulo="Mudar estado"
-            onEscolhe={(novo) => {
-              mudaStatus(leads.filter((l, i) => sel.has(getLeadId(l, i))), novo);
+            onEscolhe={(novo, canal) => {
+              mudaStatus(leads.filter((l, i) => sel.has(getLeadId(l, i))), novo, canal);
               setSel(new Set());
             }}
           />
@@ -1300,7 +1302,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       if (colId === 'status') {
                         return (
                           <td key={colId}>
-                            <MenuStatusLead status={st} onEscolhe={(novo) => mudaStatus([l], novo)} />
+                            <MenuStatusLead status={st} canal={canalDoLead(id)} onEscolhe={(novo, canal) => mudaStatus([l], novo, canal)} />
                           </td>
                         );
                       }
@@ -1582,7 +1584,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
             <div className="modal-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <h2 style={{ flex: 1 }}>{getLeadName(activeLead)}</h2>
-                <MenuStatusLead status={leadStatus(getLeadId(activeLead, 0))} onEscolhe={(novo) => mudaStatus([activeLead], novo)} />
+                <MenuStatusLead status={leadStatus(getLeadId(activeLead, 0))} canal={canalDoLead(getLeadId(activeLead, 0))} onEscolhe={(novo, canal) => mudaStatus([activeLead], novo, canal)} />
               </div>
             </div>
 

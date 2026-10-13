@@ -38,7 +38,7 @@ export function statusDoLead(id, log = {}, historico = []) {
  * marcação (o lead volta para a Fila). Mudar o estado não apaga o que já
  * estava guardado (texto enviado, follow-ups feitos).
  */
-export function aplicaStatus(log = {}, lead = {}, status, agora = new Date()) {
+export function aplicaStatus(log = {}, lead = {}, status, agora = new Date(), canal = '') {
   const chave = String(lead.id);
   const proximo = { ...log };
   if (status === 'novo' || !IDS.has(status)) {
@@ -50,6 +50,8 @@ export function aplicaStatus(log = {}, lead = {}, status, agora = new Date()) {
     ...(antes || { dia: chaveDoDia(agora), ts: agora.getTime(), nome: lead.name || '', texto: '', origem: 'base' }),
     status,
     alteradoEm: agora.getTime(),
+    // Por onde foi o contato (WhatsApp, Instagram, e-mail, ligação...).
+    ...(canal ? { canal } : {}),
   };
   return proximo;
 }

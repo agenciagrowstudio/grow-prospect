@@ -27,6 +27,7 @@ export const CHAVES_SINCRONIZADAS = [
   'sigma_abordagem_log',
   'sigma_abordagem_cfg',
   'sigma_quick_snippets',
+  'sigma_kanban_etapas',
 ];
 
 const CHAVE_SESSAO = 'prospector_nuvem_sessao';

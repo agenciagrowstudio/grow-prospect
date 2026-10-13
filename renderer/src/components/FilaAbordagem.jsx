@@ -227,6 +227,8 @@ export default function FilaAbordagem({
         angulo: gerado(item).angulo,
         publico: publicoDoLead(item.lead),
         idioma: idiomaDe(item),
+        // A Fila do dia envia pelo WhatsApp.
+        canal: 'whatsapp',
       },
     }));
     setSelecionado(proximo?.chave || null);

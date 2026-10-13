@@ -35,7 +35,7 @@ import LogoGrow from './components/LogoGrow';
 
 // Versao exibida no rodape do menu. Acompanha o package.json.
 const APP_VERSION = '2.0.0';
-import KanbanBoard from './components/KanbanBoard';
+import FunilKanban from './components/FunilKanban';
 import WhatsAppPanel from './components/WhatsAppPanel';
 import EmailPanel from './components/EmailPanel';
 import NewExtractionModal from './components/NewExtractionModal';
@@ -473,7 +473,7 @@ function AppInner() {
   });
 
   const renderContent = () => {
-    if (ehWeb && ['whatsapp', 'campaigns', 'email', 'kanban'].includes(activeTab)) {
+    if (ehWeb && ['whatsapp', 'campaigns', 'email'].includes(activeTab)) {
       return <SoNoComputador recurso={activeTab === 'campaigns' ? 'whatsapp' : activeTab} onNavigate={navigate} />;
     }
     switch (activeTab) {
@@ -507,7 +507,7 @@ function AppInner() {
       case 'kanban':
         return (
           <ErrorBoundaryLite label="Kanban">
-            <KanbanBoard onNavigate={navigate} addLog={(msg) => console.log(msg)} />
+            <FunilKanban />
           </ErrorBoundaryLite>
         );
       case 'base':
