@@ -820,12 +820,10 @@ body.route-whatsapp #view-whatsapp{height:100%;min-height:0;gap:0;padding:0}
   .app-screen-container{max-width:1200px;flex:0 0 auto;min-height:calc(100vh - 56px);overflow:visible}
   .app-header-bar{position:sticky;top:0}
   body.route-whatsapp .app-screen-container{min-height:100dvh;overflow:hidden}
-  .window-control-buttons{position:absolute;top:0;right:0;height:56px;margin:0;padding:0 8px;background:#fff;opacity:0;pointer-events:none;transition:opacity var(--motion-fast) var(--ease-standard)}
-  .app-header-bar:hover .window-control-buttons,.window-control-buttons:focus-within{opacity:1;pointer-events:auto}
-  /* Os controles sao absolutos e surgem no hover do cabecalho. Sem reservar
-     espaco, eles cobrem o bloco de perfil. O perfil desliza para a esquerda. */
-  .hdr-perfil{transition:margin-right 200ms cubic-bezier(.4,0,.2,1)}
-  .app-header-bar:hover .hdr-perfil{margin-right:104px}
+  /* Minimizar, maximizar e fechar ficam sempre visíveis, com espaço reservado
+     ao lado do perfil (nada surge nem desliza ao passar o mouse). */
+  .window-control-buttons{position:absolute;top:0;right:0;height:56px;margin:0;padding:0 8px;background:#fff}
+  .hdr-perfil{margin-right:104px}
 }
 .app-sidebar .ico{width:22px;min-width:22px;display:inline-grid;place-items:center;text-align:center;font-size:15px;line-height:1}
 .btn-new-extraction .sidebar-plus{display:inline-grid!important;place-items:center;font-size:20px;line-height:1}
@@ -2262,6 +2260,7 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 :root{--arm-leads:#0E6BEC;--arm-fila:#7C3AED;--arm-mapas:#00A34D;--arm-nuvem:#94A3B8;--arm-outros:#CBD5E1}
 .arm{position:relative}
 .arm-gatilho{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;font:inherit;cursor:pointer;color:var(--fg)}
+.arm-gatilho:hover{background:#fafafa}
 .arm-gatilho svg{color:var(--arm-leads)}
 .arm-gatilho.arm-atencao svg{color:#b45309}
 .arm-gatilho.arm-critico svg{color:#b91c1c}
@@ -2397,6 +2396,7 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 /* Cotação do dólar no topo */
 .cot{position:relative}
 .cot-gatilho{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;font:inherit;cursor:pointer;color:var(--fg)}
+.cot-gatilho:hover{background:#fafafa}
 .cot-icone{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,#047857 13%,#fff);color:#047857;flex:none}
 .cot-txt{display:flex;flex-direction:column;line-height:1.15;text-align:left;white-space:nowrap}
 .cot-txt b{font-size:12.5px;font-variant-numeric:tabular-nums}
