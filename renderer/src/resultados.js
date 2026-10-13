@@ -29,20 +29,32 @@ export const OFERTAS_RESULTADO = [
 ];
 
 /**
+ * Americano pelas avaliações: o robô leu pelo menos 3 avaliações da ficha e
+ * nenhuma tem cliente de sobrenome brasileiro, texto original em português ou
+ * resposta do dono em português, e nada mais no lead aponta brasileiro.
+ */
+export function americanoPelasAvaliacoes(lead) {
+  const a = lead?.avaliacoesLidas;
+  if (!a || Number(a.lidas) < 3) return false;
+  const nivel = lead.sinalBr?.nivel;
+  return !a.sobrenomesBr && !a.emPortugues && !a.respostaDonoPt && !a.citamBrasil && nivel !== 'alto' && nivel !== 'medio';
+}
+
+/**
  * Quem é quem nos EUA. A marcação feita à mão (na Fila do dia) vale mais que
- * tudo. Sem ela, sinal brasileiro alto ou médio conta como brasileiro. Sem
- * sinal nenhum fica "a verificar": a ficha do Google não tinha o que ler, e
- * isso não faz de ninguém americano.
+ * tudo. Sem ela, sinal brasileiro alto ou médio conta como brasileiro, e quem
+ * teve as avaliações lidas sem nenhum sinal brasileiro conta como americano.
+ * O resto fica "a verificar": a ficha não tinha o que ler, e isso não faz de
+ * ninguém americano. A IA não decide público: ela só escreve os textos.
  */
 export function publicoDoLead(lead) {
   if (!lead) return null;
   const pais = String(lead.pais || 'BR').toUpperCase();
   if (pais === 'BR') return 'br';
   if (lead.publicoConfirmado === 'brus' || lead.publicoConfirmado === 'us') return lead.publicoConfirmado;
-  // Decisão da IA (leu o site), quando tem confiança.
-  if (lead.ia && Number(lead.ia.confianca) >= 0.7 && ['brus', 'us'].includes(lead.ia.publico)) return lead.ia.publico;
   const nivel = lead.sinalBr?.nivel;
-  return nivel === 'alto' || nivel === 'medio' ? 'brus' : 'verificar';
+  if (nivel === 'alto' || nivel === 'medio') return 'brus';
+  return americanoPelasAvaliacoes(lead) ? 'us' : 'verificar';
 }
 
 function chaveDia(ts) {

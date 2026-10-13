@@ -40,8 +40,8 @@ export function aplicaResultadosIA(leads, resultados) {
 
 /** "Lendo sites 12/120" ou "IA 24/120". */
 export function textoProgressoIA(p) {
-  if (!p) return 'Analisando…';
-  return p.etapa === 'sites' ? `Lendo sites ${p.atual}/${p.total}` : `IA analisando ${p.atual}/${p.total}`;
+  if (!p) return 'Preparando…';
+  return p.etapa === 'sites' ? `Lendo sites ${p.atual}/${p.total}` : `IA escrevendo ${p.atual}/${p.total}`;
 }
 
 /** Coloca o detalhe da IA como um parágrafo antes da pergunta final da mensagem. */

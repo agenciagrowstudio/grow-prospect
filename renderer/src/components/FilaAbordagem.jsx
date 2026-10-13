@@ -244,7 +244,7 @@ export default function FilaAbordagem({
       localStorage.setItem('sigma_leads', JSON.stringify(aplicaResultadosIA(todos, resultados)));
       window.dispatchEvent(new Event('sigma:leads-updated'));
       const comIA = resultados.filter((r) => r.ia).length;
-      setAviso(comIA ? `${comIA} lead${comIA === 1 ? '' : 's'} analisado${comIA === 1 ? '' : 's'} pela IA.` : 'A IA não respondeu agora. Tente de novo em alguns minutos.');
+      setAviso(comIA ? `Textos da IA prontos para ${comIA} lead${comIA === 1 ? '' : 's'}.` : 'A IA não respondeu agora. Tente de novo em alguns minutos.');
     } catch (e) {
       // Sem chave ou chave recusada: para de tentar sozinho até a pessoa pedir.
       if (/chave/i.test(e.message)) setIaParada(e.message);
@@ -654,8 +654,8 @@ export default function FilaAbordagem({
                       {analisandoIA
                         ? textoProgressoIA(progressoIA)
                         : iaParada
-                          ? 'Análise automática parada: confira a chave de IA nas Configurações'
-                          : semIA.length ? `${fila.length - semIA.length} de ${fila.length} analisados pela IA` : 'Fila analisada pela IA'}
+                          ? 'Textos automáticos parados: confira a chave de IA nas Configurações'
+                          : semIA.length ? `${fila.length - semIA.length} de ${fila.length} com texto da IA` : 'Textos da IA prontos para a fila'}
                     </span>
                     {!analisandoIA && semIA.length > 0 && (iaParada || semIA.every((f) => jaTentouIA.current.has(f.chave))) && (
                       <button type="button" className="fa-mini fa-mini-forte" onClick={() => { setIaParada(''); analisaFila(semIA); }}>

@@ -1,13 +1,13 @@
 /**
- * Análise com IA dos leads, numa chamada só por lote:
+ * IA nos leads: só para os textos. Ela escreve o gancho da primeira mensagem
+ * (um detalhe real do negócio), em português e em inglês.
  *
- * 1. Quem é: brasileiro ou americano, lendo o site (idioma, "falamos
- *    português", WhatsApp +55) junto com os dados do Google.
- * 2. O que oferecer: o serviço da Grow+ que mais faz sentido e o porquê.
- * 3. Um detalhe real do negócio para personalizar a primeira mensagem.
+ * Quem é brasileiro não é mais decisão da IA: sai das regras, das avaliações
+ * lidas na ficha do Google (quem avalia, em que língua, como o dono responde)
+ * e do site lido aqui. O serviço a oferecer sai das regras da qualificação.
  *
- * O site é lido aqui, sem navegador: só o HTML, com tempo curto. Site que não
- * abre não impede a análise; a IA decide com o que houver.
+ * O site é lido sem navegador: só o HTML, com tempo curto. Ele dá sinais para
+ * as regras e assunto para o gancho.
  */
 const { avaliaSinaisBrasileiros, extraiJson, NIVEL_ALTO, NIVEL_MEDIO } = require('./sinais-brasileiros');
 
@@ -17,14 +17,6 @@ const LOTE_IA = 12;
 // O Gemini grátis aceita poucas chamadas por minuto: espaço entre os lotes.
 const ESPERA_ENTRE_LOTES_MS = 4500;
 const TRECHO_SITE = 1400;
-
-const SERVICOS = {
-  site: 'Site: não tem site próprio ou o site é fraco (lento, não funciona no celular, sem botão de WhatsApp).',
-  google: 'Google Negócio: nota baixa, poucas avaliações ou ficha incompleta.',
-  redes: 'Gestão de redes: não tem Instagram ou está parado.',
-  conteudo: 'Conteúdo: tem Instagram, mas precisa de posts, vídeos e constância.',
-  sistema: 'Sistema: vive de agenda ou pedido (agendamento online, orçamento, reservas).',
-};
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -95,14 +87,12 @@ function sinaisComSite(lead, site) {
 function montaPergunta(itens) {
   return {
     tarefa: [
-      'Você ajuda a Grow+, agência de marketing que prospecta negócios locais (muitos de brasileiros nos EUA).',
-      'Para cada negócio, responda três coisas usando só os dados fornecidos, sem inventar:',
-      '1) brasileiro: o negócio é de brasileiros ou atende a comunidade brasileira? Considere nome, site em português, menção a português, WhatsApp +55, nomes brasileiros. Sem evidência, brasileiro=false com confiança baixa (até 0.4).',
-      '2) servico: qual serviço da Grow+ oferecer primeiro (um dos ids de "servicos") e motivoServico curto (até 14 palavras).',
-      '3) gancho: UMA frase curta e verdadeira, em português, citando um detalhe real do negócio tirado dos dados (ex.: "Vi que vocês fazem limpeza pós-obra em Framingham e Natick."). Se não houver detalhe concreto, gancho vazio. ganchoEn: a mesma frase em inglês.',
+      'Você escreve para a Grow+, agência de marketing que prospecta negócios locais (muitos de brasileiros nos EUA).',
+      'Para cada negócio, escreva o gancho da primeira mensagem usando só os dados fornecidos, sem inventar:',
+      'gancho: UMA frase curta e verdadeira, em português, citando um detalhe real do negócio tirado dos dados (site, avaliações de clientes, categoria, cidade). Ex.: "Vi que vocês fazem limpeza pós-obra em Framingham e Natick." ou "Vi que os clientes elogiam muito a pontualidade de vocês.".',
+      'Se não houver detalhe concreto, gancho vazio. ganchoEn: a mesma frase em inglês. Não use travessão.',
     ].join(' '),
-    servicos: SERVICOS,
-    formato: '{"resultados":[{"id":"...","brasileiro":true,"confianca":0.0,"motivo":"...","servico":"site","motivoServico":"...","gancho":"...","ganchoEn":"..."}]}',
+    formato: '{"resultados":[{"id":"...","gancho":"...","ganchoEn":"..."}]}',
     negocios: itens.map(({ id, lead, site, sinais }) => {
       const e = lead.company || lead;
       return {
@@ -116,8 +106,8 @@ function montaPergunta(itens) {
         avaliacoes: e.reviewCount || e.reviews || 0,
         temSite: Boolean(e.website),
         temInstagram: Boolean(e.instagram),
-        sinaisEncontrados: sinais.sinais,
         site: site?.ok ? { idioma: site.lang, titulo: site.titulo, trecho: site.trecho } : null,
+        avaliacoesDeClientes: (e.avaliacoesLidas?.trechos || lead.avaliacoesLidas?.trechos || []).slice(0, 4),
       };
     }),
   };
@@ -177,30 +167,15 @@ async function analisaLeadsComIA(leads, ai = {}, { onProgresso, deps = {} } = {}
   const agora = Date.now();
   return itens.map(({ id, sinais, site }) => {
     const d = decisoes.get(id);
-    let { pontos, nivel } = sinais;
-    const lista = [...sinais.sinais];
-    let ia = null;
-    if (d) {
-      const confianca = Math.max(0, Math.min(1, Number(d.confianca) || 0));
-      const brasileiro = d.brasileiro === true;
-      if (brasileiro && confianca >= 0.6) pontos = Math.max(pontos, Math.round(50 + confianca * 40));
-      if (!brasileiro && confianca >= 0.7) pontos = Math.min(pontos, 15);
-      nivel = pontos >= NIVEL_ALTO ? 'alto' : pontos >= NIVEL_MEDIO ? 'medio' : 'baixo';
-      if (d.motivo) lista.push(`IA: ${limpaTexto(d.motivo, 160)}`);
-      ia = {
-        publico: brasileiro ? 'brus' : 'us',
-        confianca,
-        motivo: limpaTexto(d.motivo, 200),
-        servico: Object.prototype.hasOwnProperty.call(SERVICOS, d.servico) ? d.servico : null,
-        motivoServico: limpaTexto(d.motivoServico, 140),
-        gancho: limpaTexto(d.gancho, 220),
-        ganchoEn: limpaTexto(d.ganchoEn, 220),
-        leuSite: Boolean(site?.ok),
-        ts: agora,
-      };
-    }
-    return { id, sinalBr: { pontos, nivel, sinais: lista, fonte: d ? 'ia' : 'regras' }, ia };
+    const ia = d ? {
+      gancho: limpaTexto(d.gancho, 220),
+      ganchoEn: limpaTexto(d.ganchoEn, 220),
+      leuSite: Boolean(site?.ok),
+      ts: agora,
+    } : null;
+    // O sinal brasileiro é das regras (com o site lido), nunca da IA.
+    return { id, sinalBr: { pontos: sinais.pontos, nivel: sinais.nivel, sinais: sinais.sinais, fonte: 'regras' }, ia };
   });
 }
 
-module.exports = { analisaLeadsComIA, lerSite, sinaisComSite, montaPergunta, SERVICOS };
+module.exports = { analisaLeadsComIA, lerSite, sinaisComSite, montaPergunta };

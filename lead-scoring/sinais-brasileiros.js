@@ -17,6 +17,8 @@
  *    "Churrascaria Brasil" é dinheiro jogado fora: a regra já sabe.
  */
 
+const { pontuaAvaliacoes } = require('./avaliacoes-brasileiras');
+
 const NIVEL_ALTO = 50;
 const NIVEL_MEDIO = 20;
 
@@ -119,10 +121,18 @@ function avaliaSinaisBrasileiros(lead = {}) {
     sinais.push('WhatsApp com DDI +55');
   }
 
-  const avaliacoes = pareceportugues(textoDasAvaliacoes(lead));
-  if (avaliacoes.portugues) {
-    pontos += 30;
-    sinais.push('avaliações escritas em português');
+  // Avaliações lidas na ficha (quem avalia, em que língua, como o dono
+  // responde). Sem a leitura, vale o texto solto que o lead tiver.
+  if (lead.avaliacoesLidas?.lidas) {
+    const r = pontuaAvaliacoes(lead.avaliacoesLidas);
+    pontos += r.pontos;
+    sinais.push(...r.sinais);
+  } else {
+    const avaliacoes = pareceportugues(textoDasAvaliacoes(lead));
+    if (avaliacoes.portugues) {
+      pontos += 30;
+      sinais.push('avaliações escritas em português');
+    }
   }
 
   const descricao = pareceportugues(empresa.openingHours || empresa.description);

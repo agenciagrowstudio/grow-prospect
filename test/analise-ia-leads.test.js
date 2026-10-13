@@ -43,22 +43,24 @@ describe('análise com IA dos leads', () => {
         assert.equal(payload.negocios.length, 3);
         assert.equal(payload.negocios[0].site.idioma, 'pt-br');
         assert.equal(payload.negocios[2].site, null);
+        assert.doesNotMatch(payload.tarefa, /brasileiro:|servico:/, 'a IA não decide público nem serviço');
+        // Mesmo que a IA mande público e serviço, nada disso é usado.
         return { choices: [{ message: { content: JSON.stringify({ resultados: [
-          { id: 'a', brasileiro: true, confianca: 0.9, motivo: 'site em português', servico: 'google', motivoServico: 'poucas avaliações', gancho: 'Vi que vocês atendem em português — em Framingham.', ganchoEn: 'I saw you serve Framingham.' },
-          { id: 'b', brasileiro: false, confianca: 0.85, motivo: 'site só em inglês', servico: 'nao-existe', gancho: '' },
+          { id: 'a', brasileiro: false, confianca: 0.99, servico: 'google', gancho: 'Vi que vocês atendem em português — em Framingham.', ganchoEn: 'I saw you serve Framingham.' },
+          { id: 'b', brasileiro: true, confianca: 0.99, gancho: '' },
         ] }) } }] };
       },
     };
     const progresso = [];
     const r = await analisaLeadsComIA(leads, {}, { onProgresso: (p) => progresso.push(p.etapa), deps: { analisador, fetch: fetchFalso } });
     const [a, b, c] = r;
-    assert.equal(a.ia.publico, 'brus');
-    assert.equal(a.sinalBr.nivel, 'alto');
-    assert.equal(a.ia.servico, 'google');
+    assert.equal(a.sinalBr.nivel, 'alto', 'o site em português decide, não a IA');
+    assert.equal(a.sinalBr.fonte, 'regras');
+    assert.equal(a.ia.publico, undefined);
+    assert.equal(a.ia.servico, undefined);
+    assert.match(a.ia.gancho, /Framingham/);
     assert.doesNotMatch(a.ia.gancho, /—/, 'sem travessão no texto que vai para a mensagem');
-    assert.equal(b.ia.publico, 'us');
-    assert.equal(b.ia.servico, null, 'serviço inventado pela IA é descartado');
-    assert.equal(b.sinalBr.nivel, 'baixo');
+    assert.equal(b.sinalBr.nivel, 'baixo', 'a IA dizer brasileiro não muda nada');
     assert.equal(c.ia, null, 'sem resposta da IA, fica só com os sinais');
     assert.ok(progresso.includes('sites') && progresso.includes('ia'));
   });

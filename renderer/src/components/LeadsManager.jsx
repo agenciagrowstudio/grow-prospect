@@ -336,8 +336,8 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
    * serve para a faixa do meio, que as regras nao resolvem, e para bases
    * antigas, extraidas antes de o qualificador existir.
    */
-  // Analisa os selecionados (ou a lista filtrada): lê o site, decide quem é,
-  // sugere o serviço e um detalhe real para a mensagem.
+  // Textos da IA para os selecionados (ou a lista filtrada): lê o site e
+  // escreve um detalhe real para a mensagem.
   const alvoIA = useMemo(() => {
     const base = sel.size ? leads.filter((l, idx) => sel.has(getLeadId(l, idx))) : filteredLeads;
     return base.slice(0, 500);
@@ -352,15 +352,13 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
     try {
       const resultados = await analisaComIA(alvoIA, setProgressoIA);
       setLeads((prev) => aplicaResultadosIA(prev, resultados));
-      const comIA = resultados.filter((r) => r.ia).length;
-      const brasileiros = resultados.filter((r) => r.ia?.publico === 'brus' && r.ia.confianca >= 0.7).length;
-      const americanos = resultados.filter((r) => r.ia?.publico === 'us' && r.ia.confianca >= 0.7).length;
+      const comGancho = resultados.filter((r) => r.ia?.gancho).length;
       addNotification({
-        type: comIA ? 'success' : 'warning',
+        type: resultados.some((r) => r.ia) ? 'success' : 'warning',
         category: 'system',
-        title: 'Análise com IA concluída',
-        message: comIA
-          ? `${comIA} de ${resultados.length} analisados: ${brasileiros} brasileiros, ${americanos} americanos. Serviço e detalhe para a mensagem já estão na Fila.`
+        title: 'Textos da IA prontos',
+        message: resultados.some((r) => r.ia)
+          ? `${comGancho} de ${resultados.length} leads com detalhe para a mensagem. Já aparecem na Fila do dia.`
           : 'A IA não respondeu (limite ou conexão). Os sinais dos sites foram aplicados; tente de novo mais tarde.',
       });
     } catch (e) {
@@ -702,9 +700,9 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
               className={`btn btn-ghost${qualificando ? ' bl-ia-rodando' : ''}`}
               onClick={() => setConfirmaIA(true)}
               disabled={qualificando || !alvoIA.length}
-              title="Lê o site de cada lead e usa a IA para dizer quem é, o que oferecer e um detalhe para a mensagem"
+              title="Lê o site de cada lead e a IA escreve um detalhe real do negócio para a mensagem"
             >
-              <IconeIA size={17} /> {qualificando ? textoProgressoIA(progressoIA) : `Analisar com IA (${alvoIA.length})`}
+              <IconeIA size={17} /> {qualificando ? textoProgressoIA(progressoIA) : `Escrever textos com IA (${alvoIA.length})`}
             </button>
           )}
           <button type="button" className="btn btn-primary" onClick={() => setIsExportOpen(true)}>
@@ -1115,12 +1113,12 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
         <div className="overlay on" onClick={() => setConfirmaIA(false)}>
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="blIaTitulo" onClick={(e) => e.stopPropagation()} style={{ width: 'min(460px, 94vw)' }}>
             <div className="modal-head">
-              <h2 id="blIaTitulo">Analisar {alvoIA.length} lead{alvoIA.length === 1 ? '' : 's'} com IA?</h2>
+              <h2 id="blIaTitulo">Escrever textos para {alvoIA.length} lead{alvoIA.length === 1 ? '' : 's'} com IA?</h2>
             </div>
             <div className="modal-body" style={{ gridTemplateColumns: '1fr', gap: '10px' }}>
               <p className="bl-apagar-txt">
-                O app lê o site de cada um e pergunta à IA: quem é (brasileiro ou americano), qual serviço
-                oferecer primeiro e um detalhe real do negócio para a mensagem.
+                O app lê o site e as avaliações de cada um, e a IA escreve um detalhe real do negócio
+                para a mensagem. Quem é brasileiro e o serviço a oferecer saem das regras, não da IA.
                 {sel.size ? ' Só os selecionados.' : ' A lista que está na tela (use a seleção para analisar menos).'}
               </p>
               <p className="bl-apagar-txt">
@@ -1315,8 +1313,8 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                         const sinais = (l.sinalBr?.sinais || []).join(' · ');
                         const dica = l.publicoConfirmado
                           ? 'Marcado por você na Fila do dia'
-                          : l.ia && l.ia.confianca >= 0.7 && l.ia.publico === pub
-                            ? `IA (${Math.round(l.ia.confianca * 100)}%): ${l.ia.motivo || 'leu o site'}`
+                          : pub === 'us' && l.avaliacoesLidas
+                            ? `Avaliações lidas: nenhum cliente com sobrenome brasileiro nem texto em português (${l.avaliacoesLidas.lidas} lidas)`
                           : pub === 'verificar'
                             ? 'Nenhum sinal na ficha do Google. Marque quem é na Fila do dia'
                             : sinais ? `Sinais: ${sinais}` : '';

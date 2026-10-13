@@ -1,6 +1,7 @@
 const { chromium } = require('playwright');
 const CONFIG = require('./config');
 const { extractBusinessData } = require('./utils/businessData');
+const { resumeAvaliacoes } = require('./lead-scoring/avaliacoes-brasileiras');
 const { geocodeAddress, isValidCoord } = require('./utils/geocode');
 const { normalizeAddress } = require('./utils/address-normalizer');
 const { urlBuscaNaArea } = require('./utils/area-busca');
@@ -169,6 +170,13 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
           }
           if (!place.facebook) place.facebook = await linkDoPainel(page, 'facebook.com');
 
+          // Nos EUA: quem avalia e em que língua mostra se o público é brasileiro.
+          if (CONFIG.LER_AVALIACOES && String(pais).toUpperCase() === 'US' && Number(place.reviewCount) > 0) {
+            checkCancelled(cancelToken);
+            const lidas = await lerAvaliacoes(page, CONFIG.AVALIACOES_POR_FICHA);
+            if (lidas.length) place.avaliacoesLidas = resumeAvaliacoes(lidas);
+          }
+
           if (place.website && !place.website.includes('instagram.com') && !place.website.includes('facebook.com') && !place.website.includes('youtube.com')) {
             checkCancelled(cancelToken);
             place.email = await scrapeEmails(browser, place.website, onProgress, cancelToken);
@@ -221,6 +229,64 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
   onProgress(`\nDone! ${places.length} places.`);
   statistics.total = places.length;
   return { success: true, data: places, count: places.length, statistics };
+}
+
+/**
+ * Abre a aba de avaliações do negócio aberto e lê as mais relevantes: nome de
+ * quem avaliou, texto e resposta do dono. O nome só serve para contar
+ * sobrenomes (veja avaliacoes-brasileiras.js) e não é guardado no lead.
+ * Qualquer falha devolve lista vazia: a extração segue sem esse sinal.
+ */
+async function lerAvaliacoes(page, max = 12) {
+  try {
+    // Clique de verdade (mouse): o Maps ignora o .click() feito por script.
+    const aba = page.locator('div[role="main"] button[role="tab"]').filter({ hasText: /Avalia|Review|Rese[nñ]a/i }).first();
+    if (!(await aba.count())) return [];
+    await aba.click({ timeout: 3000 });
+    await page.waitForSelector('div.jftiEf[data-review-id]', { timeout: 5000 });
+    // Uma rolada na lista carrega mais avaliações além das primeiras.
+    await page.evaluate(() => {
+      let el = document.querySelector('div.jftiEf[data-review-id]');
+      while (el && el.scrollHeight <= el.clientHeight + 5) el = el.parentElement;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+    await page.waitForTimeout(1000);
+    return await page.evaluate((limite) => {
+      const vistos = new Set();
+      return [...document.querySelectorAll('div.jftiEf[data-review-id]')]
+        .filter((el) => {
+          const id = el.getAttribute('data-review-id');
+          if (vistos.has(id)) return false;
+          vistos.add(id);
+          return true;
+        })
+        .slice(0, limite)
+        .map((el) => {
+          // O Maps traduz para a língua da tela e avisa o original:
+          // "Traduzido pelo Google · Mostrar original (inglês)". Sem aviso, o
+          // texto já está na língua da tela.
+          const caixaResposta = el.querySelector('.CDe7pd');
+          const idiomaOriginal = (botoes) => {
+            for (const b of botoes) {
+              const m = (b.textContent || '').match(/(?:Mostrar original|See original|Ver original)\s*\(([^)]+)\)/i);
+              if (m) return m[1].trim();
+            }
+            return '';
+          };
+          const botoes = [...el.querySelectorAll('button')];
+          return {
+            autor: (el.getAttribute('aria-label') || el.querySelector('.d4r55')?.textContent || '').trim(),
+            texto: (el.querySelector('.wiI7pd')?.textContent || '').trim(),
+            idiomaTexto: idiomaOriginal(botoes.filter((b) => !caixaResposta || !caixaResposta.contains(b))),
+            resposta: (caixaResposta?.textContent || '').trim(),
+            idiomaResposta: caixaResposta ? idiomaOriginal([...caixaResposta.querySelectorAll('button')]) : '',
+            telaEmPortugues: /^pt/i.test(document.documentElement.lang || ''),
+          };
+        });
+    }, max);
+  } catch {
+    return [];
+  }
 }
 
 /**

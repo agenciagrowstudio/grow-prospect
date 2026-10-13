@@ -8,6 +8,9 @@ module.exports = {
   MAX_RETRIES: 2,
   SEARCH_VARIATIONS: [],
   REQUEST_BLOCK_TYPES: [],
+  // Nos EUA, lê as avaliações da ficha para saber se o público é brasileiro.
+  LER_AVALIACOES: true,
+  AVALIACOES_POR_FICHA: 12,
   USER_AGENT: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
 
   WHATSAPP_DEFAULT_COUNTRY_CODE: '55',

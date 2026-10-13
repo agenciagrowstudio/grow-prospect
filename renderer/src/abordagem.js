@@ -1,3 +1,5 @@
+import { americanoPelasAvaliacoes } from './resultados.js';
+
 /**
  * Primeira mensagem de abordagem, escrita para ser respondida.
  *
@@ -264,7 +266,8 @@ export function idiomaDoLead(lead) {
   if (!eua) return 'pt';
   if (lead?.publicoConfirmado) return lead.publicoConfirmado === 'us' ? 'en' : 'pt';
   // A IA leu o site e tem certeza de que é americano: vai em inglês.
-  return lead?.ia?.publico === 'us' && Number(lead.ia.confianca) >= 0.7 ? 'en' : 'pt';
+  // Sem marcação: americano pelas avaliações lidas recebe em inglês.
+  return americanoPelasAvaliacoes(lead) ? 'en' : 'pt';
 }
 
 /**

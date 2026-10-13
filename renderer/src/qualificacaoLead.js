@@ -66,15 +66,6 @@ export function qualificaLead(lead = {}, analise = null) {
   else servicos.push(SERVICOS.conteudo);
   if (AGENDA_OU_PEDIDO.test(categoria)) servicos.push(SERVICOS.sistema);
 
-  // A IA leu o site e indicou o melhor serviço: ele vira o primeiro a oferecer,
-  // com o motivo que ela deu.
-  const daIA = lead.ia?.servico && SERVICOS[lead.ia.servico];
-  if (daIA) {
-    const resto = servicos.filter((s) => s.id !== daIA.id);
-    servicos.length = 0;
-    servicos.push({ ...daIA, motivo: lead.ia.motivoServico || daIA.motivo, daIA: true }, ...resto);
-  }
-
   // Contato: dá para falar com ele? (até 30)
   let pontos = (c.whatsapp ? 15 : 0) + (c.email ? 8 : 0) + (c.instagram ? 7 : 0);
   // Oportunidade: o que falta e a Grow+ entrega (até 38)
