@@ -373,10 +373,17 @@ function Conta({ contaWeb, recarrega }) {
   const [nome, setNome] = useState(contaWeb?.nome_remetente || '');
   const [senha, setSenha] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
   const [doComputador, setDoComputador] = useState(null);
   useEffect(() => { contaDoComputador().then(setDoComputador); }, []);
 
   const salvar = async () => {
+    // Diz o que falta em vez de deixar o botão apagado sem explicação.
+    const limpa = senha.replace(/\s/g, '');
+    setErro('');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gmail.trim())) { setErro('Confira o endereço do Gmail.'); return; }
+    if (!contaWeb && !limpa) { setErro('Cole a senha de app do Gmail (16 letras) para salvar a conta pela primeira vez.'); return; }
+    if (limpa && limpa.length < 16) { setErro('A senha de app do Gmail tem 16 letras. Confira se copiou inteira.'); return; }
     setSalvando(true);
     try {
       await salvarContaEmailNuvem({ gmail: gmail.trim(), nome: nome.trim(), senha });
@@ -384,7 +391,7 @@ function Conta({ contaWeb, recarrega }) {
       addNotification({ type: 'success', category: 'system', title: 'Conta salva na nuvem', message: `${gmail.trim()} já envia pela web.` });
       recarrega();
     } catch (e) {
-      addNotification({ type: 'error', category: 'system', title: 'Conta de e-mail', message: e.message });
+      setErro(e.message);
     } finally {
       setSalvando(false);
     }
@@ -418,7 +425,7 @@ function Conta({ contaWeb, recarrega }) {
               <div className="field"><label htmlFor="emwNome">Nome do remetente</label><input id="emwNome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome (vai na assinatura)" /></div>
             </div>
             <div className="field">
-              <label htmlFor="emwSenha">Senha de app do Gmail {contaWeb ? '(só para trocar)' : ''}</label>
+              <label htmlFor="emwSenha">Senha de app do Gmail {contaWeb ? '(deixe vazio para manter a atual)' : ''}</label>
               <input id="emwSenha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" placeholder="16 letras, gerada na conta do Google" />
               <span className="cfg-dica">
                 Não é a senha normal do Gmail. Gere em{' '}
@@ -427,11 +434,12 @@ function Conta({ contaWeb, recarrega }) {
               </span>
             </div>
             <div className="cfg-acoes">
-              <button type="button" className="btn btn-primary" disabled={salvando || !gmail.trim() || senha.replace(/\s/g, '').length < 8} onClick={salvar}>
+              <button type="button" className="btn btn-primary" disabled={salvando} onClick={salvar}>
                 {salvando ? <Loader size={15} strokeWidth={2} className="cfg-girando" /> : <KeyRound size={15} strokeWidth={2} />} Salvar na nuvem
               </button>
               {contaWeb && <button type="button" className="btn btn-ghost" onClick={remover}><Trash2 size={15} strokeWidth={2} /> Remover da nuvem</button>}
             </div>
+            {erro && <div className="cfg-resultado erro"><X size={15} strokeWidth={2} /><span>{erro}</span></div>}
           </>
         )}
       </div>
