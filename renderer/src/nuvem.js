@@ -28,6 +28,8 @@ export const CHAVES_SINCRONIZADAS = [
   'sigma_abordagem_cfg',
   'sigma_quick_snippets',
   'sigma_kanban_etapas',
+  'sigma_email_templates',
+  'sigma_email_enviados',
 ];
 
 const CHAVE_SESSAO = 'prospector_nuvem_sessao';
@@ -436,4 +438,48 @@ export async function linksDeDownload() {
   const token = await tokenValido();
   const lista = await chamar('/rest/v1/prospector_downloads?select=id,rotulo,url,versao&order=id', { token });
   return Array.isArray(lista) ? lista : [];
+}
+
+/* ─── E-mail pela web ───────────────────────────────────────────────────
+ * A senha de app do Gmail vai uma vez para o cofre (Vault) da nuvem e não
+ * volta mais: só a função do servidor que envia lê a senha.
+ */
+function exigeEmpresa() {
+  const empresa = lerEmpresa();
+  if (!empresa?.id) throw new Error('Conecte a empresa em Configurações para usar o e-mail pela web.');
+  return empresa;
+}
+
+/** Conta de e-mail da empresa na nuvem (sem a senha), ou null. */
+export async function contaEmailNuvem() {
+  const empresa = exigeEmpresa();
+  const token = await tokenValido();
+  const linhas = await chamar(`/rest/v1/prospector_email_conta?empresa_id=eq.${encodeURIComponent(empresa.id)}&select=gmail,nome_remetente,atualizado_em`, { token });
+  return Array.isArray(linhas) && linhas[0] ? linhas[0] : null;
+}
+
+export async function salvarContaEmailNuvem({ gmail, nome, senha }) {
+  const empresa = exigeEmpresa();
+  const token = await tokenValido();
+  await chamar('/rest/v1/rpc/prospector_email_salvar', {
+    metodo: 'POST', token, corpo: { p_empresa: empresa.id, p_gmail: gmail, p_nome: nome || '', p_senha: senha },
+  });
+}
+
+export async function removerContaEmailNuvem() {
+  const empresa = exigeEmpresa();
+  const token = await tokenValido();
+  await chamar('/rest/v1/rpc/prospector_email_remover', { metodo: 'POST', token, corpo: { p_empresa: empresa.id } });
+}
+
+export async function enviarEmailPelaNuvem({ para, assunto, html, texto }) {
+  const empresa = exigeEmpresa();
+  const token = await tokenValido();
+  try {
+    return await chamar('/functions/v1/prospector-email', {
+      metodo: 'POST', token, corpo: { empresa_id: empresa.id, para, assunto, html, texto },
+    });
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }

@@ -96,6 +96,7 @@ contextBridge.exposeInMainWorld("emailAPI", {
   getSettings: () => ipcRenderer.invoke("email-get-settings"),
   saveSettings: (patch) => ipcRenderer.invoke("email-save-settings", { patch }),
   test: () => ipcRenderer.invoke("email-test"),
+  enviarUm: (dados) => ipcRenderer.invoke("email-enviar-um", dados || {}),
   list: () => ipcRenderer.invoke("email-campaign-list"),
   get: (id) => ipcRenderer.invoke("email-campaign-get", { id }),
   create: (dados) => ipcRenderer.invoke("email-campaign-create", { dados }),

@@ -3333,6 +3333,24 @@ ipcMain.handle("email-test", emailHandler(async () => {
   if (!r.success) throw new Error(r.error);
   return {};
 }));
+// Envio de um e-mail só (template em HTML), pela conta Gmail deste computador.
+ipcMain.handle("email-enviar-um", emailHandler(async ({ para, assunto, html, texto } = {}) => {
+  if (!emailSettings.data.user || !emailSettings.senha()) {
+    throw new Error("Configure o Gmail deste computador na aba Conta.");
+  }
+  const destino = String(para || "").trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(destino)) throw new Error("E-mail do destinatário inválido.");
+  if (!String(assunto || "").trim()) throw new Error("Escreva o assunto.");
+  try {
+    const r = await gmail.enviar(
+      { ...emailSettings.data, senha: emailSettings.senha() },
+      { para: destino, assunto: String(assunto).slice(0, 200), texto: String(texto || ""), html: String(html || "").slice(0, 300000) },
+    );
+    return { messageId: r.messageId };
+  } catch (e) {
+    throw new Error(gmail.traduzErro(e));
+  }
+}));
 ipcMain.handle("email-campaign-list", emailHandler(async () => ({ campanhas: emailCampanhas.listar() })));
 ipcMain.handle("email-campaign-get", emailHandler(async ({ id }) => ({ campanha: emailCampanhas.obter(String(id)) })));
 ipcMain.handle("email-campaign-create", emailHandler(async ({ dados }) => ({ campanha: emailCampanhas.criar(dados || {}) })));

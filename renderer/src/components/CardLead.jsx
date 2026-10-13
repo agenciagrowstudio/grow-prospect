@@ -7,6 +7,7 @@ import SeloIA from './SeloIA';
 import IconePng, { ImagemPng } from './IconePng';
 import { ICONES } from '../assets/icones';
 import { ICONE_SERVICO } from './IconeServico';
+import { pedirEmail } from '../pedidoEmail';
 
 /**
  * Card do lead na lista do mapa, no formato de vitrine: foto grande à
@@ -209,7 +210,7 @@ export default function CardLead({
           <Canal tom="whatsapp" ativo={!!q.canais.whatsapp} Icone={LogoWhatsApp} rotulo="Abrir no WhatsApp" rotuloAusente="Sem WhatsApp" onAbrir={onWhatsApp} />
           <Canal tom="instagram" ativo={!!q.canais.instagram} Icone={LogoInstagram} rotulo="Abrir Instagram" rotuloAusente="Sem Instagram"
             onAbrir={() => abrir(/^https?:/i.test(q.canais.instagram) ? q.canais.instagram : `https://instagram.com/${q.canais.instagram.replace('@', '')}`)} />
-          <Canal tom="email" ativo={!!q.canais.email} Icone={IconeMail} rotulo={`E-mail: ${q.canais.email}`} rotuloAusente="Sem e-mail" onAbrir={() => abrir(`mailto:${q.canais.email}`)} />
+          <Canal tom="email" ativo={!!q.canais.email} Icone={IconeMail} rotulo={`Escrever e-mail para ${q.canais.email}`} rotuloAusente="Sem e-mail" onAbrir={() => pedirEmail(lead)} />
           <Canal tom="site" ativo={!!q.canais.site} Icone={IconeSite} rotulo="Abrir site" rotuloAusente="Sem site"
             onAbrir={() => abrir(/^https?:/i.test(q.canais.site) ? q.canais.site : `https://${q.canais.site}`)} />
         </div>

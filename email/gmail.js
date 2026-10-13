@@ -15,7 +15,7 @@ function transporte(cfg) {
   });
 }
 
-async function enviar(cfg, { para, assunto, texto, emRespostaA }) {
+async function enviar(cfg, { para, assunto, texto, html, emRespostaA }) {
   const headers = {
     // Botão "cancelar inscrição" do próprio Gmail/Outlook, por resposta.
     'List-Unsubscribe': `<mailto:${cfg.user}?subject=unsubscribe>`,
@@ -25,6 +25,7 @@ async function enviar(cfg, { para, assunto, texto, emRespostaA }) {
     to: para,
     subject: assunto,
     text: texto,
+    ...(html ? { html } : {}),
     headers,
     ...(emRespostaA ? { inReplyTo: emRespostaA, references: [emRespostaA] } : {}),
   });

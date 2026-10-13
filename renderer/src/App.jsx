@@ -37,7 +37,7 @@ import LogoGrow from './components/LogoGrow';
 const APP_VERSION = '2.0.0';
 import FunilKanban from './components/FunilKanban';
 import WhatsAppPanel from './components/WhatsAppPanel';
-import EmailPanel from './components/EmailPanel';
+import EmailCentral from './components/EmailCentral';
 import NewExtractionModal from './components/NewExtractionModal';
 import Configuracoes from './components/Configuracoes';
 import ExtracaoAutomatica from './components/ExtracaoAutomatica';
@@ -294,6 +294,14 @@ function AppInner() {
     setIsMobileNavOpen(false);
   };
 
+  // Botão de e-mail do lead (em qualquer tela): abre a aba E-mail, que já
+  // carrega o template para ele.
+  useEffect(() => {
+    const abreEmail = () => { setActiveTab('email'); setIsMobileNavOpen(false); };
+    window.addEventListener('prospector:pedido-email', abreEmail);
+    return () => window.removeEventListener('prospector:pedido-email', abreEmail);
+  }, []);
+
   const handleMinimize = () => window.electronAPI?.winMinimize();
   const handleMaximize = () => window.electronAPI?.winMaximize();
   const handleClose = () => window.electronAPI?.winClose();
@@ -473,7 +481,7 @@ function AppInner() {
   });
 
   const renderContent = () => {
-    if (ehWeb && ['whatsapp', 'campaigns', 'email'].includes(activeTab)) {
+    if (ehWeb && ['whatsapp', 'campaigns'].includes(activeTab)) {
       return <SoNoComputador recurso={activeTab === 'campaigns' ? 'whatsapp' : activeTab} onNavigate={navigate} />;
     }
     switch (activeTab) {
@@ -525,7 +533,7 @@ function AppInner() {
       case 'email':
         return (
           <ErrorBoundaryLite label="E-mail">
-            <EmailPanel />
+            <EmailCentral />
           </ErrorBoundaryLite>
         );
       case 'campaigns': // compat: alias → whatsapp/campanhas tab
