@@ -182,3 +182,29 @@ export function localDoEndereco(endereco = '') {
   }
   return { cidade: '', uf: '', bairro: '' };
 }
+
+/**
+ * Cidade, estado e bairro do lead, nesta ordem de confiança: campos gravados,
+ * endereço do Google e, por último, a cidade da extração de onde ele veio
+ * (muita faxineira nos EUA esconde o endereço e atende por região).
+ * @param {object} lead
+ * @param {Map<string, object>} [buscas] sigma_searches por id
+ * @returns {{cidade: string, uf: string, bairro: string, daBusca: boolean}}
+ */
+export function localDoLead(lead, buscas = null) {
+  const end = localDoEndereco(lead?.address);
+  let cidade = lead?.city || lead?.cidade || end.cidade;
+  let uf = lead?.state || lead?.uf || end.uf;
+  const bairro = lead?.neighborhood || lead?.bairro || lead?.hood || end.bairro;
+  let daBusca = false;
+  if (!cidade && buscas && lead?.searchId) {
+    const area = buscas.get(String(lead.searchId))?.area;
+    const daArea = area && area.tipo !== 'estado' && area.tipo !== 'raio' ? (area.cidade || area.nome) : '';
+    if (daArea) {
+      cidade = daArea;
+      uf = uf || area.uf || '';
+      daBusca = true;
+    }
+  }
+  return { cidade: cidade || '', uf: uf || '', bairro: bairro || '', daBusca };
+}

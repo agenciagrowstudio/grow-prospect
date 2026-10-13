@@ -44,3 +44,16 @@ describe('estado do lead', () => {
     assert.ok(S.ordemDoStatus('respondeu') > S.ordemDoStatus('sem_interesse'));
   });
 });
+
+describe('cidade do lead na Base', () => {
+  const carregaDados = () => import(pathToFileURL(path.join(__dirname, '..', 'renderer/src/leadData.js')).href);
+
+  it('sai do endereço; sem endereço, da cidade da extração', async () => {
+    const D = await carregaDados();
+    const buscas = new Map([['s1', { id: 's1', area: { tipo: 'cidade', cidade: 'Framingham', uf: 'MA' } }]]);
+    assert.deepEqual(D.localDoLead({ address: '62 Main St, Framingham, MA 01702, Estados Unidos' }, buscas), { cidade: 'Framingham', uf: 'MA', bairro: '', daBusca: false });
+    assert.deepEqual(D.localDoLead({ searchId: 's1' }, buscas), { cidade: 'Framingham', uf: 'MA', bairro: '', daBusca: true });
+    assert.equal(D.localDoLead({ address: 'Rua Augusta, 100 - Consolação, São Paulo - SP, 01304-000' }).bairro, 'Consolação');
+    assert.equal(D.localDoLead({ searchId: 'x' }, buscas).cidade, '');
+  });
+});

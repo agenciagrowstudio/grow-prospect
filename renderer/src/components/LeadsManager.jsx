@@ -36,7 +36,7 @@ import {
   Trash2,
   RotateCcw
 } from 'lucide-react';
-import { dedupeLeads, normalizeLeadCategory, normalizeLeadCollection, readLocalArray } from '../leadData';
+import { dedupeLeads, normalizeLeadCategory, normalizeLeadCollection, readLocalArray, localDoLead } from '../leadData';
 
 const DEFAULT_COLS = [
   { id: 'nome', label: 'Empresa' },
@@ -250,9 +250,12 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   const getLeadFb = (l) => l.facebook || l.fb || '';
   const getSinalBr = (l) => (l.sinalBr && l.sinalBr.nivel) || '';
   const getLeadMail = (l) => l.email || l.mail || '';
-  const getLeadCity = (l) => l.city || '';
-  const getLeadUf = (l) => l.state || l.uf || '';
-  const getLeadHood = (l) => l.neighborhood || l.hood || '';
+  // A extração grava só o endereço: cidade, estado e bairro saem dele ou,
+  // sem endereço, da cidade da extração.
+  const buscasPorId = useMemo(() => new Map(readLocalArray('sigma_searches').map((b) => [String(b?.id), b])), []);
+  const getLeadCity = (l) => localDoLead(l, buscasPorId).cidade;
+  const getLeadUf = (l) => localDoLead(l, buscasPorId).uf;
+  const getLeadHood = (l) => localDoLead(l, buscasPorId).bairro;
   const getLeadRating = (l) => l.rating || l.rn || '—';
   const getLeadReviews = (l) => l.reviewCount || l.reviews || Number(l.totalReviews) || 0;
   const getLeadOrig = (l) => l.searchQuery || l.orig || '—';
@@ -1351,7 +1354,14 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       if (colId === 'mail') return <td key={colId}>{getLeadMail(l) || '—'}</td>;
                       if (colId === 'av') return <td key={colId} className="num">{getLeadRating(l)} ({getLeadReviews(l)})</td>;
                       if (colId === 'uf') return <td key={colId}>{getLeadUf(l) || '—'}</td>;
-                      if (colId === 'city') return <td key={colId}>{getLeadCity(l) || '—'}</td>;
+                      if (colId === 'city') {
+                        const loc = localDoLead(l, buscasPorId);
+                        return (
+                          <td key={colId} className={loc.daBusca ? 'bl-cidade-busca' : undefined} title={loc.daBusca ? 'O negócio não mostra endereço no Google: é a cidade da extração' : undefined}>
+                            {loc.cidade || '—'}
+                          </td>
+                        );
+                      }
                       if (colId === 'hood') return <td key={colId}>{getLeadHood(l) || '—'}</td>;
                       if (colId === 'orig') return <td key={colId}>{getLeadOrig(l)}</td>;
                       return <td key={colId}>—</td>;

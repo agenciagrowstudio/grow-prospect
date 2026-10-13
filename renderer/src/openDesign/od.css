@@ -2574,3 +2574,4 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .msl-item-txt b{font-size:13px;font-weight:600}
 .msl-item-txt small{font-size:11.5px;color:var(--muted)}
 .msl-check{color:var(--accent);flex:none}
+.bl-cidade-busca{color:var(--muted)}
