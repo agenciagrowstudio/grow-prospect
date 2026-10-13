@@ -9,15 +9,12 @@ const QRCode = require("qrcode");
 if (process.env.SIGMA_QA === "1" && process.env.SIGMA_QA_USER_DATA) {
   app.setPath("userData", path.resolve(process.env.SIGMA_QA_USER_DATA));
 } else {
-  // A pasta dos dados (leads, campanhas, sessão do WhatsApp) é derivada do
-  // nome do app. Trocar o nome para "Prospector 2.0" levaria o app a uma pasta
-  // vazia e esconderia tudo o que já foi coletado. Aqui ela fica presa ao
-  // nome de antes: o instalado usava o nome de exibição, o de desenvolvimento
-  // usava o nome do pacote.
-  app.setPath(
-    "userData",
-    path.join(app.getPath("appData"), app.isPackaged ? "Grow+ Prospect" : "grow-prospect"),
-  );
+  // A pasta dos dados (leads, conta da empresa, sessão do WhatsApp) é uma só
+  // por computador, com o app instalado ou aberto pelo atalho da pasta do
+  // projeto. Antes o atalho usava outra pasta ("grow-prospect", a dos testes
+  // de desenvolvimento), sem a conta conectada e cheia de extrações de teste.
+  // Ela continua no disco, intocada, só não é mais usada.
+  app.setPath("userData", path.join(app.getPath("appData"), "Grow+ Prospect"));
 }
 
 // Suppress GPU and Cache errors in console

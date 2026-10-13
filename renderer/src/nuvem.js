@@ -35,6 +35,8 @@ const PREFIXO_BASE = 'prospector_nuvem_base:';
 const CHAVE_ULTIMA = 'prospector_nuvem_ultima';
 // Logo da empresa guardada no aparelho para aparecer no login, antes de entrar.
 const CHAVE_LOGO_LEMBRADA = 'prospector_lembrar_logo';
+// Dados que o aparelho tinha antes de entrar numa empresa: ficam aqui, fora da nuvem.
+const CHAVE_BACKUP = 'prospector_backup_antes_da_empresa';
 
 /* ------------------------------------------------------------------ */
 /* Mescla em três vias (pura, testada)                                  */
@@ -267,8 +269,35 @@ async function rpc(nome, args) {
   return guardaEmpresa(empresa);
 }
 
+/**
+ * Entrar numa empresa que já existe: este aparelho passa a usar os dados dela.
+ * O que ele tinha (extrações de teste, base antiga) não vai para a nuvem: fica
+ * num backup local. Foi a primeira sincronização juntando tudo que levou dados
+ * de teste para a empresa. Se o aparelho já sincronizava com esta mesma
+ * empresa, nada muda.
+ */
+function adotaDadosDaEmpresa(idAnterior, idNovo) {
+  const a = armazem();
+  if (!a) return;
+  const jaSincronizava = idAnterior === idNovo
+    && CHAVES_SINCRONIZADAS.some((c) => a.getItem(PREFIXO_BASE + c) != null);
+  if (jaSincronizava) return;
+  const copia = {};
+  CHAVES_SINCRONIZADAS.forEach((c) => { const v = a.getItem(c); if (v != null) copia[c] = v; });
+  if (Object.keys(copia).length) {
+    try { a.setItem(CHAVE_BACKUP, JSON.stringify({ ts: Date.now(), dados: copia })); } catch { /* sem espaço para o backup */ }
+  }
+  CHAVES_SINCRONIZADAS.forEach((c) => { a.removeItem(c); a.removeItem(PREFIXO_BASE + c); });
+}
+
+// Criar: este computador é o primeiro, os dados dele viram os da empresa.
 export const criarEmpresa = (nome) => rpc('prospector_criar_empresa', { p_nome: nome });
-export const entrarEmpresa = (codigo) => rpc('prospector_entrar_empresa', { p_codigo: codigo });
+export async function entrarEmpresa(codigo) {
+  const anterior = lerEmpresa()?.id;
+  const empresa = await rpc('prospector_entrar_empresa', { p_codigo: codigo });
+  adotaDadosDaEmpresa(anterior, empresa.id);
+  return empresa;
+}
 
 /** Empresa já ligada a este login (útil depois de entrar em outro computador). */
 export async function empresasDoLogin() {
@@ -276,7 +305,10 @@ export async function empresasDoLogin() {
   return chamar('/rest/v1/prospector_empresas?select=id,nome,codigo,logo&order=criado_em', { token });
 }
 export function usarEmpresa(empresa) {
-  return guardaEmpresa(empresa);
+  const anterior = lerEmpresa()?.id;
+  const guardada = guardaEmpresa(empresa);
+  adotaDadosDaEmpresa(anterior, guardada.id);
+  return guardada;
 }
 
 /** Troca a logo da empresa (data URL já reduzida) ou remove com null. */
