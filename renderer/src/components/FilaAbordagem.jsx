@@ -11,6 +11,7 @@ import { publicoDoLead } from '../resultados';
 import { proximoFollowup, DIAS_FOLLOWUP, tempoAte } from '../followup';
 import FollowupsFila from './FollowupsFila';
 import CardLead from './CardLead';
+import SeloIA from './SeloIA';
 import { analisaComIA, aplicaResultadosIA, textoProgressoIA, iaDisponivel, insereGancho } from '../iaLeads';
 import DivisorFila, { larguraListaGuardada } from './DivisorFila';
 
@@ -109,6 +110,9 @@ export default function FilaAbordagem({
   const cliqueNoFundo = useRef(false);
   const [analisandoIA, setAnalisandoIA] = useState(false);
   const [progressoIA, setProgressoIA] = useState(null);
+  // Leads que já foram mandados para a IA nesta abertura (não repete se falhar).
+  const jaTentouIA = useRef(new Set());
+  const [iaParada, setIaParada] = useState('');
   const [tamanhoInicial] = useState(tamanhoGuardado);
   // Guarda o tamanho quando a pessoa arrasta o canto da janela.
   useEffect(() => {
@@ -241,12 +245,29 @@ export default function FilaAbordagem({
       const comIA = resultados.filter((r) => r.ia).length;
       setAviso(comIA ? `${comIA} lead${comIA === 1 ? '' : 's'} analisado${comIA === 1 ? '' : 's'} pela IA.` : 'A IA não respondeu agora. Tente de novo em alguns minutos.');
     } catch (e) {
+      // Sem chave ou chave recusada: para de tentar sozinho até a pessoa pedir.
+      if (/chave/i.test(e.message)) setIaParada(e.message);
       setAviso(e.message);
     } finally {
       setAnalisandoIA(false);
       setProgressoIA(null);
     }
   };
+
+  // A fila do dia é analisada sozinha: quem entra sem IA (abriu a Fila, pulou
+  // alguém e entrou o próximo, virou o dia) vai para a análise. Espera um
+  // instante para juntar quem entrou junto numa chamada só.
+  useEffect(() => {
+    if (!iaDisponivel() || analisandoIA || iaParada) return undefined;
+    const novos = fila.filter((f) => !f.lead.ia && !jaTentouIA.current.has(f.chave));
+    if (!novos.length) return undefined;
+    const t = setTimeout(() => {
+      novos.forEach((f) => jaTentouIA.current.add(f.chave));
+      analisaFila(novos);
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fila.map((f) => `${f.chave}:${f.lead.ia ? 1 : 0}`).join(','), analisandoIA, iaParada]);
 
   const desfaz = (chave) => setLog((atualLog) => {
     const { [chave]: _tirado, ...resto } = atualLog;
@@ -628,10 +649,16 @@ export default function FilaAbordagem({
                 return (
                   <li className="fa-ia-barra">
                     <Brain size={14} strokeWidth={1.9} aria-hidden="true" />
-                    <span>{analisandoIA ? textoProgressoIA(progressoIA) : semIA.length ? `${fila.length - semIA.length} de ${fila.length} com IA` : 'Fila analisada pela IA'}</span>
-                    {semIA.length > 0 && (
-                      <button type="button" className="fa-mini fa-mini-forte" disabled={analisandoIA} onClick={() => analisaFila(semIA)}>
-                        Analisar {semIA.length}
+                    <span>
+                      {analisandoIA
+                        ? textoProgressoIA(progressoIA)
+                        : iaParada
+                          ? 'Análise automática parada: confira a chave de IA nas Configurações'
+                          : semIA.length ? `${fila.length - semIA.length} de ${fila.length} analisados pela IA` : 'Fila analisada pela IA'}
+                    </span>
+                    {!analisandoIA && semIA.length > 0 && (iaParada || semIA.every((f) => jaTentouIA.current.has(f.chave))) && (
+                      <button type="button" className="fa-mini fa-mini-forte" onClick={() => { setIaParada(''); analisaFila(semIA); }}>
+                        Tentar de novo
                       </button>
                     )}
                   </li>
@@ -645,7 +672,10 @@ export default function FilaAbordagem({
                     <button type="button" className={`fa-linha${ativo ? ' on' : ''}`} onClick={() => setSelecionado(chave)} aria-current={ativo}>
                       <span className="fa-ordem">{abertos[chave] ? <Check size={12} strokeWidth={2.5} /> : i + 1}</span>
                       <span className="fa-linha-txt">
-                        <b>{lead.name || 'Empresa'}</b>
+                        <b>
+                          {lead.name || 'Empresa'}
+                          {lead.ia && <SeloIA ia={lead.ia} />}
+                        </b>
                         <span>{[lead.city || localDoEndereco(lead.address).cidade, ANGULOS.find((a) => a.id === gerado(item).angulo)?.nome, idiomaDe(item) === 'en' ? 'em inglês' : ''].filter(Boolean).join(' · ')}</span>
                       </span>
                       <span className={`fa-ponto fa-ponto-${q.temperatura.id}`} title={`${q.temperatura.rotulo} ${q.nota}`} />

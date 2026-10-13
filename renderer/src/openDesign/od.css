@@ -2380,3 +2380,8 @@ body.fa-arrastando{cursor:col-resize;user-select:none}
 .fa-ia-barra{list-style:none;display:flex;align-items:center;gap:7px;margin:0 0 6px;padding:7px 9px;border-radius:9px;border:1px solid color-mix(in srgb,#7C3AED 25%,#fff);background:color-mix(in srgb,#7C3AED 5%,#fff);font-size:12px;color:#5b21b6}
 .fa-ia-barra span{flex:1;min-width:0}
 .bl-ia-rodando{color:#5b21b6}
+
+/* Selo "IA": lead analisado pela IA */
+.selo-ia{display:inline-flex;align-items:center;gap:3px;flex:none;margin-left:6px;padding:1px 6px 1px 5px;border-radius:99px;background:color-mix(in srgb,#7C3AED 12%,#fff);color:#5b21b6;font-size:10.5px;font-weight:700;letter-spacing:.02em;line-height:1.5;vertical-align:1px}
+.cl-l1 .selo-ia{margin-left:0}
+.fa-linha-txt b{display:flex;align-items:center;min-width:0}

@@ -3,6 +3,7 @@ import {
   Mail, MapPin, Thermometer, Snowflake, ChevronDown,
 } from 'lucide-react';
 import AvatarLead from './AvatarLead';
+import SeloIA from './SeloIA';
 import IconePng, { ImagemPng } from './IconePng';
 import { ICONES } from '../assets/icones';
 import { ICONE_SERVICO } from './IconeServico';
@@ -170,6 +171,7 @@ export default function CardLead({
             {nota ? fmt(nota) : 'sem nota'}
             {avaliacoes > 0 && <small>({avaliacoes})</small>}
           </span>
+          {lead.ia && <SeloIA ia={lead.ia} />}
           <span className={`cl-temp cl-temp-${q.temperatura.id}`} title={`${q.temperatura.rotulo}: ${q.temperatura.funil}`}>
             <IconeTemp size={11} strokeWidth={2} />
             {q.temperatura.rotulo}
