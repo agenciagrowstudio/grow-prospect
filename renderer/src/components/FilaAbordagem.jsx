@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Undo2, MessagesSquare,
@@ -11,6 +11,17 @@ import { publicoDoLead } from '../resultados';
 import { proximoFollowup, DIAS_FOLLOWUP, tempoAte } from '../followup';
 import FollowupsFila from './FollowupsFila';
 import CardLead from './CardLead';
+import DivisorFila, { larguraListaGuardada } from './DivisorFila';
+
+// Tamanho da janela da Fila, arrastado pelo canto e guardado para a próxima vez.
+const CHAVE_TAMANHO = 'prospector_fila_tamanho';
+function tamanhoGuardado() {
+  try {
+    const t = JSON.parse(localStorage.getItem(CHAVE_TAMANHO) || 'null');
+    if (t && t.w >= 720 && t.h >= 480) return { width: Math.min(t.w, window.innerWidth - 16), height: Math.min(t.h, window.innerHeight - 16) };
+  } catch {}
+  return null;
+}
 import RespostasProntas from './RespostasProntas';
 
 /**
@@ -93,6 +104,23 @@ export default function FilaAbordagem({
   const [jaAbordados, setJaAbordados] = useState({});
   const [aviso, setAviso] = useState('');
   const [aba, setAba] = useState('fila');
+  const janelaRef = useRef(null);
+  const cliqueNoFundo = useRef(false);
+  const [tamanhoInicial] = useState(tamanhoGuardado);
+  // Guarda o tamanho quando a pessoa arrasta o canto da janela.
+  useEffect(() => {
+    const el = janelaRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    let t = null;
+    const obs = new ResizeObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        try { localStorage.setItem(CHAVE_TAMANHO, JSON.stringify({ w: Math.round(el.offsetWidth), h: Math.round(el.offsetHeight) })); } catch {}
+      }, 300);
+    });
+    obs.observe(el);
+    return () => { obs.disconnect(); clearTimeout(t); };
+  }, []);
   const [selecionado, setSelecionado] = useState(null);
   const [abertos, setAbertos] = useState({});
   const [editando, setEditando] = useState(null);
@@ -397,8 +425,23 @@ export default function FilaAbordagem({
 
   // Vai direto no body: dentro da tela do mapa, os controles do mapa ficavam por cima.
   return createPortal(
-    <div className="overlay on" onClick={onFechar} style={{ display: 'grid' }}>
-      <div className="modal fa-modal" role="dialog" aria-modal="true" aria-labelledby="faTitulo" onClick={(e) => e.stopPropagation()}>
+    // Fecha só com clique que começou e terminou no fundo: soltar o mouse fora
+    // depois de arrastar o canto ou a divisória não fecha a Fila.
+    <div
+      className="overlay on"
+      onMouseDown={(e) => { cliqueNoFundo.current = e.target === e.currentTarget; }}
+      onClick={(e) => { if (cliqueNoFundo.current && e.target === e.currentTarget) onFechar(); cliqueNoFundo.current = false; }}
+      style={{ display: 'grid' }}
+    >
+      <div
+        ref={janelaRef}
+        className="modal fa-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="faTitulo"
+        onClick={(e) => e.stopPropagation()}
+        style={{ ...(tamanhoInicial || {}), '--fa-lista': `${larguraListaGuardada()}px` }}
+      >
         <header className="fa-head">
           <div className="fa-titulo">
             <div className="eyebrow">Abordagem manual</div>
@@ -546,6 +589,7 @@ export default function FilaAbordagem({
                 );
               })}
             </ol>
+            <DivisorFila />
             {detalhe}
           </div>
         ))}

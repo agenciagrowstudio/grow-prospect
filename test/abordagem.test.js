@@ -164,3 +164,17 @@ describe('primeira mensagem de abordagem', () => {
     assert.match(A.chaveDoDia(new Date(2026, 9, 8)), /^2026-10-08$/);
   });
 });
+
+describe('abordagem sem cidade', () => {
+  it('não escreve "em a região"', async () => {
+    const path = require('path');
+    const { pathToFileURL } = require('url');
+    const A = await import(pathToFileURL(path.join(__dirname, '..', 'renderer/src/abordagem.js')).href);
+    const Q = await import(pathToFileURL(path.join(__dirname, '..', 'renderer/src/qualificacaoLead.js')).href);
+    const lead = { id: 's1', name: 'Lar Care Cleaning', category: 'Serviços de faxina', pais: 'US', phone: '+1 617 555 0101', rating: 5, reviews: 9 };
+    for (let v = 0; v < 8; v += 1) {
+      const t = A.gerarAbordagem(lead, Q.qualificaLead(lead), { nome: 'Matheus', empresa: 'Grow+', oferta: 'qualquer', idioma: 'pt' }, v).texto;
+      assert.doesNotMatch(t, /\bem a região\b|\bde a região\b/);
+    }
+  });
+});

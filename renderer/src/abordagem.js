@@ -330,6 +330,9 @@ export function gerarAbordagem(lead = {}, q = {}, cfg = {}, versao = 0) {
     .replace(/\{cidade\}/g, cidade)
     .replace(/\{nicho\}/g, categoria)
     .replace(/\{categoria\}/g, categoria)
+    // Sem cidade, o texto de reserva é "a região": "em a região" vira "na região".
+    .replace(/\bem a região\b/g, 'na região')
+    .replace(/\bde a região\b/g, 'da região')
     .replace(/[ \t]+([,.?!])/g, '$1')
     .replace(/ {2,}/g, ' ')
     .replace(/ +\n/g, '\n')

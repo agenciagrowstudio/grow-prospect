@@ -4,6 +4,7 @@ import { linkWhatsApp, partesWhatsApp, chaveDoDia } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
 import CardLead from './CardLead';
+import DivisorFila from './DivisorFila';
 import { qualificaLead } from '../qualificacaoLead';
 import { proximoFollowup, tempoAte, marcaFollowup, textoFollowup, ETAPAS_FOLLOWUP, DIAS_FOLLOWUP } from '../followup';
 
@@ -130,6 +131,7 @@ export default function FollowupsFila({ log, setLog, leads, modoLink, onAviso })
           {travados.map(linha)}
         </ol>
       </div>
+      <DivisorFila />
 
       {atual && (
         <section className="fa-detalhe" aria-label={`Follow-up para ${atual.e.nome}`}>
