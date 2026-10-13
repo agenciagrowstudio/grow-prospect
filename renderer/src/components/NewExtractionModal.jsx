@@ -88,6 +88,7 @@ const NICHOS_US = [
 const CIDADES_US = [
   ['Framingham', 'MA'], ['Everett', 'MA'], ['Somerville', 'MA'], ['Boston', 'MA'],
   ['Marlborough', 'MA'], ['Brockton', 'MA'], ['Lowell', 'MA'], ['Revere', 'MA'],
+  ['Milford', 'MA'], ['Hudson', 'MA'], ['Long Branch', 'NJ'], ['Coconut Creek', 'FL'],
   ['Pompano Beach', 'FL'], ['Deerfield Beach', 'FL'], ['Orlando', 'FL'], ['Kissimmee', 'FL'],
   ['Boca Raton', 'FL'], ['Miami', 'FL'], ['Fort Lauderdale', 'FL'], ['Tampa', 'FL'],
   ['Newark', 'NJ'], ['Harrison', 'NJ'], ['Kearny', 'NJ'], ['Elizabeth', 'NJ'],
@@ -154,10 +155,24 @@ const CATALOGO_LOCAL = [
   ...ESTADOS_US.map((c) => ({ ...c, pais: 'US' })),
 ];
 
-const POPULARES = [
-  ['São Paulo', 'SP', 'BR'], ['Rio de Janeiro', 'RJ', 'BR'], ['Belo Horizonte', 'MG', 'BR'],
-  ['Orlando', 'FL', 'US'], ['Boston', 'MA', 'US'], ['Framingham', 'MA', 'US'], ['Miami', 'FL', 'US'], ['Newark', 'NJ', 'US'],
-];
+/**
+ * Atalhos da etapa 2. Nos EUA, as cidades com as maiores comunidades de
+ * brasileiros que prestam serviço (limpeza, construção, pintura, jardinagem):
+ * região de Framingham e Grande Boston, sul da Flórida, Orlando, Danbury e
+ * norte de Nova Jersey. Vale confirmar com uma extração pequena: muda com o tempo.
+ */
+const CIDADES_ATALHO = {
+  US: [
+    ['Framingham', 'MA'], ['Marlborough', 'MA'], ['Milford', 'MA'], ['Hudson', 'MA'], ['Everett', 'MA'],
+    ['Somerville', 'MA'], ['Pompano Beach', 'FL'], ['Deerfield Beach', 'FL'], ['Boca Raton', 'FL'],
+    ['Orlando', 'FL'], ['Kissimmee', 'FL'], ['Danbury', 'CT'], ['Newark', 'NJ'], ['Long Branch', 'NJ'],
+    ['Marietta', 'GA'],
+  ],
+  BR: [
+    ['São Paulo', 'SP'], ['Rio de Janeiro', 'RJ'], ['Belo Horizonte', 'MG'], ['Vitória', 'ES'],
+    ['Curitiba', 'PR'], ['Florianópolis', 'SC'],
+  ],
+};
 
 const RAIOS = [5, 10, 30, 50];
 
@@ -644,16 +659,32 @@ export default function NewExtractionModal({
                 </div>
 
                 {!local && (
-                  <div className="ex-chips" style={{ marginTop: '4px' }}>
-                    {[...POPULARES].sort((a, b) => (paisSugerido ? Number(b[2] === paisSugerido) - Number(a[2] === paisSugerido) : 0)).map(([n, uf, p]) => (
-                      <button
-                        key={`${n}-${uf}`}
-                        type="button"
-                        className="chip"
-                        onClick={() => escolheSugestao(doCatalogo({ n, uf, pais: p, estado: false }))}
-                      >
-                        {n} <Bandeira pais={p} className="chip-pais" />
-                      </button>
+                  <div className="wz-nichos wz-cidades">
+                    {(paisSugerido === 'BR' ? ['BR', 'US'] : ['US', 'BR']).map((p) => (
+                      <section key={p} className="wz-nichos-grupo" aria-label={p === 'US' ? 'Cidades nos EUA' : 'Cidades no Brasil'}>
+                        <h3 className="wz-nichos-titulo">
+                          <Bandeira pais={p} /> {p === 'US' ? 'Nos EUA' : 'No Brasil'}
+                          {p === 'US' && <small>mais brasileiros prestando serviço</small>}
+                        </h3>
+                        <div className="wz-nichos-chips">
+                          {CIDADES_ATALHO[p].map(([n, uf]) => {
+                            const item = doCatalogo({ n, uf, pais: p, estado: false });
+                            const feita = jaExtraida(areas, nicho, item);
+                            return (
+                              <button
+                                key={`${n}-${uf}`}
+                                type="button"
+                                className={`chip wz-nicho${feita ? ' wz-cidade-feita' : ''}`}
+                                onClick={() => escolheSugestao(item)}
+                                title={feita ? `Já extraída para ${nicho} em ${new Date(feita.ts).toLocaleDateString('pt-BR')}` : `${n}, ${uf}`}
+                              >
+                                {feita && <CircleCheck size={13} strokeWidth={2.2} aria-hidden="true" />}
+                                {n} <span className="wz-cidade-uf">{uf}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
                     ))}
                   </div>
                 )}
