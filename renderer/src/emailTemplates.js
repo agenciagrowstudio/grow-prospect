@@ -15,11 +15,14 @@ export const CHAVE_ENVIADOS = 'sigma_email_enviados';
 export const CONTA_PADRAO = 'contato.growmais.oficial@gmail.com';
 // Logo publicada com a versão web: o Gmail não mostra imagem embutida no corpo.
 export const LOGO_URL = 'https://prospector.growmaisoficial.com/email/logo-grow.png';
+// Foto do Matheus na assinatura (também publicada com a versão web).
+export const FOTO_MATHEUS = 'https://prospector.growmaisoficial.com/email/matheus.jpg';
+export const REMETENTE_PADRAO = 'Matheus';
 const SITE_GROW = 'https://growmaisoficial.com';
 const RESPONDER = `mailto:${CONTA_PADRAO}`;
 const MAX_ENVIADOS = 1000;
 // Sobe quando os templates padrão mudam: quem nunca editou recebe a versão nova.
-export const VERSAO_PADRAO = 2;
+export const VERSAO_PADRAO = 3;
 
 export const TIPOS_BLOCO = [
   { id: 'etiqueta', nome: 'Etiqueta' },
@@ -52,12 +55,12 @@ export function blocoNovo(tipo) {
     case 'depoimento': return { ...base, texto: 'Escreva aqui o depoimento de um cliente real.', autor: 'Nome do cliente, cidade' };
     case 'botao': return { ...base, texto: 'Quero saber mais', link: RESPONDER, nota: 'Leva 1 minuto para responder.' };
     case 'imagem': return { ...base, url: '', alt: '' };
-    case 'assinatura': return { ...base, texto: '{remetente}\nGrow+ Marketing', site: SITE_GROW, whatsapp: '', instagram: '' };
+    case 'assinatura': return { ...base, texto: '{remetente}\nGrow+ Marketing', site: SITE_GROW, whatsapp: '', instagram: '', foto: FOTO_MATHEUS };
     default: return base;
   }
 }
 
-const assinatura = (id) => ({ id, tipo: 'assinatura', texto: '{remetente}\nGrow+ Marketing', site: SITE_GROW, whatsapp: '', instagram: '' });
+const assinatura = (id) => ({ id, tipo: 'assinatura', texto: '{remetente}\nGrow+ Marketing', site: SITE_GROW, whatsapp: '', instagram: '', foto: FOTO_MATHEUS });
 const RODAPE_PT = 'Você recebeu este e-mail porque a {empresa} aparece no Google como {nicho} em {cidade}. Se não quiser receber mais, é só responder SAIR.';
 const RODAPE_EN = 'You are receiving this because {empresa} is listed on Google as {nicho} in {cidade}. Reply STOP and we will not email you again.';
 
@@ -314,7 +317,12 @@ export function renderizaEmail(template, dados = {}) {
         ].filter(Boolean);
         const linksHtml = contatos.map(([u, r]) => `<a href="${escapa(u)}" style="color:${cor};text-decoration:none;font-weight:600">${escapa(r)}</a>`).join('<span style="color:#c8cbd2">&nbsp;&nbsp;|&nbsp;&nbsp;</span>');
         h.push(`<tr><td style="padding:10px 0 0"><div style="height:1px;background:#ececef;line-height:1px;font-size:1px">&nbsp;</div></td></tr>`);
-        h.push(`<tr><td style="padding:20px 0 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="56" valign="top"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="44" height="44" align="center" valign="middle" style="width:44px;height:44px;border-radius:22px;background:${cor};color:#ffffff;font-family:${FONTE};font-size:15px;font-weight:800;line-height:44px">${escapa(iniciais(preenche(primeira, dados)))}</td></tr></table></td><td valign="middle" style="font-family:${FONTE}"><div style="font-size:15px;font-weight:700;color:#12121a">${htmlDoTexto(primeira, dados)}</div>${resto.length ? `<div style="padding-top:2px;font-size:13.5px;line-height:1.5;color:#6b7280">${htmlDoTexto(resto.join('\n'), dados)}</div>` : ''}${linksHtml ? `<div style="padding-top:6px;font-size:13px">${linksHtml}</div>` : ''}</td></tr></table></td></tr>`);
+        // Foto (https) quando houver; sem foto, as iniciais num círculo da cor do template.
+        const foto = /^https:\/\//i.test(String(b.foto || '')) ? b.foto : '';
+        const avatar = foto
+          ? `<img src="${escapa(foto)}" alt="${escapa(preenche(primeira, dados))}" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:26px;border:0;object-fit:cover">`
+          : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="44" height="44" align="center" valign="middle" style="width:44px;height:44px;border-radius:22px;background:${cor};color:#ffffff;font-family:${FONTE};font-size:15px;font-weight:800;line-height:44px">${escapa(iniciais(preenche(primeira, dados)))}</td></tr></table>`;
+        h.push(`<tr><td style="padding:20px 0 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="66" valign="top">${avatar}</td><td valign="middle" style="font-family:${FONTE}"><div style="font-size:15px;font-weight:700;color:#12121a">${htmlDoTexto(primeira, dados)}</div>${resto.length ? `<div style="padding-top:2px;font-size:13.5px;line-height:1.5;color:#6b7280">${htmlDoTexto(resto.join('\n'), dados)}</div>` : ''}${linksHtml ? `<div style="padding-top:6px;font-size:13px">${linksHtml}</div>` : ''}</td></tr></table></td></tr>`);
         t.push([preenche(linhas.join('\n'), dados), ...contatos.map(([u]) => u)].join('\n'));
         break;
       }

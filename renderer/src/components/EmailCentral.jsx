@@ -9,7 +9,7 @@ import AvatarLead from './AvatarLead';
 import { readLocalArray, localDoLead, localDoEndereco } from '../leadData';
 import {
   leTemplates, guardaTemplates, leEnviados, renderizaEmail, dadosDoLead, emailDoLead, templateSugerido,
-  blocoNovo, novoId, TIPOS_BLOCO, CAMPOS, CONTA_PADRAO, templateDaMensagem, textoWhatsParaEmail,
+  blocoNovo, novoId, TIPOS_BLOCO, CAMPOS, CONTA_PADRAO, templateDaMensagem, textoWhatsParaEmail, REMETENTE_PADRAO,
 } from '../emailTemplates';
 import { gerarAbordagem, idiomaDoLead } from '../abordagem';
 import { qualificaLead } from '../qualificacaoLead';
@@ -233,7 +233,7 @@ function EditorBloco({ bloco, onMuda }) {
     case 'texto': return campo('texto', 'Texto (linha em branco separa parágrafos; **negrito**)', true);
     case 'destaque': return campo('texto', 'Texto em destaque', true);
     case 'lista': return campo('texto', 'Um item por linha', true);
-    case 'assinatura': return <>{campo('texto', 'Nome e cargo (a primeira linha vira o nome)', true)}{campo('whatsapp', 'WhatsApp (só números, com DDI)')}{campo('site', 'Site (https://)')}{campo('instagram', 'Instagram (@perfil)')}</>;
+    case 'assinatura': return <>{campo('texto', 'Nome e cargo (a primeira linha vira o nome)', true)}{campo('whatsapp', 'WhatsApp (só números, com DDI)')}{campo('site', 'Site (https://)')}{campo('instagram', 'Instagram (@perfil)')}{campo('foto', 'Foto (endereço https://; vazio mostra as iniciais)')}</>;
     case 'botao': return <>{campo('texto', 'Texto do botão')}{campo('link', 'Link (https://, mailto: ou tel:)')}{campo('nota', 'Texto pequeno embaixo do botão (opcional)')}</>;
     case 'imagem': return <>{campo('url', 'Endereço da imagem (https://)')}{campo('alt', 'Descrição da imagem')}</>;
     default: return <p className="em2-dica">Linha fina para separar partes do e-mail.</p>;
@@ -479,7 +479,7 @@ export default function EmailCentral() {
 
   const setTemplates = (lista) => { setTemplatesEstado(lista); guardaTemplates(lista); };
   // Nome na assinatura: o da conta de envio ou, sem ela, o mesmo da Fila do dia.
-  const remetente = remetenteComp || contaWeb?.nome_remetente || String(leCfgFila().nome || '').trim();
+  const remetente = remetenteComp || contaWeb?.nome_remetente || String(leCfgFila().nome || '').trim() || REMETENTE_PADRAO;
 
   const ABAS = [
     { id: 'escrever', nome: 'Escrever', Icone: Send },

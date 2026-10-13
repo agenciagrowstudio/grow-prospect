@@ -95,3 +95,15 @@ describe('mensagem da Fila no e-mail', () => {
     assert.match(r.html, /logo-grow\.png/);
   });
 });
+
+describe('assinatura com foto', () => {
+  it('padrões levam a foto do Matheus; sem foto, aparecem as iniciais', async () => {
+    const T = await carrega();
+    const [tpl] = T.templatesPadrao();
+    const r = T.renderizaEmail(tpl, { empresa: 'X', remetente: 'Matheus' });
+    assert.match(r.html, /matheus\.jpg/);
+    const semFoto = T.renderizaEmail({ assunto: 'x', blocos: [{ tipo: 'assinatura', texto: '{remetente}', foto: '' }] }, { remetente: 'Matheus Paula' });
+    assert.doesNotMatch(semFoto.html, /matheus\.jpg/);
+    assert.match(semFoto.html, />MP</);
+  });
+});
