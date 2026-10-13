@@ -82,11 +82,6 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
   const [via, setVia] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [contaPc, setContaPc] = useState(null);
-  // Simples (só texto) chega melhor na caixa de entrada no primeiro contato.
-  const [formato, setFormatoEstado] = useState(() => {
-    try { return localStorage.getItem('prospector_email_formato') === 'visual' ? 'visual' : 'simples'; } catch { return 'simples'; }
-  });
-  const setFormato = (f) => { setFormatoEstado(f); try { localStorage.setItem('prospector_email_formato', f); } catch { /* segue */ } };
 
   useEffect(() => { viaDeEnvio(contaWeb).then(setVia); contaDoComputador().then(setContaPc); }, [contaWeb]);
   // Remetente como num app de e-mail: nome e endereço que o lead vai ver.
@@ -120,7 +115,7 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
     ? templateDaMensagem(mensagem, { idioma: idiomaDoLead(lead) === 'en' ? 'en' : 'pt' })
     : (templates.find((t) => t.id === tplId) || templates[0]);
   const dados = dadosDoLead(lead || {}, { remetente, buscas });
-  const email = tpl ? renderizaEmail(tpl, dados, { simples: formato === 'simples' }) : { assunto: '', html: '', texto: '' };
+  const email = tpl ? renderizaEmail(tpl, dados) : { assunto: '', html: '', texto: '' };
   const assuntoFinal = assunto || email.assunto;
   const sugestoes = busca.trim()
     ? leads.filter((l) => `${l.name || ''} ${emailDoLead(l)}`.toLowerCase().includes(busca.trim().toLowerCase())).slice(0, 8)
@@ -211,18 +206,6 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
         <div className="field">
           <label htmlFor="em2Assunto">Assunto</label>
           <input id="em2Assunto" value={assuntoFinal} onChange={(e) => setAssunto(e.target.value)} />
-        </div>
-
-        <div className="field">
-          <label>Formato</label>
-          <div className="em2-formato" role="group" aria-label="Formato do e-mail">
-            <button type="button" className={formato === 'simples' ? 'on' : ''} onClick={() => setFormato('simples')}>
-              <b>Simples</b><span>Só texto, como escrito à mão. Chega melhor na caixa de entrada.</span>
-            </button>
-            <button type="button" className={formato === 'visual' ? 'on' : ''} onClick={() => setFormato('visual')}>
-              <b>Visual</b><span>Layout da Grow+ com logo e botão. Melhor para quem já conversou com vocês.</span>
-            </button>
-          </div>
         </div>
 
         <div className="em2-envio">

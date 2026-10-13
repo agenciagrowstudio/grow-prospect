@@ -119,16 +119,3 @@ describe('Grow+ Comercial', () => {
     assert.equal(T.leTemplates(guardado)[0].blocos[0].texto, 'Matheus\nGrow+ Comercial');
   });
 });
-
-describe('formato simples (melhor entrega)', () => {
-  it('sem imagem, sem botão, sem fonte externa e sem tabela; mantém negrito e o pedido', async () => {
-    const T = await carrega();
-    const [tpl] = T.templatesPadrao();
-    const r = T.renderizaEmail(tpl, { empresa: 'Yasmin House Cleaning', cidade: 'Framingham', nicho: 'house cleaning', remetente: 'Matheus Dpaula' }, { simples: true });
-    assert.doesNotMatch(r.html, /<img|<table|fonts\.googleapis|border-radius/);
-    assert.match(r.html, /<strong[^>]*>house cleaning em Framingham<\/strong>/);
-    assert.match(r.html, /Responda este e-mail com um sim\./);
-    assert.match(r.html, /Matheus Dpaula<br>Grow\+ Comercial/);
-    assert.match(r.texto, /1\. Ficha do Google: /);
-  });
-});
