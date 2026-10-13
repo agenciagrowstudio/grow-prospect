@@ -3,6 +3,8 @@ import { ExternalLink, Check, Copy, Lock, MessagesSquare, Ban, Clock, Inbox, Pen
 import { linkWhatsApp, partesWhatsApp, chaveDoDia } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
+import CardLead from './CardLead';
+import { qualificaLead } from '../qualificacaoLead';
 import { proximoFollowup, tempoAte, marcaFollowup, textoFollowup, ETAPAS_FOLLOWUP, DIAS_FOLLOWUP } from '../followup';
 
 /**
@@ -131,9 +133,18 @@ export default function FollowupsFila({ log, setLog, leads, modoLink, onAviso })
 
       {atual && (
         <section className="fa-detalhe" aria-label={`Follow-up para ${atual.e.nome}`}>
-          <header className="fa-det-topo">
+          {atual.lead && (
+            <CardLead
+              lead={atual.lead}
+              qualificacao={qualificaLead(atual.lead)}
+              local={[atual.lead.city || localDoEndereco(atual.lead.address).cidade, atual.lead.state || localDoEndereco(atual.lead.address).uf].filter(Boolean).join(' · ')}
+              estatico
+              onWhatsApp={() => { if (atual.p.liberado) abre(atual); }}
+            />
+          )}
+          <header className="fa-det-topo fu-det-topo">
             <div className="fa-det-quem">
-              <h3>{atual.e.nome || 'Empresa'}</h3>
+              {!atual.lead && <h3>{atual.e.nome || 'Empresa'}</h3>}
               <span>Primeira mensagem em {new Date(atual.e.ts).toLocaleDateString('pt-BR')}{atual.e.followups?.length ? ` · ${atual.e.followups.length} follow-up${atual.e.followups.length === 1 ? '' : 's'} enviado${atual.e.followups.length === 1 ? '' : 's'}` : ''}</span>
             </div>
             <span className="fu-etapa-chip">Follow-up {atual.p.n} de {DIAS_FOLLOWUP.length} · {ETAPAS_FOLLOWUP[atual.p.n - 1]}</span>

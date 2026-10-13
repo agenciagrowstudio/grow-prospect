@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
+  X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Undo2, MessagesSquare,
   SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Repeat, BookOpen } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
@@ -10,6 +10,7 @@ import Bandeira from './Bandeira';
 import { publicoDoLead } from '../resultados';
 import { proximoFollowup, DIAS_FOLLOWUP, tempoAte } from '../followup';
 import FollowupsFila from './FollowupsFila';
+import CardLead from './CardLead';
 import RespostasProntas from './RespostasProntas';
 
 /**
@@ -29,7 +30,6 @@ const CHAVE_CFG = 'sigma_abordagem_cfg';
 const CHAVE_LOG = 'sigma_abordagem_log';
 // 20 por dia é o ponto de partida seguro. Mais que 30 só com o número já aquecido.
 const LIMITES = [10, 15, 20, 25, 30, 40];
-const ICONE_TEMP = { quente: Flame, morno: Thermometer, frio: Snowflake };
 
 function lerJson(chave, padrao) {
   try {
@@ -48,14 +48,6 @@ function leadParaTexto(lead) {
   return { ...lead, city: lead.city || doEndereco.cidade, uf: lead.uf || lead.state || doEndereco.uf };
 }
 
-function Temperatura({ q }) {
-  const Icone = ICONE_TEMP[q.temperatura.id];
-  return (
-    <span className={`cl-temp cl-temp-${q.temperatura.id}`}>
-      <Icone size={11} strokeWidth={2} aria-hidden="true" /> {q.temperatura.rotulo} {q.nota}
-    </span>
-  );
-}
 
 // Mostra o texto como ele chega no WhatsApp: *negrito*, _itálico_, ~riscado~.
 const TAG_ESTILO = { negrito: 'strong', italico: 'em', riscado: 's' };
@@ -287,16 +279,14 @@ export default function FilaAbordagem({
     const jaAbriu = abertos[chave];
     return (
       <section className="fa-detalhe" aria-label={`Mensagem para ${lead.name}`}>
-        <header className="fa-det-topo">
-          <div className="fa-det-quem">
-            <h3>{lead.name || 'Empresa'}</h3>
-            <span>
-              <Bandeira pais={String(lead.pais || 'BR').toUpperCase() === 'US' ? 'US' : 'BR'} />
-              {[lead.category, local].filter(Boolean).join(' · ')}
-            </span>
-          </div>
-          <Temperatura q={q} />
-        </header>
+        {/* O mesmo card do lead da tela do mapa: foto, nota, serviços, qualificação e canais. */}
+        <CardLead
+          lead={lead}
+          qualificacao={q}
+          local={local.replace(', ', ' · ')}
+          estatico
+          onWhatsApp={() => abre(atual)}
+        />
 
         <div className="fa-chips">
           <span className="fa-chip fa-chip-oferta">Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b></span>

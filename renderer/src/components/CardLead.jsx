@@ -134,7 +134,7 @@ function fmt(n) {
 
 export default function CardLead({
   lead, qualificacao: q, selecionado, local, distancia, atraso = 0,
-  onSelecionar, onWhatsApp, onMapa, refCard,
+  onSelecionar, onWhatsApp, onMapa, refCard, estatico = false,
 }) {
   const nome = lead.name || lead.n || 'Empresa';
   const categoria = lead.category || lead.cat || 'Geral';
@@ -145,13 +145,14 @@ export default function CardLead({
   return (
     <div
       ref={refCard}
-      role="button"
-      tabIndex={0}
-      className="lead-card cl-card"
+      // Estático: o mesmo card dentro da Fila do dia, sem clique no card todo.
+      role={estatico ? undefined : 'button'}
+      tabIndex={estatico ? undefined : 0}
+      className={`lead-card cl-card${estatico ? ' cl-estatico' : ''}`}
       style={{ animationDelay: `${atraso}ms` }}
-      aria-current={selecionado ? 'true' : 'false'}
-      onClick={onSelecionar}
-      onKeyDown={(e) => {
+      aria-current={!estatico && selecionado ? 'true' : undefined}
+      onClick={estatico ? undefined : onSelecionar}
+      onKeyDown={estatico ? undefined : (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onSelecionar();
@@ -193,7 +194,7 @@ export default function CardLead({
         </div>
         <div className="cl-acoes">
           {distancia && <span className="dist" title="Distância em linha reta">{distancia}</span>}
-          <button
+          {onMapa && <button
             type="button"
             className="cl-canal"
             title="Ver no mapa"
@@ -204,7 +205,7 @@ export default function CardLead({
             }}
           >
             <MapPin size={15} strokeWidth={1.75} aria-hidden="true" />
-          </button>
+          </button>}
         </div>
       </div>
     </div>
