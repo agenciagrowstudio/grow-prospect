@@ -17,8 +17,11 @@ import {
   Settings,
   PanelLeftOpen,
   PanelLeftClose,
-  LineChart
+  LineChart,
+  ClipboardList
 } from 'lucide-react';
+import { pedirMapa } from './pedidoMapa';
+import { chaveDoDia } from './abordagem';
 import Overview from './components/Overview';
 import MapScraperView from './components/MapScraperView';
 import LeadsManager from './components/LeadsManager';
@@ -162,6 +165,24 @@ function AppInner() {
   // Sincronização com a empresa na nuvem: quando chega dado novo de outro
   // computador, a tela atual é montada de novo para ler os dados atualizados.
   const [versaoDados, setVersaoDados] = useState(0);
+
+  // Contador da Fila do dia no menu: quantas saíram hoje de quantas da meta.
+  const leMetaFila = () => {
+    try {
+      const log = JSON.parse(localStorage.getItem('sigma_abordagem_log') || '{}') || {};
+      const cfg = JSON.parse(localStorage.getItem('sigma_abordagem_cfg') || '{}') || {};
+      const hoje = chaveDoDia();
+      const feitas = Object.values(log).filter((e) => e?.status === 'enviada' && e.dia === hoje).length;
+      return { feitas, meta: Number(cfg.limite) || 20 };
+    } catch { return { feitas: 0, meta: 20 }; }
+  };
+  const [metaFila, setMetaFila] = useState(leMetaFila);
+  useEffect(() => {
+    const atualiza = () => setMetaFila(leMetaFila());
+    const t = setInterval(atualiza, 5000);
+    window.addEventListener('focus', atualiza);
+    return () => { clearInterval(t); window.removeEventListener('focus', atualiza); };
+  }, []);
   // Dado novo da nuvem recarrega a tela, mas nunca com uma janela aberta (Fila
   // do dia, detalhes) ou alguém digitando: espera fechar para não perder nada.
   useEffect(() => {
@@ -556,6 +577,16 @@ function AppInner() {
           >
             <MapPin className="ico" size={18} aria-hidden="true" />
             <span className="nav-label-text">Scraper Maps</span><span className="nav-kbd">2</span>
+          </button>
+
+          <button
+            className="nav-item nav-fila"
+            onClick={() => { pedirMapa({ abrirFila: true }); navigate('scraper'); }}
+            title={`Fila do dia: ${metaFila.feitas} de ${metaFila.meta} mensagens enviadas hoje`}
+          >
+            <ClipboardList className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Fila do dia</span>
+            <span className={`nav-kbd nav-fila-meta${metaFila.feitas >= metaFila.meta ? ' feita' : ''}`}>{metaFila.feitas}/{metaFila.meta}</span>
           </button>
 
           <button
