@@ -68,9 +68,9 @@ describe('templates de e-mail', () => {
 describe('assinatura', () => {
   it('sem nome do remetente, a linha some em vez de ficar vazia', async () => {
     const T = await carrega();
-    const tpl = { assunto: 'x', blocos: [{ tipo: 'assinatura', texto: 'Um abraço,\n{remetente}\nGrow+ Marketing' }] };
-    assert.match(T.renderizaEmail(tpl, { remetente: '' }).texto, /^Um abraço,\nGrow\+ Marketing$/);
-    assert.match(T.renderizaEmail(tpl, { remetente: 'Matheus' }).texto, /Matheus\nGrow\+ Marketing/);
+    const tpl = { assunto: 'x', blocos: [{ tipo: 'assinatura', texto: 'Um abraço,\n{remetente}\nGrow+ Comercial' }] };
+    assert.match(T.renderizaEmail(tpl, { remetente: '' }).texto, /^Um abraço,\nGrow\+ Comercial$/);
+    assert.match(T.renderizaEmail(tpl, { remetente: 'Matheus' }).texto, /Matheus\nGrow\+ Comercial/);
   });
 });
 
@@ -105,5 +105,17 @@ describe('assinatura com foto', () => {
     const semFoto = T.renderizaEmail({ assunto: 'x', blocos: [{ tipo: 'assinatura', texto: '{remetente}', foto: '' }] }, { remetente: 'Matheus Paula' });
     assert.doesNotMatch(semFoto.html, /matheus\.jpg/);
     assert.match(semFoto.html, />MP</);
+  });
+});
+
+describe('Grow+ Comercial', () => {
+  it('assinatura e rodapé dizem Grow+ Comercial, inclusive em template já editado', async () => {
+    const T = await carrega();
+    const [tpl] = T.templatesPadrao();
+    const r = T.renderizaEmail(tpl, { empresa: 'X', remetente: 'Matheus Dpaula' });
+    assert.doesNotMatch(r.html, /Grow\+ Marketing/);
+    assert.match(r.html, />Comercial</);
+    const guardado = { getItem: () => JSON.stringify([{ id: 'meu', editado: true, blocos: [{ tipo: 'assinatura', texto: 'Matheus\nGrow+ Marketing' }] }]) };
+    assert.equal(T.leTemplates(guardado)[0].blocos[0].texto, 'Matheus\nGrow+ Comercial');
   });
 });

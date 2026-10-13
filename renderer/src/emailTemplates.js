@@ -22,7 +22,7 @@ const SITE_GROW = 'https://growmaisoficial.com';
 const RESPONDER = `mailto:${CONTA_PADRAO}`;
 const MAX_ENVIADOS = 1000;
 // Sobe quando os templates padrão mudam: quem nunca editou recebe a versão nova.
-export const VERSAO_PADRAO = 3;
+export const VERSAO_PADRAO = 4;
 
 export const TIPOS_BLOCO = [
   { id: 'etiqueta', nome: 'Etiqueta' },
@@ -55,12 +55,12 @@ export function blocoNovo(tipo) {
     case 'depoimento': return { ...base, texto: 'Escreva aqui o depoimento de um cliente real.', autor: 'Nome do cliente, cidade' };
     case 'botao': return { ...base, texto: 'Quero saber mais', link: RESPONDER, nota: 'Leva 1 minuto para responder.' };
     case 'imagem': return { ...base, url: '', alt: '' };
-    case 'assinatura': return { ...base, texto: '{remetente}\nGrow+ Marketing', site: SITE_GROW, whatsapp: '', instagram: '', foto: FOTO_MATHEUS };
+    case 'assinatura': return { ...base, texto: '{remetente}\nGrow+ Comercial', site: SITE_GROW, whatsapp: '', instagram: '', foto: FOTO_MATHEUS };
     default: return base;
   }
 }
 
-const assinatura = (id) => ({ id, tipo: 'assinatura', texto: '{remetente}\nGrow+ Marketing', site: SITE_GROW, whatsapp: '', instagram: '', foto: FOTO_MATHEUS });
+const assinatura = (id) => ({ id, tipo: 'assinatura', texto: '{remetente}\nGrow+ Comercial', site: SITE_GROW, whatsapp: '', instagram: '', foto: FOTO_MATHEUS });
 const RODAPE_PT = 'Você recebeu este e-mail porque a {empresa} aparece no Google como {nicho} em {cidade}. Se não quiser receber mais, é só responder SAIR.';
 const RODAPE_EN = 'You are receiving this because {empresa} is listed on Google as {nicho} in {cidade}. Reply STOP and we will not email you again.';
 
@@ -151,7 +151,7 @@ export function templatesPadrao() {
         { id: 'f3', tipo: 'passos', texto: 'A complete Google profile: photos, hours and services that win the comparison\nMore reviews: an easy way to ask every happy customer\nA fast website: with a call and quote button on every page' },
         { id: 'f4', tipo: 'destaque', texto: 'Would you be open to a 10-minute call? No strings attached.' },
         { id: 'f5', tipo: 'botao', texto: 'Show me the ideas', link: RESPONDER, nota: 'Or just reply to this email.' },
-        { ...assinatura('f6'), texto: '{remetente}\nGrow+ Marketing' },
+        { ...assinatura('f6'), texto: '{remetente}\nGrow+ Comercial' },
       ],
       rodape: RODAPE_EN,
     },
@@ -168,7 +168,15 @@ export function leTemplates(storage = globalThis.localStorage) {
     const lista = JSON.parse(storage.getItem(CHAVE_TEMPLATES) || 'null');
     if (Array.isArray(lista) && lista.length) {
       const porId = new Map(padroes.map((t) => [t.id, t]));
-      return lista.map((t) => (!t.editado && porId.has(t.id) && (t.versao || 1) < VERSAO_PADRAO ? porId.get(t.id) : t));
+      return lista
+        .map((t) => (!t.editado && porId.has(t.id) && (t.versao || 1) < VERSAO_PADRAO ? porId.get(t.id) : t))
+        // A área passou a se chamar Grow+ Comercial: vale também nos templates já editados.
+        .map((t) => ({
+          ...t,
+          blocos: (t.blocos || []).map((b) => (b.tipo === 'assinatura' && typeof b.texto === 'string'
+            ? { ...b, texto: b.texto.replace(/Grow\+ Marketing/g, 'Grow+ Comercial') }
+            : b)),
+        }));
     }
   } catch { /* volta aos padrões */ }
   return padroes;
@@ -309,7 +317,7 @@ export function renderizaEmail(template, dados = {}) {
       case 'assinatura': {
         // Linha que ficou vazia (ex.: {remetente} sem nome configurado) some.
         const linhas = String(b.texto || '').split('\n').filter((l) => preenche(l, dados).trim());
-        const [primeira = 'Grow+ Marketing', ...resto] = linhas;
+        const [primeira = 'Grow+ Comercial', ...resto] = linhas;
         const contatos = [
           b.whatsapp ? [`https://wa.me/${String(b.whatsapp).replace(/\D/g, '')}`, 'WhatsApp'] : null,
           linkSeguro(b.site) ? [linkSeguro(b.site), String(b.site).replace(/^https?:\/\//, '').replace(/\/$/, '')] : null,
@@ -357,7 +365,7 @@ ${preheader ? `<div style="display:none;max-height:0;max-width:0;overflow:hidden
 </td></tr>
 <tr><td style="padding:20px 28px 0;font-family:${FONTE};text-align:center">
 ${rodape ? `<div style="font-size:12px;line-height:1.6;color:#8a8f9b">${escapa(rodape)}</div>` : ''}
-<div style="padding-top:8px;font-size:12px;font-weight:700;color:#a3a8b3">Grow+ Marketing</div>
+<div style="padding-top:8px;font-size:12px;line-height:16px;color:#a3a8b3"><span style="font-weight:800;color:#8a8f9b">Grow+</span> <span style="font-weight:400">Comercial</span></div>
 </td></tr>
 </table>
 </td></tr></table>
