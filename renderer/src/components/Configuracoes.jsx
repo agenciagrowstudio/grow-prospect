@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Bot, Eye, EyeOff, Check, X, Loader } from 'lucide-react';
 import { PROVIDERS, readAiConfig, saveAiConfig } from '../configIA';
 import EmpresaNuvem from './EmpresaNuvem';
+import AtualizacaoApp from './UpdateBanner';
 
 /**
  * Tela de Configurações.
@@ -233,6 +234,7 @@ export default function Configuracoes({ versao, onNotificar }) {
           <div><span>Versão</span><b>{versao || '—'}</b></div>
           <div><span>Interface</span><b>Modo claro</b></div>
         </div>
+        <AtualizacaoApp />
       </div>
     </section>
   );

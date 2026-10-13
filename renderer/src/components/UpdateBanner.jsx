@@ -1,143 +1,76 @@
 import React, { useEffect, useState } from 'react';
-import { Download, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Download, RefreshCw, CheckCircle2, AlertCircle, Loader } from 'lucide-react';
 
-export default function UpdateBanner() {
+/**
+ * Atualização do app, só em Configurações. Nada de faixa no topo nem de
+ * verificação sozinha ao abrir: a pessoa procura quando quiser.
+ */
+export default function AtualizacaoApp() {
   const [status, setStatus] = useState(null);
-  const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (!window.electronAPI?.onUpdateStatus) return;
-    const cleanup = window.electronAPI.onUpdateStatus((data) => {
+    if (!window.electronAPI?.onUpdateStatus) return undefined;
+    return window.electronAPI.onUpdateStatus((data) => {
       if (!data) return;
-      if (data.status === 'progress') {
-        setProgress(data.percent || 0);
-        setDownloading(true);
-        setStatus({ type: 'progress', percent: data.percent });
-        return;
-      }
-      if (data.status === 'checking') {
-        setStatus({ type: 'checking' });
-        return;
-      }
-      if (data.status === 'available') {
-        setDismissed(false);
-        setStatus({ type: 'available', version: data.version });
-        setDownloading(false);
-        return;
-      }
-      if (data.status === 'downloaded') {
-        setStatus({ type: 'downloaded', version: data.version });
-        setDownloading(false);
-        return;
-      }
-      if (data.status === 'not-available') {
-        setStatus(null);
-        return;
-      }
-      if (data.status === 'error') {
-        setStatus({ type: 'error', message: data.message });
-        setDownloading(false);
-        return;
-      }
+      if (data.status === 'progress') { setProgress(data.percent || 0); setStatus({ type: 'progress' }); return; }
+      if (data.status === 'checking') { setStatus({ type: 'checking' }); return; }
+      if (data.status === 'available') { setStatus({ type: 'available', version: data.version }); return; }
+      if (data.status === 'downloaded') { setStatus({ type: 'downloaded', version: data.version }); return; }
+      if (data.status === 'not-available') { setStatus({ type: 'atual' }); return; }
+      if (data.status === 'error') setStatus({ type: 'error', message: data.message });
     });
-    return cleanup;
   }, []);
 
-  const handleCheck = async () => {
+  if (!window.electronAPI?.checkUpdate) return null;
+
+  const procura = async () => {
     setStatus({ type: 'checking' });
     try {
-      const res = await window.electronAPI?.checkUpdate?.();
-      if (!res?.success) {
-        setStatus({ type: 'error', message: res?.error || 'Não foi possível verificar a atualização.' });
-      }
+      const res = await window.electronAPI.checkUpdate();
+      if (!res?.success) setStatus({ type: 'error', message: res?.error });
+      else if (!res.updateInfo) setStatus((s) => (s?.type === 'checking' ? { type: 'atual' } : s));
     } catch (err) {
-      setStatus({ type: 'error', message: err?.message || 'Não foi possível verificar a atualização.' });
+      setStatus({ type: 'error', message: err?.message });
     }
   };
 
-  const handleDownload = async () => {
-    setDownloading(true);
+  const baixa = async () => {
     setProgress(0);
-    try {
-      const res = await window.electronAPI?.downloadUpdate?.();
-      if (!res?.success) {
-        setStatus({ type: 'error', message: res?.error || 'Não foi possível baixar a atualização.' });
-        setDownloading(false);
-      }
-    } catch (err) {
-      setStatus({ type: 'error', message: err?.message || 'Não foi possível baixar a atualização.' });
-      setDownloading(false);
-    }
+    setStatus({ type: 'progress' });
+    const res = await window.electronAPI?.downloadUpdate?.().catch((e) => ({ success: false, error: e?.message }));
+    if (!res?.success) setStatus({ type: 'error', message: res?.error || 'Não foi possível baixar a atualização.' });
   };
 
-  const handleInstall = async () => {
-    try {
-      const res = await window.electronAPI?.installUpdate?.();
-      if (!res?.success) {
-        setStatus({ type: 'error', message: res?.error || 'Não foi possível instalar a atualização.' });
-      }
-    } catch (err) {
-      setStatus({ type: 'error', message: err?.message || 'Não foi possível instalar a atualização.' });
-    }
+  const instala = async () => {
+    const res = await window.electronAPI?.installUpdate?.().catch((e) => ({ success: false, error: e?.message }));
+    if (!res?.success) setStatus({ type: 'error', message: res?.error || 'Não foi possível instalar a atualização.' });
   };
 
-  if (dismissed) return null;
-
-  if (status?.type === 'checking') {
-    return (
-      <div className="update-banner checking">
-        <RefreshCw size={14} className="spin-icon" />
-        <span>Verificando atualizações...</span>
-      </div>
-    );
-  }
-
-  if (status?.type === 'progress' || downloading) {
-    return (
-      <div className="update-banner downloading">
-        <Download size={14} />
-        <span>Baixando atualização... {progress}%</span>
-        <div className="update-progress-bar"><div className="update-progress-fill" style={{ width: `${progress}%` }} /></div>
-      </div>
-    );
-  }
-
-  if (status?.type === 'available') {
-    return (
-      <div className="update-banner available">
-        <Download size={14} />
-        <span>Nova versão {status.version} disponível</span>
-        <button className="btn btn-primary btn-sm" onClick={handleDownload}>Baixar</button>
-        <button className="btn btn-ghost btn-sm" onClick={() => setDismissed(true)}>Depois</button>
-      </div>
-    );
-  }
-
-  if (status?.type === 'downloaded') {
-    return (
-      <div className="update-banner downloaded">
-        <CheckCircle2 size={14} />
-        <span>Atualização pronta — reinicie para instalar</span>
-        <button className="btn btn-primary btn-sm" onClick={handleInstall}>Reiniciar agora</button>
-        <button className="btn btn-ghost btn-sm" onClick={() => setDismissed(true)}>Depois</button>
-      </div>
-    );
-  }
-
-  if (status?.type === 'error') {
-    return (
-      <div className="update-banner error">
-        <AlertCircle size={14} />
-        <span title={status.message || ''}>
-          {status.message || 'Falha ao verificar atualização'}
+  const t = status?.type;
+  return (
+    <div className="cfg-atualizacao">
+      <div className="cfg-atualizacao-txt">
+        <b>Atualização</b>
+        <span className={t === 'error' ? 'erro' : t === 'atual' ? 'ok' : ''}>
+          {t === 'checking' && <><Loader size={13} className="cfg-girando" /> Procurando…</>}
+          {t === 'atual' && <><CheckCircle2 size={13} /> Você está na versão mais recente.</>}
+          {t === 'available' && <>Versão {status.version} disponível.</>}
+          {t === 'progress' && <>Baixando… {progress}%</>}
+          {t === 'downloaded' && <><CheckCircle2 size={13} /> Pronta para instalar.</>}
+          {t === 'error' && <><AlertCircle size={13} /> {status.message || 'Não foi possível procurar agora.'}</>}
+          {!t && 'Versões novas também chegam pelo link de download da empresa.'}
         </span>
-        <button className="btn btn-ghost btn-sm" onClick={handleCheck}>Tentar de novo</button>
-        <button className="btn btn-ghost btn-sm" onClick={() => setDismissed(true)}>×</button>
       </div>
-    );
-  }
-
-  return null;
+      {t === 'available' && (
+        <button type="button" className="btn btn-primary btn-sm" onClick={baixa}><Download size={14} /> Baixar</button>
+      )}
+      {t === 'downloaded' && (
+        <button type="button" className="btn btn-primary btn-sm" onClick={instala}>Reiniciar e instalar</button>
+      )}
+      {!['available', 'downloaded', 'progress', 'checking'].includes(t) && (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={procura}><RefreshCw size={14} /> Procurar atualização</button>
+      )}
+    </div>
+  );
 }

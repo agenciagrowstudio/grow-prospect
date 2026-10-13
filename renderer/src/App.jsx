@@ -35,7 +35,6 @@ import NewExtractionModal from './components/NewExtractionModal';
 import Configuracoes from './components/Configuracoes';
 import OnboardingTour from './components/OnboardingTour';
 import { NotificationProvider, useNotifications } from './components/NotificationCenter';
-import UpdateBanner from './components/UpdateBanner';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
 import { mascaraTelefone } from './telefone';
 import IconePng from './components/IconePng';
@@ -617,7 +616,6 @@ function AppInner() {
 
         {/* Screen Content — view-transition */}
         <main className="app-screen-container">
-          <UpdateBanner />
           <div key={`${activeTab}-${versaoDados}`} className="view-transition" style={{ flex:1, display:'flex', flexDirection:'column' }}>
             {renderContent()}
           </div>

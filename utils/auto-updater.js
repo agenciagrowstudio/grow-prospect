@@ -76,8 +76,7 @@ function init(sendFn) {
     return;
   }
 
-  setTimeout(() => checkForUpdates(), 5000);
-  checkTimer = setInterval(() => checkForUpdates(), 6 * 60 * 60 * 1000);
+  // Sem verificação automática: só quando a pessoa pede, em Configurações.
 }
 
 function emit(status, data) {

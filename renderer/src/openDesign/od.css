@@ -2175,3 +2175,12 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 /* Barra preta da seleção: Limpar sempre visível, com e sem o mouse em cima */
 .selbar .selbar-limpar{background:#fff;color:#0a0a0a;border-color:#fff}
 .selbar .selbar-limpar:hover{background:#e5e7eb;color:#0a0a0a;border-color:#e5e7eb}
+
+/* Configurações: atualização do app */
+.cfg-atualizacao{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#fafafa}
+.cfg-atualizacao-txt{flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px}
+.cfg-atualizacao-txt b{font-size:13.5px;color:var(--fg)}
+.cfg-atualizacao-txt span{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+.cfg-atualizacao-txt span.ok{color:#047857}
+.cfg-atualizacao-txt span.erro{color:#b91c1c}
+.cfg-atualizacao .btn{display:inline-flex;align-items:center;gap:6px}
