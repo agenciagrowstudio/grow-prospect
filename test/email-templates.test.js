@@ -12,7 +12,7 @@ describe('templates de e-mail', () => {
     const dados = T.dadosDoLead({ name: 'Yasmin House Cleaning', pais: 'US', category: 'House cleaning service', address: '1 Main St, Framingham, MA 01702', sinalBr: { nivel: 'alto' } }, { remetente: 'Matheus' });
     const r = T.renderizaEmail(tpl, dados);
     assert.match(r.assunto, /Yasmin House Cleaning/);
-    assert.match(r.html, /Oi, pessoal da Yasmin House Cleaning!/);
+    assert.match(r.html, /Oi, pessoal da Yasmin House Cleaning./);
     assert.match(r.html, /Framingham/);
     assert.match(r.html, /logo-grow\.png/);
     assert.match(r.html, /<strong/, 'negrito vira <strong>');
@@ -90,7 +90,7 @@ describe('mensagem da Fila no e-mail', () => {
     const T = await carrega();
     const tpl = T.templateDaMensagem('Oi! Cheguei na *C&J Home Services*.', { idioma: 'pt' });
     const r = T.renderizaEmail(tpl, { empresa: 'C&J Home Services', remetente: 'Matheus' });
-    assert.match(r.assunto, /Uma pergunta rápida para a C&J Home Services/);
+    assert.match(r.assunto, /Uma pergunta para a C&J Home Services/);
     assert.match(r.html, /<strong[^>]*>C&amp;J Home Services<\/strong>/);
     assert.match(r.html, /logo-grow\.png/);
   });

@@ -25,7 +25,7 @@ import { useNotifications } from './NotificationCenter';
  */
 
 const URL_SENHA_APP = 'https://myaccount.google.com/apppasswords';
-const CORES = ['#0064E0', '#00A34D', '#5534F5', '#D81B60', '#FF8500', '#C32824', '#12121a'];
+const CORES = ['#12121a', '#0064E0', '#00A34D', '#5534F5', '#D81B60', '#FF8500', '#C32824'];
 const ICONE_BLOCO = {
   etiqueta: Tag, passos: ListOrdered, depoimento: MessageSquareQuote,
   titulo: Type, texto: AlignLeft, destaque: Quote, lista: ListChecks, botao: MousePointerClick, imagem: Image, divisor: Minus, assinatura: PenLine,
@@ -81,8 +81,11 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
   const [mensagem, setMensagem] = useState('');
   const [via, setVia] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [contaPc, setContaPc] = useState(null);
 
-  useEffect(() => { viaDeEnvio(contaWeb).then(setVia); }, [contaWeb]);
+  useEffect(() => { viaDeEnvio(contaWeb).then(setVia); contaDoComputador().then(setContaPc); }, [contaWeb]);
+  // Remetente como num app de e-mail: nome e endereço que o lead vai ver.
+  const deEndereco = via === 'computador' ? contaPc?.user : contaWeb?.gmail;
 
   // Com lead escolhido, o corpo começa pela mesma mensagem da Fila do dia (editável).
   const escolheLead = (l) => {
@@ -139,6 +142,12 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
   return (
     <div className="em2-grade">
       <div className="em2-form cfg-card">
+        <div className="em2-de">
+          <span>De</span>
+          {deEndereco
+            ? <b>{remetente}<small>{deEndereco}</small></b>
+            : <em>Configure a conta de envio na aba Conta</em>}
+        </div>
         <div className="field">
           <label htmlFor="em2Busca">Para</label>
           {lead ? (
@@ -200,11 +209,6 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
         </div>
 
         <div className="em2-envio">
-          <span className={`em2-via${via ? '' : ' sem'}`}>
-            {via === 'computador' ? <><Laptop size={14} strokeWidth={2} /> Sai pelo Gmail deste computador</>
-              : via === 'web' ? <><Cloud size={14} strokeWidth={2} /> Sai pela nuvem da Grow+ ({contaWeb?.gmail})</>
-                : <>Configure a conta de envio na aba Conta</>}
-          </span>
           <button type="button" className="btn btn-primary" disabled={!valido || !via || enviando} onClick={enviar}>
             {enviando ? <Loader size={15} strokeWidth={2} className="cfg-girando" /> : <Send size={15} strokeWidth={2} />}
             {enviando ? 'Enviando...' : 'Enviar e-mail'}
