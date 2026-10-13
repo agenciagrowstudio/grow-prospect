@@ -18,6 +18,14 @@ function getUpdateAvailabilityError() {
   return null;
 }
 
+// O app é distribuído pelo link do Drive, sem versões publicadas no GitHub.
+// Nesse caso o electron-updater responde "No published versions" (ou 404), o
+// que não é erro: só não há atualização. Antes isso virava faixa vermelha.
+function semVersaoPublicada(err) {
+  const msg = String(err?.message || err || '');
+  return /no published versions|cannot find latest|404|latest\.yml/i.test(msg);
+}
+
 function init(sendFn) {
   if (isInit) return;
   sendToRenderer = sendFn;
@@ -53,6 +61,10 @@ function init(sendFn) {
   });
 
   autoUpdater.on("error", (err) => {
+    if (semVersaoPublicada(err)) {
+      emit("not-available");
+      return;
+    }
     emit("error", { message: err?.message || String(err) });
   });
 
@@ -88,7 +100,9 @@ async function checkForUpdates() {
   if (checkInFlight) return checkInFlight;
   checkInFlight = autoUpdater.checkForUpdates()
     .then((result) => ({ success: true, updateInfo: result?.updateInfo || null }))
-    .catch((e) => ({ success: false, error: e?.message || "Não foi possível verificar a atualização" }))
+    .catch((e) => (semVersaoPublicada(e)
+      ? { success: true, updateInfo: null }
+      : { success: false, error: e?.message || "Não foi possível verificar a atualização" }))
     .finally(() => {
       checkInFlight = null;
     });
