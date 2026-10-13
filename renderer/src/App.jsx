@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { pedirMapa } from './pedidoMapa';
 import IndicadorArmazenamento from './components/IndicadorArmazenamento';
+import CotacaoDolar from './components/CotacaoDolar';
 import { chaveDoDia } from './abordagem';
 import Overview from './components/Overview';
 import MapScraperView from './components/MapScraperView';
@@ -684,6 +685,7 @@ function AppInner() {
 
           {/* Right Header Actions */}
           <div className="header-right-actions">
+            <CotacaoDolar />
             <IndicadorArmazenamento />
             <button type="button" className="hdr-perfil" onClick={() => navigate('whatsapp')} title="Gerenciar conexões do WhatsApp">
               <span className={`hdr-avatar${waStatus === 'connected' ? ' on' : ''}`} aria-hidden="true">
