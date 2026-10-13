@@ -2,15 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Mail, Send, LayoutTemplate, History, Settings2, Megaphone, Plus, Trash2, Copy, ArrowUp, ArrowDown,
   Monitor, Smartphone, Cloud, Laptop, KeyRound, ExternalLink, Loader, Check, Search, X,
-  Type, AlignLeft, Quote, ListChecks, MousePointerClick, Image, Minus, PenLine,
+  Type, AlignLeft, Quote, ListChecks, MousePointerClick, Image, Minus, PenLine, Tag, ListOrdered, MessageSquareQuote, RefreshCw,
 } from 'lucide-react';
 import EmailPanel from './EmailPanel';
 import AvatarLead from './AvatarLead';
-import { readLocalArray, localDoLead } from '../leadData';
+import { readLocalArray, localDoLead, localDoEndereco } from '../leadData';
 import {
   leTemplates, guardaTemplates, leEnviados, renderizaEmail, dadosDoLead, emailDoLead, templateSugerido,
-  blocoNovo, novoId, TIPOS_BLOCO, CAMPOS, CONTA_PADRAO,
+  blocoNovo, novoId, TIPOS_BLOCO, CAMPOS, CONTA_PADRAO, templateDaMensagem, textoWhatsParaEmail,
 } from '../emailTemplates';
+import { gerarAbordagem, idiomaDoLead } from '../abordagem';
+import { qualificaLead } from '../qualificacaoLead';
 import { enviaEmail, viaDeEnvio, contaDoComputador, temComputador } from '../emailEnvio';
 import { contaEmailNuvem, salvarContaEmailNuvem, removerContaEmailNuvem, lerEmpresa } from '../nuvem';
 import { pegarPedidoEmail } from '../pedidoEmail';
@@ -23,8 +25,9 @@ import { useNotifications } from './NotificationCenter';
  */
 
 const URL_SENHA_APP = 'https://myaccount.google.com/apppasswords';
-const CORES = ['#0064E0', '#00A34D', '#5534F5', '#FF8500', '#C32824', '#12121a'];
+const CORES = ['#0064E0', '#00A34D', '#5534F5', '#D81B60', '#FF8500', '#C32824', '#12121a'];
 const ICONE_BLOCO = {
+  etiqueta: Tag, passos: ListOrdered, depoimento: MessageSquareQuote,
   titulo: Type, texto: AlignLeft, destaque: Quote, lista: ListChecks, botao: MousePointerClick, imagem: Image, divisor: Minus, assinatura: PenLine,
 };
 const EXEMPLO = { name: 'Yasmin House Cleaning', pais: 'US', category: 'House cleaning service', address: '1 Main St, Framingham, MA 01702', rating: 4.9, sinalBr: { nivel: 'alto' } };
@@ -52,6 +55,19 @@ function Previa({ html }) {
   );
 }
 
+const MENSAGEM_FILA = 'msg-fila';
+const leCfgFila = () => {
+  try { return JSON.parse(localStorage.getItem('sigma_abordagem_cfg') || '{}') || {}; } catch { return {}; }
+};
+
+/** A mesma mensagem que a Fila do dia monta para o WhatsApp deste lead, já no formato de e-mail. */
+function mensagemDaFila(lead, versao) {
+  const end = localDoEndereco(lead.address);
+  const paraTexto = { ...lead, city: lead.city || end.cidade, uf: lead.uf || lead.state || end.uf };
+  const r = gerarAbordagem(paraTexto, qualificaLead(lead), { ...leCfgFila(), idioma: idiomaDoLead(lead) }, versao);
+  return textoWhatsParaEmail(r.texto || '');
+}
+
 function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
   const { addNotification } = useNotifications();
   const leads = useMemo(() => readLocalArray('sigma_leads').filter((l) => emailDoLead(l)), []);
@@ -61,18 +77,27 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
   const [busca, setBusca] = useState('');
   const [tplId, setTplId] = useState(templates[0]?.id || '');
   const [assunto, setAssunto] = useState('');
+  const [versao, setVersao] = useState(0);
+  const [mensagem, setMensagem] = useState('');
   const [via, setVia] = useState('');
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => { viaDeEnvio(contaWeb).then(setVia); }, [contaWeb]);
 
+  // Com lead escolhido, o corpo começa pela mesma mensagem da Fila do dia (editável).
   const escolheLead = (l) => {
     setLead(l);
     setPara(emailDoLead(l));
     setBusca('');
-    const t = templateSugerido(l, templates);
-    if (t) setTplId(t.id);
+    setTplId(MENSAGEM_FILA);
+    setVersao(0);
+    setMensagem(mensagemDaFila(l, 0));
     setAssunto('');
+  };
+  const outraVersao = () => {
+    const v = versao + 1;
+    setVersao(v);
+    setMensagem(mensagemDaFila(lead, v));
   };
 
   useEffect(() => {
@@ -82,7 +107,10 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedido]);
 
-  const tpl = templates.find((t) => t.id === tplId) || templates[0];
+  const usaMensagem = tplId === MENSAGEM_FILA && lead;
+  const tpl = usaMensagem
+    ? templateDaMensagem(mensagem, { idioma: idiomaDoLead(lead) === 'en' ? 'en' : 'pt' })
+    : (templates.find((t) => t.id === tplId) || templates[0]);
   const dados = dadosDoLead(lead || {}, { remetente, buscas });
   const email = tpl ? renderizaEmail(tpl, dados) : { assunto: '', html: '', texto: '' };
   const assuntoFinal = assunto || email.assunto;
@@ -147,10 +175,24 @@ function Escrever({ templates, contaWeb, remetente, pedido, onEnviado }) {
 
         <div className="field">
           <label htmlFor="em2Tpl">Template</label>
-          <select id="em2Tpl" value={tpl?.id || ''} onChange={(e) => { setTplId(e.target.value); setAssunto(''); }}>
+          <select id="em2Tpl" value={usaMensagem ? MENSAGEM_FILA : (tpl?.id || '')} onChange={(e) => { setTplId(e.target.value); setAssunto(''); }}>
+            {lead && <option value={MENSAGEM_FILA}>Mensagem da Fila do dia (a mesma do WhatsApp)</option>}
             {templates.map((t) => <option key={t.id} value={t.id}>{t.nome}{t.idioma === 'en' ? ' (inglês)' : ''}</option>)}
           </select>
         </div>
+
+        {usaMensagem && (
+          <div className="field">
+            <div className="em2-msg-topo">
+              <label htmlFor="em2Msg">Mensagem</label>
+              <button type="button" className="kb-mover" onClick={outraVersao} title="Troca pela próxima versão da Fila (apaga o que foi editado)">
+                <RefreshCw size={12} strokeWidth={2} /> Outra versão
+              </button>
+            </div>
+            <textarea id="em2Msg" className="em2-msg" rows={10} value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
+            <span className="cfg-dica">É o texto da Fila do dia, sem emojis. Edite à vontade; **assim** vira negrito.</span>
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="em2Assunto">Assunto</label>
@@ -184,12 +226,15 @@ function EditorBloco({ bloco, onMuda }) {
     </label>
   );
   switch (bloco.tipo) {
+    case 'etiqueta': return campo('texto', 'Texto curto acima do título');
     case 'titulo': return campo('texto', 'Texto');
+    case 'passos': return campo('texto', 'Um passo por linha, no formato "Título: descrição"', true);
+    case 'depoimento': return <>{campo('texto', 'Depoimento (use só depoimento real de cliente)', true)}{campo('autor', 'Quem disse')}</>;
     case 'texto': return campo('texto', 'Texto (linha em branco separa parágrafos; **negrito**)', true);
     case 'destaque': return campo('texto', 'Texto em destaque', true);
     case 'lista': return campo('texto', 'Um item por linha', true);
-    case 'assinatura': return campo('texto', 'Assinatura', true);
-    case 'botao': return <>{campo('texto', 'Texto do botão')}{campo('link', 'Link (https://, mailto: ou tel:)')}</>;
+    case 'assinatura': return <>{campo('texto', 'Nome e cargo (a primeira linha vira o nome)', true)}{campo('whatsapp', 'WhatsApp (só números, com DDI)')}{campo('site', 'Site (https://)')}{campo('instagram', 'Instagram (@perfil)')}</>;
+    case 'botao': return <>{campo('texto', 'Texto do botão')}{campo('link', 'Link (https://, mailto: ou tel:)')}{campo('nota', 'Texto pequeno embaixo do botão (opcional)')}</>;
     case 'imagem': return <>{campo('url', 'Endereço da imagem (https://)')}{campo('alt', 'Descrição da imagem')}</>;
     default: return <p className="em2-dica">Linha fina para separar partes do e-mail.</p>;
   }
@@ -200,7 +245,8 @@ function Templates({ templates, setTemplates, remetente }) {
   const tpl = templates.find((t) => t.id === id) || templates[0];
   const html = tpl ? renderizaEmail(tpl, dadosDoLead(EXEMPLO, { remetente })).html : '';
 
-  const muda = (novo) => setTemplates(templates.map((t) => (t.id === novo.id ? novo : t)));
+  // Editado não recebe mais a versão nova dos padrões.
+  const muda = (novo) => setTemplates(templates.map((t) => (t.id === novo.id ? { ...novo, editado: true } : t)));
   const mudaBloco = (b) => muda({ ...tpl, blocos: tpl.blocos.map((x) => (x.id === b.id ? b : x)) });
   const moveBloco = (i, d) => {
     const blocos = [...tpl.blocos];
@@ -247,6 +293,10 @@ function Templates({ templates, setTemplates, remetente }) {
           </div>
         </div>
         <div className="field"><label htmlFor="tplAssunto">Assunto</label><input id="tplAssunto" value={tpl.assunto} onChange={(e) => muda({ ...tpl, assunto: e.target.value })} /></div>
+        <div className="field">
+          <label htmlFor="tplPre">Texto de prévia na caixa de entrada</label>
+          <input id="tplPre" value={tpl.preheader || ''} onChange={(e) => muda({ ...tpl, preheader: e.target.value })} placeholder="Aparece ao lado do assunto no Gmail" />
+        </div>
         <div className="field">
           <label>Cor principal</label>
           <div className="em2-cores">
@@ -428,7 +478,8 @@ export default function EmailCentral() {
   }, []);
 
   const setTemplates = (lista) => { setTemplatesEstado(lista); guardaTemplates(lista); };
-  const remetente = remetenteComp || contaWeb?.nome_remetente || '';
+  // Nome na assinatura: o da conta de envio ou, sem ela, o mesmo da Fila do dia.
+  const remetente = remetenteComp || contaWeb?.nome_remetente || String(leCfgFila().nome || '').trim();
 
   const ABAS = [
     { id: 'escrever', nome: 'Escrever', Icone: Send },

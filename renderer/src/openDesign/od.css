@@ -2686,3 +2686,6 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .em2-env-txt span,.em2-env-para{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .em2-env-via{color:var(--muted);display:grid;place-items:center}
 .em2-contas{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start}
+.em2-msg-topo{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.em2-msg{font:inherit;font-size:14px;line-height:1.6;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#fafafa;color:var(--fg);resize:vertical;min-height:180px}
+.em2-msg:focus{outline:none;border-color:var(--accent);background:#fff}

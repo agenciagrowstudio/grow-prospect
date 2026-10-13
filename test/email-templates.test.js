@@ -15,7 +15,7 @@ describe('templates de e-mail', () => {
     assert.match(r.html, /Oi, pessoal da Yasmin House Cleaning!/);
     assert.match(r.html, /Framingham/);
     assert.match(r.html, /logo-grow\.png/);
-    assert.match(r.html, /<strong>/, 'negrito vira <strong>');
+    assert.match(r.html, /<strong/, 'negrito vira <strong>');
     assert.doesNotMatch(r.html, /\{empresa\}|\{cidade\}/, 'nenhum campo fica sem preencher');
     assert.match(r.texto, /Matheus/);
     assert.doesNotMatch(r.texto, /\*\*/);
@@ -71,5 +71,27 @@ describe('assinatura', () => {
     const tpl = { assunto: 'x', blocos: [{ tipo: 'assinatura', texto: 'Um abraço,\n{remetente}\nGrow+ Marketing' }] };
     assert.match(T.renderizaEmail(tpl, { remetente: '' }).texto, /^Um abraço,\nGrow\+ Marketing$/);
     assert.match(T.renderizaEmail(tpl, { remetente: 'Matheus' }).texto, /Matheus\nGrow\+ Marketing/);
+  });
+});
+
+describe('mensagem da Fila no e-mail', () => {
+  it('converte a formatação do WhatsApp e tira os emojis', async () => {
+    const T = await carrega();
+    const whats = 'Oi, tudo bem? Matheus aqui, da *Grow+*.\n\nEstou conhecendo as empresas brasileiras de house cleaning em Newton e cheguei na *C&J Home Services*. Parabéns pela nota *5,0* ⭐, dá para ver que o trabalho é bem feito.\n\n🇧🇷 🇺🇸 Vocês já têm um site?';
+    const email = T.textoWhatsParaEmail(whats);
+    assert.match(email, /da \*\*Grow\+\*\*\./);
+    assert.match(email, /\*\*C&J Home Services\*\*/);
+    assert.match(email, /nota \*\*5,0\*\*, dá/);
+    assert.doesNotMatch(email, /\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]/u);
+    assert.match(email, /\n\nVocês já têm um site\?$/);
+  });
+
+  it('vira um e-mail no layout da Grow+, com negrito de verdade', async () => {
+    const T = await carrega();
+    const tpl = T.templateDaMensagem('Oi! Cheguei na *C&J Home Services*.', { idioma: 'pt' });
+    const r = T.renderizaEmail(tpl, { empresa: 'C&J Home Services', remetente: 'Matheus' });
+    assert.match(r.assunto, /Uma pergunta rápida para a C&J Home Services/);
+    assert.match(r.html, /<strong[^>]*>C&amp;J Home Services<\/strong>/);
+    assert.match(r.html, /logo-grow\.png/);
   });
 });
