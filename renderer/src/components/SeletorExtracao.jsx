@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Check, Layers, Eraser, Search, Loader, MapPin } from 'lucide-react';
+import { ChevronDown, Check, Layers, Eraser, Search, Loader, MapPin, Trash2 } from 'lucide-react';
 import Bandeira from './Bandeira';
 
 /**
@@ -29,19 +29,21 @@ function quando(ts) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export default function SeletorExtracao({ buscas, valor, onEscolher, leadsPorBusca, progresso, totalLeads, emAndamento }) {
+export default function SeletorExtracao({ buscas, valor, onEscolher, leadsPorBusca, progresso, totalLeads, emAndamento, onApagar }) {
   const [aberto, setAberto] = useState(false);
+  // Extração esperando a confirmação de apagar (id).
+  const [apagando, setApagando] = useState(null);
   const [filtro, setFiltro] = useState('');
   const ref = useRef(null);
 
   useEffect(() => {
     if (!aberto) return undefined;
     const fora = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
-    const esc = (e) => { if (e.key === 'Escape') setAberto(false); };
+    const esc = (e) => { if (e.key === 'Escape') { if (apagando) setApagando(null); else setAberto(false); } };
     document.addEventListener('mousedown', fora);
     document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('mousedown', fora); document.removeEventListener('keydown', esc); };
-  }, [aberto]);
+  }, [aberto, apagando]);
 
   const lista = useMemo(() => {
     const f = filtro.trim().toLowerCase();
@@ -111,8 +113,30 @@ export default function SeletorExtracao({ buscas, valor, onEscolher, leadsPorBus
               const id = String(b.id);
               const p = partes(b);
               const on = valor === id;
+              const qtd = leadsPorBusca.get(id) || 0;
+              if (apagando === id) {
+                return (
+                  <div key={id} className="sx-item sx-confirma" role="alertdialog" aria-label="Confirmar apagar extração">
+                    <span className="sx-item-icone sx-icone-perigo" aria-hidden="true"><Trash2 size={14} strokeWidth={2} /></span>
+                    <span className="sx-item-txt">
+                      <b>Apagar esta extração?</b>
+                      <small>{qtd ? `Os ${qtd} leads dela saem da base e do mapa.` : 'Ela não tem leads; só sai da lista e do mapa.'}</small>
+                    </span>
+                    <button type="button" className="sx-btn" onClick={() => setApagando(null)}>Cancelar</button>
+                    <button
+                      type="button"
+                      className="sx-btn sx-btn-perigo"
+                      onClick={() => { onApagar?.(id); setApagando(null); }}
+                      autoFocus
+                    >
+                      Apagar
+                    </button>
+                  </div>
+                );
+              }
               return (
-                <button key={id} type="button" role="option" aria-selected={on} className={`sx-item${on ? ' on' : ''}`} onClick={() => escolhe(id)}>
+                <div key={id} className={`sx-item-linha${on ? ' on' : ''}`}>
+                <button type="button" role="option" aria-selected={on} className={`sx-item${on ? ' on' : ''}`} onClick={() => escolhe(id)}>
                   <span className="sx-item-icone" aria-hidden="true"><MapPin size={14} strokeWidth={2} /></span>
                   <span className="sx-item-txt">
                     <b>{p.nicho}</b>
@@ -130,6 +154,18 @@ export default function SeletorExtracao({ buscas, valor, onEscolher, leadsPorBus
                   })()}
                   {on && <Check size={15} strokeWidth={2.4} className="sx-check" aria-hidden="true" />}
                 </button>
+                {onApagar && (
+                  <button
+                    type="button"
+                    className="sx-apagar"
+                    onClick={() => setApagando(id)}
+                    title="Apagar esta extração"
+                    aria-label={`Apagar a extração ${p.nicho} ${p.onde}`}
+                  >
+                    <Trash2 size={14} strokeWidth={2} />
+                  </button>
+                )}
+                </div>
               );
             })}
             {!lista.length && <span className="sx-vazio">Nenhuma extração com esse nome.</span>}

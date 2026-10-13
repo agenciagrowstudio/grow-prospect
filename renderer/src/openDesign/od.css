@@ -2319,3 +2319,22 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 .fa-detalhe .cl-card.cl-estatico{cursor:default;animation:none;margin:0;box-shadow:none;border:1px solid var(--border)}
 .fa-detalhe .cl-card.cl-estatico:hover{transform:none;box-shadow:none}
 .fu-det-topo{margin-top:-4px}
+
+/* Seletor de extrações: apagar uma por uma */
+.sx-item-linha{position:relative;display:flex;align-items:center;border-radius:8px}
+.sx-item-linha .sx-item{flex:1;min-width:0}
+.sx-item-linha .sx-item{padding-right:40px}
+.sx-apagar{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .12s,background-color .12s,color .12s}
+.sx-item-linha:hover .sx-apagar,.sx-apagar:focus-visible{opacity:1}
+.sx-apagar:hover{background:color-mix(in srgb,#b91c1c 9%,#fff);color:#b91c1c}
+.sx-item-linha:hover .sx-check,.sx-item-linha:hover .sx-qtd{visibility:hidden}
+.sx-confirma{background:color-mix(in srgb,#b91c1c 6%,#fff);cursor:default;flex-wrap:wrap}
+.sx-confirma:hover{background:color-mix(in srgb,#b91c1c 6%,#fff)}
+.sx-icone-perigo{background:color-mix(in srgb,#b91c1c 12%,#fff)!important;color:#b91c1c!important}
+.sx-btn{flex:none;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer}
+.sx-btn-perigo{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.sx-btn-perigo:hover{background:#991b1b}
+.sx-confirma .sx-item-txt{flex:1 1 calc(100% - 44px)}
+.sx-confirma .sx-item-txt b,.sx-confirma .sx-item-txt small{white-space:normal;overflow:visible}
+.sx-confirma .sx-btn{margin-top:6px}
+.sx-confirma .sx-btn:first-of-type{margin-left:auto}

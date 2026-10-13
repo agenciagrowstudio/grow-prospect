@@ -1471,6 +1471,25 @@ export default function MapScraperView({
             progresso={progressoPorId}
             totalLeads={leads.length}
             emAndamento={activeExtraction?.id ? { id: String(activeExtraction.id), rotulo: activeExtraction.rotulo || activeExtraction.query } : null}
+            onApagar={(id) => {
+              // Sai a extração (e a área pintada) e os leads dela. O histórico
+              // da Fila fica: é registro de contato e evita abordar de novo.
+              const qtd = leads.filter((l) => String(l.searchId || '') === id).length;
+              setLeads((atual) => atual.filter((l) => String(l.searchId || '') !== id));
+              const restantes = searches.filter((b) => String(b.id) !== id);
+              try {
+                const todas = readLocalArray('sigma_searches').filter((b) => String(b?.id) !== id);
+                localStorage.setItem('sigma_searches', JSON.stringify(todas));
+              } catch {}
+              setSearches(restantes);
+              if (buscaAtiva === id) setBuscaAtiva(restantes[0]?.id ? String(restantes[0].id) : '');
+              addNotification({
+                type: 'success',
+                category: 'scraper',
+                title: 'Extração apagada',
+                message: qtd ? `${qtd} lead${qtd === 1 ? '' : 's'} saíram da base.` : 'Ela não tinha leads.',
+              });
+            }}
           />
         )}
 
