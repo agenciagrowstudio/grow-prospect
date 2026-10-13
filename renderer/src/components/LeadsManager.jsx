@@ -29,7 +29,8 @@ import {
   Brain,
   CircleHelp,
   Users,
-  Trash2
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 import { dedupeLeads, normalizeLeadCategory, normalizeLeadCollection, readLocalArray } from '../leadData';
 
@@ -171,6 +172,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
 
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
   const [confirmaApagar, setConfirmaApagar] = useState(false);
+  const [confirmaZerar, setConfirmaZerar] = useState(false);
   const [groupSearch, setGroupSearch] = useState('');
 
   const [activeLead, setActiveLead] = useState(null);
@@ -189,6 +191,28 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
     } catch { /* sem análise salva */ }
     setSel(new Set());
     setConfirmaApagar(false);
+    window.dispatchEvent(new Event('sigma:leads-updated'));
+  };
+
+  // Zera os selecionados: voltam ao estado de recém-extraídos. Saem do
+  // histórico da Fila (voltam a ser "para abordar"), perdem a análise do Lead
+  // Scoring e a marcação Brasileiro/Americano. O lead em si continua na base.
+  const handleZerarSelecionados = () => {
+    const ids = new Set([...sel].map(String));
+    setLeads((atual) => atual.map((l, idx) => {
+      if (!ids.has(String(getLeadId(l, idx)))) return l;
+      const { publicoConfirmado: _p, ...resto } = l;
+      return resto;
+    }));
+    ['sigma_abordagem_log', 'sigma_analysis'].forEach((chave) => {
+      try {
+        const mapa = JSON.parse(localStorage.getItem(chave) || '{}') || {};
+        ids.forEach((id) => { delete mapa[id]; });
+        localStorage.setItem(chave, JSON.stringify(mapa));
+      } catch { /* sem registro salvo */ }
+    });
+    setSel(new Set());
+    setConfirmaZerar(false);
     window.dispatchEvent(new Event('sigma:leads-updated'));
   };
 
@@ -1055,9 +1079,38 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           <button type="button" className="btn btn-sm btn-primary" onClick={() => setIsExportOpen(true)}>
             Exportar
           </button>
+          <button type="button" className="btn btn-sm" onClick={() => setConfirmaZerar(true)} title="Volta os selecionados para a Fila do dia, como recém-extraídos">
+            <RotateCcw size={14} strokeWidth={2} aria-hidden="true" /> Zerar
+          </button>
           <button type="button" className="btn btn-sm bl-apagar" onClick={() => setConfirmaApagar(true)}>
             <Trash2 size={14} strokeWidth={2} aria-hidden="true" /> Apagar
           </button>
+        </div>
+      )}
+
+      {/* CONFIRMAR ZERAR */}
+      {confirmaZerar && (
+        <div className="overlay on" onClick={() => setConfirmaZerar(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="blZerarTitulo" onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 94vw)' }}>
+            <div className="modal-head">
+              <h2 id="blZerarTitulo">Zerar {sel.size} lead{sel.size === 1 ? '' : 's'}?</h2>
+            </div>
+            <div className="modal-body" style={{ gridTemplateColumns: '1fr', gap: '10px' }}>
+              <p className="bl-apagar-txt">
+                Eles voltam a ser "para abordar" na Fila do dia, como se tivessem acabado de ser extraídos:
+                saem do histórico da Fila (enviado, pulado, sem WhatsApp), perdem a análise do Lead Scoring
+                e a marcação de Brasileiro ou Americano. Os leads continuam na base.
+              </p>
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirmaZerar(false)} autoFocus>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-primary" onClick={handleZerarSelecionados}>
+                <RotateCcw size={15} strokeWidth={2} aria-hidden="true" /> Zerar {sel.size}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

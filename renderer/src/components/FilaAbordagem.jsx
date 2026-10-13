@@ -163,10 +163,13 @@ export default function FilaAbordagem({
   const enviadasHoje = Object.values(log).filter((e) => e.status === 'enviada' && e.dia === hoje).length;
   const restante = Math.max(0, cfg.limite - enviadasHoje);
   const fila = candidatos.filter(({ chave }) => !jaAbordados[chave]).slice(0, restante);
+  // Já abordados: todo mundo que saiu da Fila, inclusive pulado e sem WhatsApp
+  // (antes esses sumiam sem ter como voltar).
   const enviadas = Object.entries(log)
-    .filter(([, e]) => e.status === 'enviada' || e.status === 'respondeu')
+    .filter(([, e]) => ['enviada', 'respondeu', 'pulada', 'sem_whatsapp'].includes(e.status))
     .sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0));
   const responderam = enviadas.filter(([, e]) => e.status === 'respondeu').length;
+  const contatados = enviadas.filter(([, e]) => e.status === 'enviada' || e.status === 'respondeu').length;
 
   // O selecionado some da fila quando é marcado: abre o próximo, na mesma posição.
   const atual = fila.find((f) => f.chave === selecionado) || fila[0] || null;
@@ -550,11 +553,11 @@ export default function FilaAbordagem({
           <div className="fa-vazio">
             <MessagesSquare size={28} strokeWidth={1.5} aria-hidden="true" />
             <b>Ninguém abordado ainda</b>
-            <span>Quem você marcar como enviado aparece aqui, para anotar quem respondeu.</span>
+            <span>Quem você marcar como enviado, pulado ou sem WhatsApp aparece aqui. Dá para zerar e devolver para a Fila.</span>
           </div>
         ) : (
           <div className="fa-historico">
-            <p className="fa-hist-resumo"><b>{enviadas.length}</b> abordados · <b>{responderam}</b> responderam</p>
+            <p className="fa-hist-resumo"><b>{contatados}</b> abordados · <b>{responderam}</b> responderam{enviadas.length > contatados ? <> · <b>{enviadas.length - contatados}</b> pulados ou sem WhatsApp</> : null}</p>
             {enviadas.map(([chave, e]) => (
               <article key={chave} className="fa-hist-item">
                 <div className="fa-hist-topo">
@@ -562,19 +565,27 @@ export default function FilaAbordagem({
                     <b>{e.nome || chave}</b>
                     <span>{new Date(e.ts).toLocaleDateString('pt-BR')} · {ANGULOS.find((a) => a.id === e.angulo)?.nome || 'Abordagem geral'}</span>
                   </div>
-                  <span className={`mm-situacao ${e.status === 'respondeu' ? 'mm-aprovado' : 'mm-analise'}`}>{e.status === 'respondeu' ? 'Respondeu' : 'Aguardando'}</span>
+                  <span className={`mm-situacao ${e.status === 'respondeu' ? 'mm-aprovado' : e.status === 'enviada' ? 'mm-analise' : 'fa-sit-fora'}`}>
+                    {{ respondeu: 'Respondeu', enviada: 'Aguardando', pulada: 'Pulado', sem_whatsapp: 'Sem WhatsApp' }[e.status]}
+                  </span>
                 </div>
                 {e.texto && <p className="fa-hist-texto"><TextoWhatsApp texto={e.texto} /></p>}
                 <div className="fa-hist-acoes">
-                  {e.status === 'enviada' ? (
+                  {e.status === 'enviada' && (
                     <button type="button" className="fa-mini fa-mini-forte" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'respondeu' } }))}>
                       <MessagesSquare size={13} strokeWidth={2} aria-hidden="true" /> Respondeu
                     </button>
-                  ) : (
+                  )}
+                  {e.status === 'respondeu' && (
                     <button type="button" className="fa-mini" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'enviada' } }))}>Ainda não respondeu</button>
                   )}
-                  <button type="button" className="fa-mini" onClick={() => desfaz(chave)}>
-                    <Undo2 size={13} strokeWidth={2} aria-hidden="true" /> Voltar para a fila
+                  <button
+                    type="button"
+                    className="fa-mini"
+                    onClick={() => { desfaz(chave); setAviso(`${e.nome || 'Lead'} zerado: voltou para a Fila.`); }}
+                    title="Apaga a marcação e devolve o lead para a Fila"
+                  >
+                    <Undo2 size={13} strokeWidth={2} aria-hidden="true" /> Zerar lead
                   </button>
                 </div>
               </article>
