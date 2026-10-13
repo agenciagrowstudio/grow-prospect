@@ -261,7 +261,10 @@ export function anguloDoLead(q, preferido) {
  */
 export function idiomaDoLead(lead) {
   const eua = String(lead?.pais || 'BR').toUpperCase() === 'US';
-  return eua && lead?.publicoConfirmado === 'us' ? 'en' : 'pt';
+  if (!eua) return 'pt';
+  if (lead?.publicoConfirmado) return lead.publicoConfirmado === 'us' ? 'en' : 'pt';
+  // A IA leu o site e tem certeza de que é americano: vai em inglês.
+  return lead?.ia?.publico === 'us' && Number(lead.ia.confianca) >= 0.7 ? 'en' : 'pt';
 }
 
 /**

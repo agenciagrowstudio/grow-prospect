@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Repeat, BookOpen } from 'lucide-react';
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Repeat, BookOpen, Brain } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
@@ -11,6 +11,7 @@ import { publicoDoLead } from '../resultados';
 import { proximoFollowup, DIAS_FOLLOWUP, tempoAte } from '../followup';
 import FollowupsFila from './FollowupsFila';
 import CardLead from './CardLead';
+import { analisaComIA, aplicaResultadosIA, textoProgressoIA, iaDisponivel, insereGancho } from '../iaLeads';
 import DivisorFila, { larguraListaGuardada } from './DivisorFila';
 
 // Tamanho da janela da Fila, arrastado pelo canto e guardado para a próxima vez.
@@ -106,6 +107,8 @@ export default function FilaAbordagem({
   const [aba, setAba] = useState('fila');
   const janelaRef = useRef(null);
   const cliqueNoFundo = useRef(false);
+  const [analisandoIA, setAnalisandoIA] = useState(false);
+  const [progressoIA, setProgressoIA] = useState(null);
   const [tamanhoInicial] = useState(tamanhoGuardado);
   // Guarda o tamanho quando a pessoa arrasta o canto da janela.
   useEffect(() => {
@@ -225,6 +228,26 @@ export default function FilaAbordagem({
     if (status === 'enviada') setAviso(`${item.lead.name || 'Lead'} marcado como enviado.`);
   };
 
+  // Analisa com IA só os leads da fila de hoje que ainda não foram analisados.
+  const analisaFila = async (itens) => {
+    if (analisandoIA || !itens.length) return;
+    setAnalisandoIA(true);
+    setProgressoIA(null);
+    try {
+      const resultados = await analisaComIA(itens.map((f) => f.lead), setProgressoIA);
+      const todos = JSON.parse(localStorage.getItem('sigma_leads') || '[]');
+      localStorage.setItem('sigma_leads', JSON.stringify(aplicaResultadosIA(todos, resultados)));
+      window.dispatchEvent(new Event('sigma:leads-updated'));
+      const comIA = resultados.filter((r) => r.ia).length;
+      setAviso(comIA ? `${comIA} lead${comIA === 1 ? '' : 's'} analisado${comIA === 1 ? '' : 's'} pela IA.` : 'A IA não respondeu agora. Tente de novo em alguns minutos.');
+    } catch (e) {
+      setAviso(e.message);
+    } finally {
+      setAnalisandoIA(false);
+      setProgressoIA(null);
+    }
+  };
+
   const desfaz = (chave) => setLog((atualLog) => {
     const { [chave]: _tirado, ...resto } = atualLog;
     return resto;
@@ -318,7 +341,12 @@ export default function FilaAbordagem({
 
         <div className="fa-chips">
           <span className="fa-chip fa-chip-oferta">Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b></span>
-          {servico?.motivo && <span className="fa-chip">{servico.motivo}</span>}
+          {servico?.motivo && (
+            <span className={`fa-chip${servico.daIA ? ' fa-chip-ia' : ''}`} title={servico.daIA ? 'Sugerido pela IA depois de ler o site' : undefined}>
+              {servico.daIA && <Brain size={12} strokeWidth={2} aria-hidden="true" />}
+              {servico.motivo}
+            </span>
+          )}
           <span className="fa-espaco" />
           {String(lead.pais || 'BR').toUpperCase() === 'US' && (() => {
             const quem = publicoDoLead(lead);
@@ -394,6 +422,29 @@ export default function FilaAbordagem({
             </span>
           </div>
         </div>
+
+        {(() => {
+          const gancho = idioma === 'en' ? lead.ia?.ganchoEn : lead.ia?.gancho;
+          if (!gancho) return null;
+          const inserido = texto.includes(gancho);
+          return (
+            <div className="fa-gancho">
+              <Brain size={15} strokeWidth={1.9} aria-hidden="true" />
+              <div className="fa-gancho-txt">
+                <b>Detalhe que a IA achou no site</b>
+                <span>{gancho}</span>
+              </div>
+              <button
+                type="button"
+                className={`fa-mini${inserido ? '' : ' fa-mini-forte'}`}
+                disabled={inserido}
+                onClick={() => setEditados((x) => ({ ...x, [chaveEdicao(atual)]: insereGancho(textoDe(atual), gancho) }))}
+              >
+                {inserido ? <><Check size={13} strokeWidth={2.2} aria-hidden="true" /> Inserido</> : 'Inserir na mensagem'}
+              </button>
+            </div>
+          );
+        })()}
 
         <div className="fa-passos">
           <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
@@ -572,6 +623,20 @@ export default function FilaAbordagem({
         ) : (
           <div className="fa-corpo">
             <ol className="fa-lista" aria-label="Leads da fila">
+              {iaDisponivel() && (() => {
+                const semIA = fila.filter((f) => !f.lead.ia);
+                return (
+                  <li className="fa-ia-barra">
+                    <Brain size={14} strokeWidth={1.9} aria-hidden="true" />
+                    <span>{analisandoIA ? textoProgressoIA(progressoIA) : semIA.length ? `${fila.length - semIA.length} de ${fila.length} com IA` : 'Fila analisada pela IA'}</span>
+                    {semIA.length > 0 && (
+                      <button type="button" className="fa-mini fa-mini-forte" disabled={analisandoIA} onClick={() => analisaFila(semIA)}>
+                        Analisar {semIA.length}
+                      </button>
+                    )}
+                  </li>
+                );
+              })()}
               {fila.map((item, i) => {
                 const { lead, q, chave } = item;
                 const ativo = atual?.chave === chave;

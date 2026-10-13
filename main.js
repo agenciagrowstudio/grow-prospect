@@ -56,6 +56,7 @@ const { geocodeAddress, isValidCoord } = require("./utils/geocode");
 const { resolvePais } = require("./utils/paises");
 const { avaliaSinaisBrasileiros } = require("./lead-scoring/sinais-brasileiros");
 const { qualificaComIA } = require("./lead-scoring/sinais-brasileiros-ia");
+const { analisaLeadsComIA } = require("./lead-scoring/analise-ia-leads");
 
 const autoUpdaterMod = require("./utils/auto-updater");
 const { ensureInstallId } = require("./utils/install-id");
@@ -2877,6 +2878,27 @@ ipcMain.handle("qualificar-brasileiros", async (_, { leads, comIA } = {}) => {
     return { success: true, resultados };
   } catch (err) {
     return { success: false, error: err.message };
+  }
+});
+
+// Análise com IA: quem é (brasileiro ou americano), o que oferecer e um
+// detalhe real para a mensagem. Lê o site de cada lead e chama a IA em lotes.
+let analiseIAEmAndamento = false;
+ipcMain.handle("analisar-leads-ia", async (_, { leads } = {}) => {
+  if (analiseIAEmAndamento) return { success: false, error: "Já existe uma análise em andamento." };
+  analiseIAEmAndamento = true;
+  try {
+    const lista = Array.isArray(leads) ? leads.slice(0, 500) : [];
+    if (!lista.length) return { success: true, resultados: [] };
+    const ai = leadScoringService?.getSettings?.()?.ai || {};
+    const resultados = await analisaLeadsComIA(lista, ai, {
+      onProgresso: (p) => safeSend("ia-progresso", p),
+    });
+    return { success: true, resultados };
+  } catch (err) {
+    return { success: false, error: err.message };
+  } finally {
+    analiseIAEmAndamento = false;
   }
 });
 

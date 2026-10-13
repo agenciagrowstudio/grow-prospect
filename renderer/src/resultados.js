@@ -39,6 +39,8 @@ export function publicoDoLead(lead) {
   const pais = String(lead.pais || 'BR').toUpperCase();
   if (pais === 'BR') return 'br';
   if (lead.publicoConfirmado === 'brus' || lead.publicoConfirmado === 'us') return lead.publicoConfirmado;
+  // Decisão da IA (leu o site), quando tem confiança.
+  if (lead.ia && Number(lead.ia.confianca) >= 0.7 && ['brus', 'us'].includes(lead.ia.publico)) return lead.ia.publico;
   const nivel = lead.sinalBr?.nivel;
   return nivel === 'alto' || nivel === 'medio' ? 'brus' : 'verificar';
 }

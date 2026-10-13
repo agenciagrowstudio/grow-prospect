@@ -2369,3 +2369,14 @@ body.fa-arrastando{cursor:col-resize;user-select:none}
 /* Marca do canto, para mostrar que dá para arrastar */
 .fa-modal::after{content:'';position:absolute;right:3px;bottom:3px;width:12px;height:12px;pointer-events:none;background:linear-gradient(135deg,transparent 0 45%,#c4c8cf 45% 52%,transparent 52% 66%,#c4c8cf 66% 73%,transparent 73%)}
 @media (max-width:820px){.fa-modal{resize:none;min-width:0}.fa-divisor{display:none}}
+
+/* IA na Fila do dia */
+.fa-chip-ia{display:inline-flex;align-items:center;gap:5px;border-color:color-mix(in srgb,#7C3AED 35%,#fff);background:color-mix(in srgb,#7C3AED 7%,#fff);color:#5b21b6}
+.fa-gancho{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid color-mix(in srgb,#7C3AED 30%,#fff);background:color-mix(in srgb,#7C3AED 6%,#fff)}
+.fa-gancho > svg{flex:none;color:#7C3AED}
+.fa-gancho-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fa-gancho-txt b{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#5b21b6}
+.fa-gancho-txt span{font-size:13px;line-height:1.45;color:var(--fg)}
+.fa-ia-barra{list-style:none;display:flex;align-items:center;gap:7px;margin:0 0 6px;padding:7px 9px;border-radius:9px;border:1px solid color-mix(in srgb,#7C3AED 25%,#fff);background:color-mix(in srgb,#7C3AED 5%,#fff);font-size:12px;color:#5b21b6}
+.fa-ia-barra span{flex:1;min-width:0}
+.bl-ia-rodando{color:#5b21b6}

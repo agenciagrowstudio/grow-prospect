@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   testarIA: (ai) => ipcRenderer.invoke("ia-testar", { ai }),
   qualificarBrasileiros: (leads, comIA) =>
     ipcRenderer.invoke("qualificar-brasileiros", { leads, comIA }),
+  analisarLeadsIA: (leads) => ipcRenderer.invoke("analisar-leads-ia", { leads }),
+  onIAProgresso: (callback) => {
+    const listener = (_, data) => callback(data);
+    ipcRenderer.on("ia-progresso", listener);
+    return () => ipcRenderer.removeListener("ia-progresso", listener);
+  },
   cancelScrape: (queryId) =>
     ipcRenderer.invoke("cancel-scrape", { queryId }),
   repairMapAddresses: (leads) =>
