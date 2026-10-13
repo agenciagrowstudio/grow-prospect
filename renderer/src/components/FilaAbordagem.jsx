@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages } from 'lucide-react';
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Repeat, BookOpen } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
 import Bandeira from './Bandeira';
 import { publicoDoLead } from '../resultados';
+import { proximoFollowup, DIAS_FOLLOWUP, tempoAte } from '../followup';
+import FollowupsFila from './FollowupsFila';
+import RespostasProntas from './RespostasProntas';
 
 /**
  * Fila do dia: leads qualificados com a primeira mensagem já escrita.
@@ -89,6 +92,7 @@ async function abreLink(url) {
 
 export default function FilaAbordagem({
   leads, qualificacoes, tituloBusca, onFechar, extracoes = [], buscaAtiva = '', onTrocarBusca, onNovaExtracao,
+  leadsTodos,
 }) {
   const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web', numeroTeste: '' }));
   const [log, setLog] = useState(() => lerJson(CHAVE_LOG, {}));
@@ -166,10 +170,11 @@ export default function FilaAbordagem({
   // Já abordados: todo mundo que saiu da Fila, inclusive pulado e sem WhatsApp
   // (antes esses sumiam sem ter como voltar).
   const enviadas = Object.entries(log)
-    .filter(([, e]) => ['enviada', 'respondeu', 'pulada', 'sem_whatsapp'].includes(e.status))
+    .filter(([, e]) => ['enviada', 'respondeu', 'pulada', 'sem_whatsapp', 'sem_interesse'].includes(e.status))
     .sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0));
   const responderam = enviadas.filter(([, e]) => e.status === 'respondeu').length;
-  const contatados = enviadas.filter(([, e]) => e.status === 'enviada' || e.status === 'respondeu').length;
+  const contatados = enviadas.filter(([, e]) => ['enviada', 'respondeu', 'sem_interesse'].includes(e.status)).length;
+  const followupsLiberados = Object.values(log).filter((e) => proximoFollowup(e)?.liberado).length;
 
   // O selecionado some da fila quando é marcado: abre o próximo, na mesma posição.
   const atual = fila.find((f) => f.chave === selecionado) || fila[0] || null;
@@ -488,8 +493,14 @@ export default function FilaAbordagem({
           <button type="button" role="tab" aria-selected={aba === 'fila'} className={aba === 'fila' ? 'on' : ''} onClick={() => setAba('fila')}>
             <Send size={14} strokeWidth={2} aria-hidden="true" /> Para enviar <span className="fa-conta">{fila.length}</span>
           </button>
+          <button type="button" role="tab" aria-selected={aba === 'followups'} className={aba === 'followups' ? 'on' : ''} onClick={() => setAba('followups')}>
+            <Repeat size={14} strokeWidth={2} aria-hidden="true" /> Follow-ups {followupsLiberados > 0 && <span className="fa-conta fa-conta-forte">{followupsLiberados}</span>}
+          </button>
           <button type="button" role="tab" aria-selected={aba === 'enviadas'} className={aba === 'enviadas' ? 'on' : ''} onClick={() => setAba('enviadas')}>
             <MessagesSquare size={14} strokeWidth={2} aria-hidden="true" /> Já abordados <span className="fa-conta">{enviadas.length}</span>
+          </button>
+          <button type="button" role="tab" aria-selected={aba === 'respostas'} className={aba === 'respostas' ? 'on' : ''} onClick={() => setAba('respostas')}>
+            <BookOpen size={14} strokeWidth={2} aria-hidden="true" /> Respostas
           </button>
           <span className="fa-espaco" />
           {!cfg.nome && <span className="fa-alerta">Preencha seu nome nos ajustes para assinar a mensagem.</span>}
@@ -549,6 +560,12 @@ export default function FilaAbordagem({
           </div>
         ))}
 
+        {aba === 'followups' && (
+          <FollowupsFila log={log} setLog={setLog} leads={leadsTodos || leads} modoLink={modoLink} onAviso={setAviso} />
+        )}
+
+        {aba === 'respostas' && <RespostasProntas onAviso={setAviso} />}
+
         {aba === 'enviadas' && (enviadas.length === 0 ? (
           <div className="fa-vazio">
             <MessagesSquare size={28} strokeWidth={1.5} aria-hidden="true" />
@@ -566,10 +583,20 @@ export default function FilaAbordagem({
                     <span>{new Date(e.ts).toLocaleDateString('pt-BR')} · {ANGULOS.find((a) => a.id === e.angulo)?.nome || 'Abordagem geral'}</span>
                   </div>
                   <span className={`mm-situacao ${e.status === 'respondeu' ? 'mm-aprovado' : e.status === 'enviada' ? 'mm-analise' : 'fa-sit-fora'}`}>
-                    {{ respondeu: 'Respondeu', enviada: 'Aguardando', pulada: 'Pulado', sem_whatsapp: 'Sem WhatsApp' }[e.status]}
+                    {{ respondeu: 'Respondeu', enviada: 'Aguardando', pulada: 'Pulado', sem_whatsapp: 'Sem WhatsApp', sem_interesse: 'Sem interesse' }[e.status]}
                   </span>
                 </div>
                 {e.texto && <p className="fa-hist-texto"><TextoWhatsApp texto={e.texto} /></p>}
+                {e.status === 'enviada' && (() => {
+                  const p = proximoFollowup(e);
+                  const feitos = (e.followups || []).length;
+                  return (
+                    <p className="fa-hist-fu">
+                      Follow-up {feitos}/{DIAS_FOLLOWUP.length}
+                      {p ? ` · próximo ${p.liberado ? 'liberado' : tempoAte(p.liberaEm).replace('libera em', 'em')}` : ' · sequência encerrada'}
+                    </p>
+                  );
+                })()}
                 <div className="fa-hist-acoes">
                   {e.status === 'enviada' && (
                     <button type="button" className="fa-mini fa-mini-forte" onClick={() => setLog((a) => ({ ...a, [chave]: { ...e, status: 'respondeu' } }))}>

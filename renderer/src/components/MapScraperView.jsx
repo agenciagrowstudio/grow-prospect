@@ -1532,6 +1532,7 @@ export default function MapScraperView({
         {filaAberta && (
           <FilaAbordagem
             leads={visibleLeads}
+            leadsTodos={leads}
             qualificacoes={qualificacoes}
             tituloBusca={regiao.titulo}
             extracoes={areas}
