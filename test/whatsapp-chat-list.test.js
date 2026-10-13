@@ -169,3 +169,20 @@ test("getChats separates groups and unread for list filters", () => {
   assert.equal(chats.filter((c) => c.isGroup).length, 1);
   assert.equal(chats.filter((c) => c.unread > 0).length, 1);
 });
+
+test("getChats junta a conversa do @lid com a do telefone da mesma pessoa", () => {
+  const provider = makeProvider();
+  const phone = "5527996934731@s.whatsapp.net";
+  const lid = "123456789012345@lid";
+  provider._registerAlias(phone, lid);
+  provider._messages[lid] = [{ key: { id: "in-1", remoteJid: lid, fromMe: false }, message: { conversation: "Oii" }, messageTimestamp: 100 }];
+  provider._messages[phone] = [{ key: { id: "out-1", remoteJid: phone, fromMe: true }, message: { conversation: "ola" }, messageTimestamp: 200 }];
+  provider._chats[lid] = { jid: lid, name: "Matheus Dpaula", lastMessage: "Oii", unread: 1, timestamp: 100, pinned: 0, archived: false, isGroup: false };
+  provider._chats[phone] = { jid: phone, name: "", lastMessage: "Você: ola", unread: 0, timestamp: 200, pinned: 0, archived: false, isGroup: false };
+
+  const chats = provider.getChats();
+  assert.equal(chats.length, 1);
+  assert.equal(chats[0].lastMessage, "Você: ola");
+  assert.equal(chats[0].unread, 1);
+  assert.equal(chats[0].name, "Matheus Dpaula");
+});

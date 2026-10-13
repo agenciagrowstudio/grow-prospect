@@ -1516,8 +1516,33 @@ class BaileysProvider extends WhatsAppProvider {
     return this.getContacts().filter((c) => c.isGroup);
   }
 
+  /**
+   * O WhatsApp às vezes entrega a mensagem recebida pelo identificador interno
+   * (@lid) e a enviada pelo telefone: viravam duas conversas da mesma pessoa
+   * na lista. Aqui elas viram uma só (a conversa aberta já juntava as duas).
+   */
+  _juntaMesmoContato(lista) {
+    const porContato = new Map();
+    for (const c of lista) {
+      const chave = c.isGroup ? c.jid : (c.phoneJid || c.jid);
+      const ja = porContato.get(chave);
+      if (!ja) { porContato.set(chave, { ...c }); continue; }
+      const maisNova = (c.timestamp || 0) > (ja.timestamp || 0) ? c : ja;
+      const nomeDe = (x) => (x.name && !/^\+?\d[\d\s()-]*$/.test(x.name) ? x.name : '');
+      porContato.set(chave, {
+        ...maisNova,
+        name: nomeDe(maisNova) || nomeDe(c) || nomeDe(ja) || maisNova.name,
+        profilePic: maisNova.profilePic || c.profilePic || ja.profilePic,
+        unread: Number(ja.unread || 0) + Number(c.unread || 0),
+        pinned: Math.max(ja.pinned || 0, c.pinned || 0),
+        messageCount: Number(ja.messageCount || 0) + Number(c.messageCount || 0),
+      });
+    }
+    return [...porContato.values()];
+  }
+
   getChats() {
-    return Object.values(this._chats)
+    return this._juntaMesmoContato(Object.values(this._chats)
       .filter((c) => !c.archived)
       .filter((c) => this._hasConversationData(c))
       .map((c) => ({
@@ -1532,7 +1557,7 @@ class BaileysProvider extends WhatsAppProvider {
         pinned: c.pinned || 0,
         isGroup: !!c.isGroup,
         messageCount: this._getChatMessageCount(c.jid),
-      }))
+      })))
       .sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -1544,7 +1569,7 @@ class BaileysProvider extends WhatsAppProvider {
   }
 
   getArchivedChats() {
-    return Object.values(this._chats)
+    return this._juntaMesmoContato(Object.values(this._chats)
       .filter((c) => c.archived)
       .filter((c) => this._hasConversationData(c))
       .map((c) => ({
@@ -1560,7 +1585,7 @@ class BaileysProvider extends WhatsAppProvider {
         archived: true,
         isGroup: !!c.isGroup,
         messageCount: this._getChatMessageCount(c.jid),
-      }))
+      })))
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   }
 
