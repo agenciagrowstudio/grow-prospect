@@ -2269,7 +2269,7 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 .arm-gatilho-txt{display:flex;flex-direction:column;line-height:1.15;text-align:left}
 .arm-gatilho-txt b{font-size:12.5px}
 .arm-gatilho-txt span{font-size:11px;color:var(--muted)}
-.arm-painel{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:min(400px,92vw);background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 22px 48px rgba(16,24,40,.18);display:flex;flex-direction:column;overflow:hidden}
+.arm-painel{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:min(400px,calc(100vw - 24px));max-height:calc(100vh - 72px);overflow-y:auto;-webkit-app-region:no-drag;app-region:no-drag;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 22px 48px rgba(16,24,40,.18);display:flex;flex-direction:column}
 .arm-cab{display:flex;align-items:center;gap:11px;padding:14px 16px 10px}
 .arm-cab-icone{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--arm-leads) 12%,#fff);color:var(--arm-leads);flex:none}
 .arm-cab-icone.arm-atencao{background:color-mix(in srgb,#d97706 14%,#fff);color:#b45309}
@@ -2400,12 +2400,13 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .cot-gatilho{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;font:inherit;cursor:pointer;color:var(--fg)}
 .cot-gatilho:hover{background:#fafafa}
 .cot-icone{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,#047857 13%,#fff);color:#047857;flex:none}
-.cot-txt{display:flex;flex-direction:column;line-height:1.15;text-align:left}
+.cot-txt{display:flex;flex-direction:column;line-height:1.15;text-align:left;white-space:nowrap}
 .cot-txt b{font-size:12.5px;font-variant-numeric:tabular-nums}
 .cot-txt span{font-size:11px;color:var(--muted)}
 .cot-txt span.sobe,.cot-var.sobe{color:#047857}
 .cot-txt span.desce,.cot-var.desce{color:#b91c1c}
-.cot-painel{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:min(380px,92vw);background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 22px 48px rgba(16,24,40,.18);display:flex;flex-direction:column;overflow:hidden}
+/* Painéis do topo ficam fora da área de arrastar a janela (Electron). */
+.cot-painel{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 72px);overflow-y:auto;overscroll-behavior:contain;-webkit-app-region:no-drag;app-region:no-drag;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 22px 48px rgba(16,24,40,.18);display:flex;flex-direction:column}
 .cot-cab{display:flex;align-items:center;gap:10px;padding:14px 12px 10px 16px}
 .cot-cab-icone{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,#047857 12%,#fff);color:#047857;flex:none}
 .cot-cab-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
@@ -2425,7 +2426,9 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .cot-campo > span{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .cot-campo input{font:inherit;font-size:18px;font-weight:700;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--fg);font-variant-numeric:tabular-nums}
 .cot-atalhos,.cot-taxas{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.cot-atalhos .chip.on,.cot-taxas .chip.on{border-color:#047857;color:#047857;background:color-mix(in srgb,#047857 8%,#fff)}
+.cot-chip{height:30px;padding:0 11px;border:1px solid var(--border);border-radius:99px;background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:var(--fg);cursor:pointer;white-space:nowrap}
+.cot-chip:hover{border-color:#047857;color:#047857}
+.cot-chip.on{border-color:#047857;color:#047857;background:color-mix(in srgb,#047857 8%,#fff)}
 .cot-taxa-livre{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
 .cot-taxa-livre input{width:52px;font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--fg);text-align:right}
 .cot-resultado{display:flex;flex-direction:column;gap:6px;padding:12px 16px 14px;border-top:1px solid var(--border)}
@@ -2436,3 +2439,6 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .cot-total span{font-size:12.5px;font-weight:700;color:#065f46}
 .cot-total b{font-size:22px;color:#065f46;font-variant-numeric:tabular-nums}
 .cot-dica{margin:2px 0 0;font-size:11px;line-height:1.4;color:var(--muted)}
+
+/* Com rolagem, as seções não encolhem: o painel rola. */
+.cot-painel > *,.arm-painel > *{flex:none}

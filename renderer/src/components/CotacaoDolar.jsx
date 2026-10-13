@@ -13,6 +13,7 @@ const ATALHOS = [500, 1000, 2000, 5000];
 const TAXAS = [
   { nome: 'Sem taxa', pct: 0 },
   { nome: 'Wise', pct: 1 },
+  { nome: 'Nomad', pct: 2, dica: 'Spread a partir de 1% mais o IOF da conversão. Confira o valor exato no app da Nomad.' },
   { nome: 'Banco', pct: 4 },
   { nome: 'PayPal', pct: 5 },
 ];
@@ -67,7 +68,7 @@ export default function CotacaoDolar() {
       </button>
 
       {aberto && (
-        <div className="cot-painel" role="dialog" aria-label="Cotação do dólar">
+        <div className="cot-painel" role="dialog" aria-label="Cotação do dólar" onDoubleClick={(e) => e.stopPropagation()}>
           <header className="cot-cab">
             <span className="cot-cab-icone" aria-hidden="true"><DollarSign size={18} strokeWidth={2} /></span>
             <div className="cot-cab-txt">
@@ -106,14 +107,14 @@ export default function CotacaoDolar() {
             </label>
             <div className="cot-atalhos">
               {ATALHOS.map((v) => (
-                <button key={v} type="button" className={`chip${numeroDigitado(valor) === v ? ' on' : ''}`} onClick={() => setValor(String(v))}>{dolares(v)}</button>
+                <button key={v} type="button" className={`cot-chip${numeroDigitado(valor) === v ? ' on' : ''}`} onClick={() => setValor(String(v))}>{dolares(v)}</button>
               ))}
             </div>
             <div className="cot-campo">
               <span>Taxa da forma de recebimento</span>
               <div className="cot-taxas">
                 {TAXAS.map((t) => (
-                  <button key={t.nome} type="button" className={`chip${taxa === t.pct ? ' on' : ''}`} onClick={() => setTaxa(t.pct)}>
+                  <button key={t.nome} type="button" className={`cot-chip${taxa === t.pct ? ' on' : ''}`} onClick={() => setTaxa(t.pct)} title={t.dica || `${t.nome}: taxa aproximada`}>
                     {t.nome}{t.pct ? ` ${t.pct}%` : ''}
                   </button>
                 ))}
