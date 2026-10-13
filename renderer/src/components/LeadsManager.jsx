@@ -9,6 +9,8 @@ import Bandeira from './Bandeira';
 import { publicoDoLead, PUBLICOS_RESULTADO } from '../resultados';
 import IconeNicho from './IconeNicho';
 import MenuStatusLead from './MenuStatusLead';
+import { ImagemPng } from './IconePng';
+import { ICONES } from '../assets/icones';
 import { statusDoLead, aplicaStatus, nomeDoStatus, ordemDoStatus } from '../statusLead';
 import {
   Globe,
@@ -34,7 +36,8 @@ import {
   CircleHelp,
   Users,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  MapPin
 } from 'lucide-react';
 import { dedupeLeads, normalizeLeadCategory, normalizeLeadCollection, readLocalArray, localDoLead } from '../leadData';
 
@@ -1352,13 +1355,31 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       }
                       if (colId === 'site') return <td key={colId}>{getLeadSite(l) || '—'}</td>;
                       if (colId === 'mail') return <td key={colId}>{getLeadMail(l) || '—'}</td>;
-                      if (colId === 'av') return <td key={colId} className="num">{getLeadRating(l)} ({getLeadReviews(l)})</td>;
+                      if (colId === 'av') {
+                        // Igual ao card do mapa: logo do Google, nota e número de avaliações.
+                        const nota = Number(String(getLeadRating(l)).replace(',', '.'));
+                        const qtd = getLeadReviews(l);
+                        return (
+                          <td key={colId} className="num">
+                            <span className="bl-nota">
+                              <ImagemPng src={ICONES.google} size={14} />
+                              {Number.isFinite(nota) && nota > 0 ? nota.toFixed(1).replace('.', ',') : 'sem nota'}
+                              {qtd > 0 && <small>({qtd})</small>}
+                            </span>
+                          </td>
+                        );
+                      }
                       if (colId === 'uf') return <td key={colId}>{getLeadUf(l) || '—'}</td>;
                       if (colId === 'city') {
                         const loc = localDoLead(l, buscasPorId);
                         return (
-                          <td key={colId} className={loc.daBusca ? 'bl-cidade-busca' : undefined} title={loc.daBusca ? 'O negócio não mostra endereço no Google: é a cidade da extração' : undefined}>
-                            {loc.cidade || '—'}
+                          <td key={colId} title={loc.daBusca ? 'O negócio não mostra endereço no Google: é a cidade da extração' : undefined}>
+                            {loc.cidade ? (
+                              <span className={`bl-cidade${loc.daBusca ? ' bl-cidade-busca' : ''}`}>
+                                <MapPin size={12} strokeWidth={2} aria-hidden="true" />
+                                {loc.cidade}{loc.uf ? <small> · {loc.uf}</small> : null}
+                              </span>
+                            ) : '—'}
                           </td>
                         );
                       }

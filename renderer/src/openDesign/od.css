@@ -2574,4 +2574,10 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .msl-item-txt b{font-size:13px;font-weight:600}
 .msl-item-txt small{font-size:11.5px;color:var(--muted)}
 .msl-check{color:var(--accent);flex:none}
+/* Base de Leads: nota e cidade no visual do card */
+.bl-nota{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bl-nota small{font-weight:500;color:var(--muted);font-size:12px}
+.bl-cidade{display:inline-flex;align-items:center;gap:5px;color:var(--fg);white-space:nowrap}
+.bl-cidade svg{color:var(--muted);flex:none}
+.bl-cidade small{color:var(--muted);font-size:12px;font-weight:600}
 .bl-cidade-busca{color:var(--muted)}
