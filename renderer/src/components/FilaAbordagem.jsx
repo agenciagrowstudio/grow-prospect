@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages,
-} from 'lucide-react';
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Loader } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
@@ -117,6 +116,32 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     }).catch(() => {});
   }, []);
   const modoLink = NO_CELULAR ? 'wame' : cfg.abrirEm;
+
+  // WhatsApp conectado aqui no Prospector: a mensagem sai por ele, sem abrir
+  // outro programa. Continua manual: um clique por mensagem, depois de conferir.
+  const [conexao, setConexao] = useState(null);
+  const [enviando, setEnviando] = useState(null);
+  useEffect(() => {
+    const api = window.whatsappAPI;
+    if (!api?.listConnections) return undefined;
+    let vivo = true;
+    const le = () => api.listConnections().then((r) => {
+      if (!vivo) return;
+      const lista = r?.connections || [];
+      const ativa = lista.find((c) => c.active && c.connected) || lista.find((c) => c.connected);
+      setConexao(ativa ? { id: ativa.id, fim: String(ativa.phoneNumber || '').replace(/\D/g, '').slice(-4) } : null);
+    }).catch(() => {});
+    le();
+    const off = api.onStatus?.(() => le());
+    const t = setInterval(le, 15000);
+    return () => { vivo = false; clearInterval(t); if (typeof off === 'function') off(); };
+  }, []);
+
+  const enviaPeloProspector = async (numero, texto) => {
+    const r = await window.chatAPI?.sendMessage?.(numero, texto, conexao?.id);
+    if (r?.success === false) throw new Error(r.error || 'O WhatsApp não aceitou o envio.');
+    return r;
+  };
   useEffect(() => gravaJson(CHAVE_LOG, log), [log]);
   useEffect(() => {
     const esc = (e) => { if (e.key === 'Escape') onFechar(); };
@@ -194,6 +219,25 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     if (status === 'enviada') setAviso(`${item.lead.name || 'Lead'} marcado como enviado.`);
   };
 
+  const envia = async (item) => {
+    if (enviando) return;
+    const numero = digitosWhatsApp(item.q.canais.whatsapp, item.lead.pais);
+    setEnviando(item.chave);
+    setAviso('');
+    try {
+      await enviaPeloProspector(numero, textoDe(item));
+      marca(item, 'enviada');
+      setAviso(`Enviada para ${item.lead.name || 'o lead'} pelo WhatsApp •••• ${conexao?.fim || ''}.`);
+    } catch (e) {
+      const semZap = /invalid|inválid|not.*whatsapp|não.*whatsapp|exists/i.test(e.message);
+      setAviso(semZap
+        ? 'Esse número não tem WhatsApp. Use "Sem WhatsApp" para tirar da fila.'
+        : `Não foi enviada: ${e.message}`);
+    } finally {
+      setEnviando(null);
+    }
+  };
+
   const desfaz = (chave) => setLog((atualLog) => {
     const { [chave]: _tirado, ...resto } = atualLog;
     return resto;
@@ -242,6 +286,15 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     if (!numero) {
       setAjustesAbertos(true);
       setAviso('Coloque seu número nos ajustes para receber o teste.');
+      return;
+    }
+    if (conexao) {
+      try {
+        await enviaPeloProspector(numero, textoDe(item));
+        setAviso(`Teste enviado para ${cfg.numeroTeste} pelo WhatsApp •••• ${conexao.fim}. Confira no celular.`);
+      } catch (e) {
+        setAviso(`O teste não foi enviado: ${e.message}`);
+      }
       return;
     }
     const url = linkWhatsApp(numero, textoDe(item), modoLink);
@@ -367,14 +420,34 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
         </div>
 
         <div className="fa-passos">
-          <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
-            <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
-            {jaAbriu ? 'Abrir de novo' : 'Abrir no WhatsApp'}
-          </button>
-          <button type="button" className={`btn fa-enviei${jaAbriu ? ' pronto' : ''}`} onClick={() => marca(atual, 'enviada')}>
-            <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
-          </button>
-          <span className="fa-espaco" />
+          {conexao ? (
+            <>
+              <button type="button" className="btn fa-abrir fa-enviar" onClick={() => envia(atual)} disabled={enviando === chave}>
+                {enviando === chave ? <Loader size={16} strokeWidth={2} className="cfg-girando" aria-hidden="true" /> : <Send size={16} strokeWidth={2} aria-hidden="true" />}
+                {enviando === chave ? 'Enviando…' : `Enviar pelo •••• ${conexao.fim}`}
+              </button>
+              {jaAbriu && (
+                <button type="button" className="btn fa-enviei pronto" onClick={() => marca(atual, 'enviada')}>
+                  <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
+                </button>
+              )}
+              <span className="fa-espaco" />
+              <button type="button" className="fa-mini" onClick={() => abre(atual)} title="Abrir a conversa no WhatsApp do computador, sem enviar">
+                <ExternalLink size={13} strokeWidth={2} aria-hidden="true" /> Abrir no app
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
+                <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
+                {jaAbriu ? 'Abrir de novo' : 'Abrir no WhatsApp'}
+              </button>
+              <button type="button" className={`btn fa-enviei${jaAbriu ? ' pronto' : ''}`} onClick={() => marca(atual, 'enviada')}>
+                <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
+              </button>
+              <span className="fa-espaco" />
+            </>
+          )}
           <button type="button" className="fa-mini" onClick={() => testa(atual)} title={cfg.numeroTeste ? `Mandar esta mensagem para ${cfg.numeroTeste}` : 'Coloque seu número nos ajustes'}>
             <Smartphone size={13} strokeWidth={2} aria-hidden="true" /> Testar no meu número
           </button>
@@ -386,9 +459,11 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
           </button>
         </div>
         <p className="fa-dica">
-          {jaAbriu
-            ? 'Enviou no WhatsApp? Clique em Enviei para contar na meta e ir para o próximo.'
-            : 'O WhatsApp abre com o texto na caixa. Você confere e aperta enviar lá.'}
+          {conexao
+            ? `Confira o texto e clique em Enviar: a mensagem sai pelo WhatsApp conectado aqui (•••• ${conexao.fim}), conta na meta e abre o próximo.`
+            : jaAbriu
+              ? 'Enviou no WhatsApp? Clique em Enviei para contar na meta e ir para o próximo.'
+              : 'O WhatsApp abre com o texto na caixa. Você confere e aperta enviar lá.'}
         </p>
       </section>
     );

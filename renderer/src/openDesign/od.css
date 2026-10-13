@@ -2186,3 +2186,8 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 .cfg-atualizacao .btn{display:inline-flex;align-items:center;gap:6px}
 
 .fa-dica-windows{grid-column:1/-1;margin:0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,#FF9D00 12%,#fff);border:1px solid color-mix(in srgb,#FF9D00 35%,#fff);font-size:12.5px;line-height:1.5;color:var(--fg)}
+
+/* Fila: envio pelo WhatsApp conectado no Prospector */
+.fa-enviar{background:#128C4A;border-color:#128C4A;color:#fff}
+.fa-enviar:hover:not(:disabled){background:#0f7a40;border-color:#0f7a40}
+.fa-enviar:disabled{opacity:.75;cursor:progress}
