@@ -242,9 +242,95 @@ const FIO = '#ececef';
 const estilo = (tam, alt, cor, peso = 400, extra = '') => `font-family:${FONTE};font-size:${tam}px;line-height:${alt}px;color:${cor};font-weight:${peso};${extra}`;
 
 /**
+ * Formato simples: o mesmo conteúdo como um e-mail escrito à mão, sem imagem,
+ * sem botão, sem fonte externa e sem layout em tabela. É o que chega melhor
+ * na caixa de entrada num primeiro contato frio (visual de campanha tende a
+ * ir para Spam ou Promoções). Negrito e links continuam.
+ */
+function renderizaSimples(template, dados) {
+  const blocos = Array.isArray(template?.blocos) ? template.blocos : [];
+  const p = [];
+  const t = [];
+  const par = (html) => p.push(`<p style="margin:0 0 14px">${html}</p>`);
+  blocos.forEach((b) => {
+    switch (b.tipo) {
+      case 'titulo':
+      case 'destaque':
+        par(htmlDoTexto(b.texto, dados));
+        t.push(textoPuro(b.texto, dados));
+        break;
+      case 'texto':
+        String(b.texto || '').split(/\n\s*\n/).forEach((x) => { par(htmlDoTexto(x, dados)); t.push(textoPuro(x, dados)); });
+        break;
+      case 'lista': {
+        const itens = String(b.texto || '').split('\n').map((i) => i.trim()).filter(Boolean);
+        par(itens.map((i) => `- ${htmlDoTexto(i, dados)}`).join('<br>'));
+        t.push(itens.map((i) => `- ${textoPuro(i, dados)}`).join('\n'));
+        break;
+      }
+      case 'passos': {
+        const itens = String(b.texto || '').split('\n').map((i) => i.trim()).filter(Boolean);
+        const linha = (i, n, html) => {
+          const corte = i.indexOf(': ');
+          if (corte <= 0) return `${n + 1}. ${html ? htmlDoTexto(i, dados) : textoPuro(i, dados)}`;
+          const tit = i.slice(0, corte);
+          const desc = i.slice(corte + 2);
+          return html
+            ? `${n + 1}. <strong style="font-weight:600">${htmlDoTexto(tit, dados)}</strong>: ${htmlDoTexto(desc, dados)}`
+            : `${n + 1}. ${textoPuro(tit, dados)}: ${textoPuro(desc, dados)}`;
+        };
+        par(itens.map((i, n) => linha(i, n, true)).join('<br>'));
+        t.push(itens.map((i, n) => linha(i, n, false)).join('\n'));
+        break;
+      }
+      case 'depoimento':
+        par(`"${htmlDoTexto(b.texto, dados)}"${b.autor ? `<br>${htmlDoTexto(b.autor, dados)}` : ''}`);
+        t.push(`"${textoPuro(b.texto, dados)}"${b.autor ? ` (${textoPuro(b.autor, dados)})` : ''}`);
+        break;
+      case 'botao': {
+        // Sem botão: o pedido vira uma frase. Responder o e-mail é o caminho.
+        const link = linkSeguro(b.link);
+        const nota = String(b.nota || '').replace(/^ou\s+/i, '');
+        const frase = /^mailto:/i.test(link) || !link
+          ? (nota ? nota.charAt(0).toUpperCase() + nota.slice(1) : textoPuro(b.texto, dados))
+          : '';
+        if (frase) { par(htmlDoTexto(frase, dados)); t.push(textoPuro(frase, dados)); }
+        else if (link) { par(`${htmlDoTexto(b.texto, dados)}: <a href="${escapa(link)}" style="color:#1a56db">${escapa(link)}</a>`); t.push(`${textoPuro(b.texto, dados)}: ${link}`); }
+        break;
+      }
+      case 'assinatura': {
+        const linhas = String(b.texto || '').split('\n').filter((l) => preenche(l, dados).trim());
+        const site = linkSeguro(b.site);
+        const extras = [
+          b.whatsapp ? `WhatsApp: +${String(b.whatsapp).replace(/\D/g, '')}` : '',
+          site ? `<a href="${escapa(site)}" style="color:#1a56db">${escapa(site.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</a>` : '',
+          b.instagram ? `Instagram: @${escapa(String(b.instagram).replace(/^@/, ''))}` : '',
+        ].filter(Boolean);
+        p.push(`<p style="margin:22px 0 0">${linhas.map((l) => htmlDoTexto(l, dados)).join('<br>')}${extras.length ? `<br>${extras.join('<br>')}` : ''}</p>`);
+        t.push([preenche(linhas.join('\n'), dados), ...extras.map((e) => e.replace(/<[^>]+>/g, ''))].join('\n'));
+        break;
+      }
+      default:
+    }
+  });
+  const rodape = template?.rodape ? preenche(template.rodape, dados) : '';
+  const assunto = textoPuro(template?.assunto, dados).slice(0, 200);
+  const html = `<!doctype html><html lang="${template?.idioma === 'en' ? 'en' : 'pt-BR'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapa(assunto)}</title></head>`
+    + `<body style="margin:0;padding:16px;background:#ffffff"><div style="max-width:600px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#222222">`
+    + p.join('')
+    + (rodape ? `<p style="margin:28px 0 0;font-size:12px;line-height:1.5;color:#8a8a8a">${escapa(rodape)}</p>` : '')
+    + '</div></body></html>';
+  return { assunto, html, texto: [...t, rodape].filter(Boolean).join('\n\n') };
+}
+
+/**
+ * @param {object} template
+ * @param {object} dados campos automáticos (dadosDoLead)
+ * @param {{simples?: boolean}} [opcoes] simples: e-mail só com texto (melhor entrega)
  * @returns {{assunto: string, html: string, texto: string}}
  */
-export function renderizaEmail(template, dados = {}) {
+export function renderizaEmail(template, dados = {}, opcoes = {}) {
+  if (opcoes.simples) return renderizaSimples(template, dados);
   const cor = /^#[0-9a-f]{6}$/i.test(template?.cor || '') ? template.cor : PRETO;
   const blocos = Array.isArray(template?.blocos) ? template.blocos : [];
   const h = [];

@@ -2694,3 +2694,10 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .em2-de b{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-size:13.5px;font-weight:600;color:var(--fg)}
 .em2-de small{font-size:12.5px;font-weight:400;color:var(--muted)}
 .em2-de em{font-style:normal;font-size:12.5px;color:var(--warn);font-weight:600}
+.em2-formato{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.em2-formato button{display:flex;flex-direction:column;gap:3px;text-align:left;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;font:inherit;cursor:pointer}
+.em2-formato button b{font-size:13px;color:var(--fg)}
+.em2-formato button span{font-size:11.5px;line-height:1.4;color:var(--muted)}
+.em2-formato button:hover{border-color:#d6d9df}
+.em2-formato button.on{border-color:var(--accent);background:var(--accent-soft)}
+.em2-formato button.on b{color:var(--accent)}
