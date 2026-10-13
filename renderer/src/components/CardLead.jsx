@@ -129,6 +129,15 @@ function BadgeServicos({ servicos }) {
   );
 }
 
+/** Link da ficha do negócio no Google: o guardado na extração ou uma busca pelo nome e endereço. */
+export function linkFichaGoogle(lead) {
+  const guardado = String(lead?.googleMapsUrl || '');
+  if (/^https:\/\/(www\.)?google\.[a-z.]+\/maps/i.test(guardado)) return guardado;
+  const consulta = encodeURIComponent([lead?.name, lead?.address || lead?.city].filter(Boolean).join(' '));
+  const lugar = lead?.placeId ? `&query_place_id=${encodeURIComponent(lead.placeId)}` : '';
+  return `https://www.google.com/maps/search/?api=1&query=${consulta}${lugar}`;
+}
+
 function fmt(n) {
   return Number(n).toFixed(1).replace('.', ',');
 }
@@ -166,11 +175,21 @@ export default function CardLead({
 
       <div className="cl-corpo">
         <div className="cl-l1">
-          <span className="cl-google" title={nota ? `Google: ${fmt(nota)} em ${avaliacoes} avaliações` : 'Sem nota no Google'}>
+          {/* Abre a ficha do negócio no Google (Maps / Google Negócio). */}
+          <button
+            type="button"
+            className="cl-google cl-google-link"
+            title={`${nota ? `Google: ${fmt(nota)} em ${avaliacoes} avaliações. ` : 'Sem nota no Google. '}Abrir a ficha no Google`}
+            aria-label={`Abrir a ficha de ${nome} no Google`}
+            onClick={(e) => {
+              e.stopPropagation();
+              abrir(linkFichaGoogle(lead));
+            }}
+          >
             <LogoGoogle size={13} />
             {nota ? fmt(nota) : 'sem nota'}
             {avaliacoes > 0 && <small>({avaliacoes})</small>}
-          </span>
+          </button>
           {lead.ia && <SeloIA ia={lead.ia} />}
           <span className={`cl-temp cl-temp-${q.temperatura.id}`} title={`${q.temperatura.rotulo}: ${q.temperatura.funil}`}>
             <IconeTemp size={11} strokeWidth={2} />

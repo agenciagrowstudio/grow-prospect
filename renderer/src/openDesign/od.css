@@ -2390,3 +2390,7 @@ body.fa-arrastando{cursor:col-resize;user-select:none}
 .selo-ia{background:#f3f4f6;color:#111827;padding:1px 5px;gap:0}
 .fa-chip-ia .icone-ia,.fa-gancho > .icone-ia,.fa-ia-barra .icone-ia{color:#111827;flex:none}
 .bl-topo-acoes .icone-ia{color:#111827}
+/* Nota do Google clicável: abre a ficha do negócio */
+button.cl-google-link{border:0;background:transparent;font:inherit;padding:2px 6px;margin:-2px -6px;border-radius:7px;cursor:pointer;color:inherit}
+button.cl-google-link:hover{background:#f3f4f6}
+button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
