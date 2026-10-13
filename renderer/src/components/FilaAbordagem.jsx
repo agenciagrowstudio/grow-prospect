@@ -9,7 +9,6 @@ import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
 import Bandeira from './Bandeira';
 import { publicoDoLead } from '../resultados';
-import { ehWeb } from '../ambiente';
 
 /**
  * Fila do dia: leads qualificados com a primeira mensagem já escrita.
@@ -75,6 +74,19 @@ function marcaPublico(leadId, publico) {
   } catch { /* sem espaço: a marcação vale só nesta abertura */ }
 }
 
+// No celular, wa.me abre o aplicativo. No computador (app ou navegador), a
+// página do wa.me tentava chamar o aplicativo e às vezes dizia que ele não
+// estava instalado: lá o link vai direto, pelo que a pessoa escolheu.
+const NO_CELULAR = typeof navigator !== 'undefined' && /android|iphone|ipad|mobile/i.test(navigator.userAgent || '');
+
+/** Abre o link: whatsapp:// troca de app sem deixar aba em branco. */
+async function abreLink(url) {
+  if (window.electronAPI?.openExternal) return window.electronAPI.openExternal(url);
+  if (url.startsWith('whatsapp:')) { window.location.href = url; return { success: true }; }
+  window.open(url, '_blank', 'noopener');
+  return { success: true };
+}
+
 export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFechar }) {
   const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web', numeroTeste: '' }));
   const [log, setLog] = useState(() => lerJson(CHAVE_LOG, {}));
@@ -94,6 +106,17 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
   const hoje = chaveDoDia();
 
   useEffect(() => gravaJson(CHAVE_CFG, cfg), [cfg]);
+  // WhatsApp instalado no PC e a pessoa nunca escolheu: abre no aplicativo.
+  // Se o Windows ainda não sabe com qual app abrir links do WhatsApp, avisa.
+  const [windowsPergunta, setWindowsPergunta] = useState(false);
+  useEffect(() => {
+    if (!window.electronAPI?.whatsappInstalado) return;
+    window.electronAPI.whatsappInstalado().then((r) => {
+      setWindowsPergunta(Boolean(r?.precisaEscolher));
+      if (r?.instalado) setCfg((c) => (c.abrirEmEscolhido || c.abrirEm === 'app' ? c : { ...c, abrirEm: 'app' }));
+    }).catch(() => {});
+  }, []);
+  const modoLink = NO_CELULAR ? 'wame' : cfg.abrirEm;
   useEffect(() => gravaJson(CHAVE_LOG, log), [log]);
   useEffect(() => {
     const esc = (e) => { if (e.key === 'Escape') onFechar(); };
@@ -178,18 +201,14 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
 
   const abre = async (item) => {
     const numero = digitosWhatsApp(item.q.canais.whatsapp, item.lead.pais);
-    const url = linkWhatsApp(numero, textoDe(item), ehWeb ? 'wame' : cfg.abrirEm);
+    const url = linkWhatsApp(numero, textoDe(item), modoLink);
     setAviso('');
     setAbertos((a) => ({ ...a, [item.chave]: true }));
-    if (window.electronAPI?.openExternal) {
-      const r = await window.electronAPI.openExternal(url);
-      if (r && r.success === false) {
-        setAviso(cfg.abrirEm === 'app'
-          ? 'Não consegui abrir o aplicativo do WhatsApp. Confira se ele está instalado ou troque para WhatsApp Web.'
-          : 'Não consegui abrir o navegador.');
-      }
-    } else {
-      window.open(url, '_blank', 'noopener');
+    const r = await abreLink(url);
+    if (r && r.success === false) {
+      setAviso(modoLink === 'app'
+        ? 'Não consegui abrir o aplicativo do WhatsApp. Confira se ele está instalado ou troque para WhatsApp Web nos ajustes.'
+        : 'Não consegui abrir o navegador.');
     }
   };
 
@@ -225,9 +244,8 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
       setAviso('Coloque seu número nos ajustes para receber o teste.');
       return;
     }
-    const url = linkWhatsApp(numero, textoDe(item), ehWeb ? 'wame' : cfg.abrirEm);
-    if (window.electronAPI?.openExternal) await window.electronAPI.openExternal(url);
-    else window.open(url, '_blank', 'noopener');
+    const url = linkWhatsApp(numero, textoDe(item), modoLink);
+    await abreLink(url);
     setAviso('Abrindo a conversa com o seu número. Envie para ver como a mensagem chega.');
   };
 
@@ -240,7 +258,11 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
 
   const restaura = (item) => setEditados((x) => { const { [chaveEdicao(item)]: _x, ...r } = x; return r; });
 
-  const muda = (campo) => (e) => setCfg((c) => ({ ...c, [campo]: campo === 'limite' ? Number(e.target.value) : e.target.value }));
+  const muda = (campo) => (e) => setCfg((c) => ({
+    ...c,
+    [campo]: campo === 'limite' ? Number(e.target.value) : e.target.value,
+    ...(campo === 'abrirEm' ? { abrirEmEscolhido: true } : {}),
+  }));
   const progresso = Math.min(100, (enviadasHoje / cfg.limite) * 100);
 
   const detalhe = atual && (() => {
@@ -421,13 +443,20 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
             <label>Seu WhatsApp (teste)
               <input value={cfg.numeroTeste} onChange={muda('numeroTeste')} placeholder="Ex.: 27 99999-9999" autoComplete="off" inputMode="tel" />
             </label>
-            {!ehWeb && (
+            {!NO_CELULAR && (
               <label>Abrir em
                 <select value={cfg.abrirEm} onChange={muda('abrirEm')}>
-                  <option value="web">WhatsApp Web</option>
-                  <option value="app">Aplicativo do WhatsApp</option>
+                  <option value="app">Aplicativo do WhatsApp (instalado no PC)</option>
+                  <option value="web">WhatsApp Web (navegador)</option>
                 </select>
               </label>
+            )}
+            {windowsPergunta && cfg.abrirEm === 'app' && (
+              <p className="fa-dica-windows">
+                O Windows ainda não sabe com qual programa abrir links do WhatsApp. Em Configurações do Windows,
+                Aplicativos padrão, procure por WHATSAPP e escolha o WhatsApp. Ou, no primeiro envio, escolha o
+                WhatsApp na janela que aparecer e marque "Sempre usar este aplicativo".
+              </p>
             )}
           </div>
         )}

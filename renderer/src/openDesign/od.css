@@ -2184,3 +2184,5 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 .cfg-atualizacao-txt span.ok{color:#047857}
 .cfg-atualizacao-txt span.erro{color:#b91c1c}
 .cfg-atualizacao .btn{display:inline-flex;align-items:center;gap:6px}
+
+.fa-dica-windows{grid-column:1/-1;margin:0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,#FF9D00 12%,#fff);border:1px solid color-mix(in srgb,#FF9D00 35%,#fff);font-size:12.5px;line-height:1.5;color:var(--fg)}

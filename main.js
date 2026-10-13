@@ -1727,6 +1727,20 @@ function isWhatsAppSendUrl(url) {
   }
 }
 
+// O WhatsApp do computador (inclusive o da Microsoft Store) registra o
+// endereço whatsapp://. Com ele, a Fila abre direto no aplicativo.
+// Sem escolha feita, o Windows responde com o nome da janela "Selecionar um
+// aplicativo": o link abre essa pergunta em vez do WhatsApp.
+ipcMain.handle("whatsapp-instalado", async () => {
+  try {
+    const nome = app.getApplicationNameForProtocol("whatsapp://send") || "";
+    const perguntando = /selecionar|escolher|pick an app|choose an app|select an app/i.test(nome);
+    return { instalado: Boolean(nome) && !perguntando, precisaEscolher: perguntando, nome };
+  } catch {
+    return { instalado: false, precisaEscolher: false };
+  }
+});
+
 ipcMain.handle("open-external", async (_, { url } = {}) => {
   try {
     if (!isHttpUrl(url) && !isWhatsAppSendUrl(url)) return { success: false, error: "URL inválida" };

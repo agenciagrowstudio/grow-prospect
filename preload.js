@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onWinState: (callback) =>
     ipcRenderer.on("win-state", (_, state) => callback(state)),
   openExternal: (url) => ipcRenderer.invoke("open-external", { url }),
+  whatsappInstalado: () => ipcRenderer.invoke("whatsapp-instalado"),
   checkUpdate: () => ipcRenderer.invoke("update-check"),
   downloadUpdate: () => ipcRenderer.invoke("update-download"),
   installUpdate: () => ipcRenderer.invoke("update-install"),
