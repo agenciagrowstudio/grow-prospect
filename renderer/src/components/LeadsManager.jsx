@@ -8,6 +8,8 @@ import { analisaComIA, aplicaResultadosIA, textoProgressoIA, iaDisponivel } from
 import Bandeira from './Bandeira';
 import { publicoDoLead, PUBLICOS_RESULTADO } from '../resultados';
 import IconeNicho from './IconeNicho';
+import MenuStatusLead from './MenuStatusLead';
+import { statusDoLead, aplicaStatus, nomeDoStatus, ordemDoStatus } from '../statusLead';
 import {
   Globe,
   Instagram,
@@ -216,6 +218,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
         localStorage.setItem(chave, JSON.stringify(mapa));
       } catch { /* sem registro salvo */ }
     });
+    try { setLogFila(JSON.parse(localStorage.getItem('sigma_abordagem_log') || '{}') || {}); } catch { /* segue */ }
     setSel(new Set());
     setConfirmaZerar(false);
     window.dispatchEvent(new Event('sigma:leads-updated'));
@@ -263,11 +266,28 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
     return false;
   };
 
-  const leadStatus = (leadId) => {
-    const h = hist[leadId] || [];
-    if (h.some((e) => e.k === 'reply')) return 'resp';
-    if (h.some((e) => e.k === 'sent')) return 'env';
-    return 'novo';
+  // Estado do lead: o mesmo registro da Fila do dia, então dá para mudar aqui
+  // (ex.: "Sem interesse") e a Fila já respeita.
+  const [logFila, setLogFila] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sigma_abordagem_log') || '{}') || {}; } catch { return {}; }
+  });
+  const leadStatus = (leadId) => statusDoLead(leadId, logFila, hist[leadId] || []);
+
+  const mudaStatus = (lista, status) => {
+    if (!lista.length) return;
+    let proximo = logFila;
+    lista.forEach((l) => { proximo = aplicaStatus(proximo, { id: getLeadId(l, 0), name: getLeadName(l) }, status); });
+    try { localStorage.setItem('sigma_abordagem_log', JSON.stringify(proximo)); } catch { /* sem espaço: vale nesta sessão */ }
+    setLogFila(proximo);
+    window.dispatchEvent(new Event('sigma:leads-updated'));
+    addNotification({
+      type: 'success',
+      category: 'system',
+      title: 'Estado atualizado',
+      message: lista.length === 1
+        ? `${getLeadName(lista[0])}: ${nomeDoStatus(status)}.`
+        : `${lista.length} leads: ${nomeDoStatus(status)}.`,
+    });
   };
 
   // Period filtering
@@ -503,10 +523,8 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
         x = parseFloat(String(getLeadRating(a)).replace(',', '.')) || 0;
         y = parseFloat(String(getLeadRating(b)).replace(',', '.')) || 0;
       } else if (bSort.key === 'status') {
-        const sx = leadStatus(getLeadId(a, 0));
-        const sy = leadStatus(getLeadId(b, 0));
-        x = sx === 'resp' ? 2 : sx === 'env' ? 1 : 0;
-        y = sy === 'resp' ? 2 : sy === 'env' ? 1 : 0;
+        x = ordemDoStatus(leadStatus(getLeadId(a, 0)));
+        y = ordemDoStatus(leadStatus(getLeadId(b, 0)));
       }
       if (typeof x === 'number' && typeof y === 'number') {
         return (x - y) * bSort.dir;
@@ -630,8 +648,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
         else if (c.id === 'hood') row[c.label] = getLeadHood(l) || '—';
         else if (c.id === 'orig') row[c.label] = getLeadOrig(l);
         else if (c.id === 'status') {
-          const st = leadStatus(id);
-          row[c.label] = st === 'resp' ? 'Respondeu' : st === 'env' ? 'Mensagem enviada' : 'Ainda não contatado';
+          row[c.label] = nomeDoStatus(leadStatus(id));
         } else if (c.id === 'grupos') {
           row[c.label] = leadGroups(id).map((g) => g.name).join('; ') || '—';
         }
@@ -1099,6 +1116,13 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           <button type="button" className="btn btn-sm btn-primary" onClick={() => setIsExportOpen(true)}>
             Exportar
           </button>
+          <MenuStatusLead
+            rotulo="Mudar estado"
+            onEscolhe={(novo) => {
+              mudaStatus(leads.filter((l, i) => sel.has(getLeadId(l, i))), novo);
+              setSel(new Set());
+            }}
+          />
           <button type="button" className="btn btn-sm" onClick={() => setConfirmaZerar(true)} title="Volta os selecionados para a Fila do dia, como recém-extraídos">
             <RotateCcw size={14} strokeWidth={2} aria-hidden="true" /> Zerar
           </button>
@@ -1270,12 +1294,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
                       if (colId === 'status') {
                         return (
                           <td key={colId}>
-                            <span
-                              className={`st-ic ${st === 'resp' ? 'st-resp' : st === 'env' ? 'st-env' : 'st-novo'}`}
-                              title={st === 'resp' ? 'Respondeu' : st === 'env' ? 'Mensagem enviada' : 'Ainda não contatado'}
-                            >
-                              {st === 'resp' ? <Reply size={13} strokeWidth={2.25} /> : st === 'env' ? <Send size={12} strokeWidth={2.25} /> : <Circle size={11} strokeWidth={2.25} />}
-                            </span>
+                            <MenuStatusLead status={st} onEscolhe={(novo) => mudaStatus([l], novo)} />
                           </td>
                         );
                       }
@@ -1532,9 +1551,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
             <div className="modal-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <h2 style={{ flex: 1 }}>{getLeadName(activeLead)}</h2>
-                <span className={`st-ic ${leadStatus(getLeadId(activeLead, 0)) === 'resp' ? 'st-resp' : leadStatus(getLeadId(activeLead, 0)) === 'env' ? 'st-env' : 'st-novo'}`}>
-                  {leadStatus(getLeadId(activeLead, 0)) === 'resp' ? '↩' : leadStatus(getLeadId(activeLead, 0)) === 'env' ? '→' : '○'}
-                </span>
+                <MenuStatusLead status={leadStatus(getLeadId(activeLead, 0))} onEscolhe={(novo) => mudaStatus([activeLead], novo)} />
               </div>
             </div>
 
