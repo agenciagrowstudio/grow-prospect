@@ -2226,3 +2226,8 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 .wz-cidade-uf{font-size:11px;font-weight:700;color:var(--muted)}
 .chip.wz-nicho:hover .wz-cidade-uf{color:inherit}
 .chip.wz-cidade-feita{color:#0b56be;border-color:color-mix(in srgb,#0E6BEC 40%,#fff);background:color-mix(in srgb,#0E6BEC 9%,#fff)}
+
+/* Cartão da cidade escolhida: botão para trocar */
+.onde-escolhido > span:not(.bandeira){flex:1;min-width:0}
+.onde-trocar{display:inline-flex;align-items:center;gap:5px;flex:none;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.onde-trocar:hover{color:#b91c1c;border-color:color-mix(in srgb,#b91c1c 35%,#fff);background:color-mix(in srgb,#b91c1c 5%,#fff)}

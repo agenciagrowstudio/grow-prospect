@@ -42,10 +42,17 @@ export default function MapaRaio({ local, raioKm, onClique, areas = [], contorno
     mapa.current.on('click', (e) => {
       cliqueRef.current?.(e.latlng.lat, e.latlng.lng, mapa.current.getZoom() >= ZOOM_BAIRRO ? 'bairro' : 'cidade');
     });
-    // O modal abre com animação; sem isto o Leaflet mede o tamanho errado.
+    // O modal abre com animação e a coluna do lado muda de altura (lista de
+    // cidades, aviso de já extraída): o Leaflet precisa medir de novo, senão
+    // sobra área cinza e o contorno fica fora do centro.
     const t = setTimeout(() => mapa.current?.invalidateSize(), 250);
+    const observador = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => mapa.current?.invalidateSize())
+      : null;
+    observador?.observe(ref.current);
     return () => {
       clearTimeout(t);
+      observador?.disconnect();
       mapa.current?.remove();
       mapa.current = null;
     };
@@ -67,6 +74,7 @@ export default function MapaRaio({ local, raioKm, onClique, areas = [], contorno
         interactive: false,
       }).addTo(camada.current);
       L.circleMarker(ponto, { radius: 6, weight: 3, color: '#fff', fillColor: COR, fillOpacity: 1 }).addTo(camada.current);
+      m.invalidateSize();
       try { m.fitBounds(forma.getBounds(), { padding: [18, 18], maxZoom: 13 }); } catch { /* contorno vazio */ }
       return;
     }

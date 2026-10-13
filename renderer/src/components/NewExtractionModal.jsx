@@ -161,16 +161,23 @@ const CATALOGO_LOCAL = [
  * região de Framingham e Grande Boston, sul da Flórida, Orlando, Danbury e
  * norte de Nova Jersey. Vale confirmar com uma extração pequena: muda com o tempo.
  */
+// Com o centro de cada cidade: o mapa vai direto, sem depender do
+// OpenStreetMap responder (ele limita o número de consultas).
 const CIDADES_ATALHO = {
   US: [
-    ['Framingham', 'MA'], ['Marlborough', 'MA'], ['Milford', 'MA'], ['Hudson', 'MA'], ['Everett', 'MA'],
-    ['Somerville', 'MA'], ['Pompano Beach', 'FL'], ['Deerfield Beach', 'FL'], ['Boca Raton', 'FL'],
-    ['Orlando', 'FL'], ['Kissimmee', 'FL'], ['Danbury', 'CT'], ['Newark', 'NJ'], ['Long Branch', 'NJ'],
-    ['Marietta', 'GA'],
+    ['Framingham', 'MA', 42.2793, -71.4162], ['Marlborough', 'MA', 42.3459, -71.5523],
+    ['Milford', 'MA', 42.1398, -71.5163], ['Hudson', 'MA', 42.3918, -71.5662],
+    ['Everett', 'MA', 42.4084, -71.0537], ['Somerville', 'MA', 42.3876, -71.0995],
+    ['Pompano Beach', 'FL', 26.2379, -80.1248], ['Deerfield Beach', 'FL', 26.3184, -80.0998],
+    ['Boca Raton', 'FL', 26.3683, -80.1289], ['Orlando', 'FL', 28.5384, -81.3789],
+    ['Kissimmee', 'FL', 28.2920, -81.4076], ['Danbury', 'CT', 41.3948, -73.4540],
+    ['Newark', 'NJ', 40.7357, -74.1724], ['Long Branch', 'NJ', 40.3043, -73.9924],
+    ['Marietta', 'GA', 33.9526, -84.5499],
   ],
   BR: [
-    ['São Paulo', 'SP'], ['Rio de Janeiro', 'RJ'], ['Belo Horizonte', 'MG'], ['Vitória', 'ES'],
-    ['Curitiba', 'PR'], ['Florianópolis', 'SC'],
+    ['São Paulo', 'SP', -23.5505, -46.6333], ['Rio de Janeiro', 'RJ', -22.9068, -43.1729],
+    ['Belo Horizonte', 'MG', -19.9167, -43.9345], ['Vitória', 'ES', -20.3155, -40.3128],
+    ['Curitiba', 'PR', -25.4284, -49.2733], ['Florianópolis', 'SC', -27.5954, -48.5480],
   ],
 };
 
@@ -396,6 +403,19 @@ export default function NewExtractionModal({
     } finally {
       if (pedidoRef.current === pedido) setLocalizando(false);
     }
+  };
+
+  // Tira a cidade escolhida e volta para a lista de cidades.
+  const trocaLocal = () => {
+    pedidoRef.current = null;
+    setLocal(null);
+    setBusca('');
+    setSugestoes([]);
+    setMostraSugestoes(false);
+    setErroLocal('');
+    setRaio('inteiro');
+    setRepetir(false);
+    setTimeout(() => document.getElementById('wzOnde')?.focus(), 0);
   };
 
   const handleBuscaChange = (val) => {
@@ -667,8 +687,8 @@ export default function NewExtractionModal({
                           {p === 'US' && <small>mais brasileiros prestando serviço</small>}
                         </h3>
                         <div className="wz-nichos-chips">
-                          {CIDADES_ATALHO[p].map(([n, uf]) => {
-                            const item = doCatalogo({ n, uf, pais: p, estado: false });
+                          {CIDADES_ATALHO[p].map(([n, uf, lat, lng]) => {
+                            const item = { ...doCatalogo({ n, uf, pais: p, estado: false }), lat, lng };
                             const feita = jaExtraida(areas, nicho, item);
                             return (
                               <button
@@ -693,6 +713,15 @@ export default function NewExtractionModal({
                   <div className="onde-escolhido">
                     <Bandeira pais={local.pais} />
                     <span><b>{rotuloDoLocal(local)}</b><small>{ROTULO_TIPO[local.tipo]}</small></span>
+                    <button
+                      type="button"
+                      className="onde-trocar"
+                      onClick={trocaLocal}
+                      title="Remover a cidade escolhida para escolher outra"
+                      aria-label={`Remover ${rotuloDoLocal(local)} e escolher outra cidade`}
+                    >
+                      <X size={14} strokeWidth={2.2} aria-hidden="true" /> Trocar cidade
+                    </button>
                   </div>
                 )}
 
