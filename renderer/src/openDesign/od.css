@@ -2200,3 +2200,14 @@ button.cr-temp.on{box-shadow:0 0 0 2px #fff,0 4px 10px rgba(0,0,0,.25)}
 
 .fa-sit-fora{background:#f3f4f6;color:#4b5563}
 .selbar .btn{display:inline-flex;align-items:center;gap:6px}
+
+/* Etapa 1 do assistente: modal vertical, nichos à vista em dois grupos */
+.modal.modal-extracao.wz-vertical{width:min(560px,94vw);max-width:min(560px,94vw)}
+.wz-nichos{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+.wz-nichos-grupo{display:flex;flex-direction:column;gap:8px}
+.wz-nichos-titulo{display:flex;align-items:center;gap:8px;margin:0;font-family:var(--fonte-texto, inherit);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--fg)}
+.wz-nichos-titulo small{font-size:11.5px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)}
+.wz-nichos-titulo .bandeira{width:18px;height:12px;border-radius:2px;overflow:hidden;display:inline-flex;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.wz-nichos-titulo .bandeira svg{width:18px!important;height:12px!important}
+.wz-nichos-chips{display:flex;flex-wrap:wrap;gap:6px}
+.wz-nichos-chips .chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,#fff)}

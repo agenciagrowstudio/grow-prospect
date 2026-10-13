@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, MapPinned, Loader, Search, CircleCheck } from 'lucide-react';
+import { Plus, X, MapPinned, Loader, Search, CircleCheck } from 'lucide-react';
 import MapaPreviaLocal from './MapaPreviaLocal';
 import MapaRaio from './MapaRaio';
 import Bandeira from './Bandeira';
@@ -113,6 +113,22 @@ const ESTADOS_US = [
 // Nichos dos dois públicos numa lista só: o país sai do local, não de um seletor.
 const NICHOS = [...new Set([...NICHOS_BR, ...NICHOS_US])];
 
+/**
+ * Atalhos da etapa 1, à vista e sem carrossel. Primeiro os serviços mais
+ * buscados para brasileiros nos EUA (em inglês, que é como o Google de lá
+ * acha mais negócios), depois os do Brasil.
+ */
+const ATALHOS_EUA = [
+  'House cleaning', 'Landscaping', 'Painting contractor', 'Handyman', 'Flooring',
+  'Remodeling', 'Moving company', 'Carpet cleaning', 'Pressure washing', 'Roofing',
+  'Nail salon', 'Hair salon', 'Auto repair', 'Restaurante brasileiro', 'Padaria brasileira',
+];
+const ATALHOS_BR = [
+  'Dentistas', 'Clínicas de estética', 'Salão de beleza', 'Barbearias', 'Academias',
+  'Restaurantes', 'Pet shops', 'Advogados', 'Contabilidade', 'Imobiliárias',
+  'Oficinas mecânicas', 'Psicólogos',
+];
+
 // Catálogo local para sugestão instantânea, antes da resposta do mapa.
 const CATALOGO_LOCAL = [
   ...CIDADES_BR.map((c) => ({ ...c, pais: 'BR' })),
@@ -168,6 +184,8 @@ export default function NewExtractionModal({
   const [nicho, setNicho] = useState('');
   const [nichoError, setNichoError] = useState(false);
   const [nichoSuggestions, setNichoSuggestions] = useState([]);
+  // País do atalho escolhido: a etapa 2 sugere primeiro as cidades de lá.
+  const [paisSugerido, setPaisSugerido] = useState(null);
   const [showNichoList, setShowNichoList] = useState(false);
 
   const [busca, setBusca] = useState('');
@@ -183,7 +201,6 @@ export default function NewExtractionModal({
   const [sugerindo, setSugerindo] = useState(null);
   const [erroSugestao, setErroSugestao] = useState('');
 
-  const carViewRef = useRef(null);
   const pedidoRef = useRef(null);
 
   // O que já foi extraído (lido ao abrir) e a escolha de repetir mesmo assim.
@@ -196,6 +213,7 @@ export default function NewExtractionModal({
       setStep(1);
       setNicho('');
       setNichoError(false);
+      setPaisSugerido(null);
       setBusca('');
       setLocal(null);
       setSugestoes([]);
@@ -267,6 +285,7 @@ export default function NewExtractionModal({
   };
 
   const handleNichoChange = (val) => {
+    setPaisSugerido(null);
     setNicho(val);
     setNichoError(false);
     const nq = norm(val).trim();
@@ -287,7 +306,8 @@ export default function NewExtractionModal({
     setShowNichoList(results.length > 0);
   };
 
-  const pickNicho = (val) => {
+  const pickNicho = (val, paisDoAtalho = null) => {
+    setPaisSugerido(paisDoAtalho);
     setNicho(val);
     setNichoError(false);
     setShowNichoList(false);
@@ -477,7 +497,7 @@ export default function NewExtractionModal({
     <div className="overlay on modal-overlay" onClick={onClose} style={{ display: 'grid' }}>
       {/* A largura e a grade das etapas vivem no CSS, nao aqui: estilo em linha
           vence media query e travava o card em uma coluna de 558px. */}
-      <div className="modal modal-content modal-extracao" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal modal-content modal-extracao${step === 1 ? ' wz-vertical' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div className="eyebrow">Etapa {step} de 3</div>
           <h2 id="mTitle" style={{ fontSize: '20px', fontWeight: 600, marginTop: '4px' }}>
@@ -525,30 +545,25 @@ export default function NewExtractionModal({
                 {nichoError && <span className="field-err" style={{ display: 'block' }}>Diga o nicho para continuar.</span>}
               </div>
 
-              <div className="car" style={{ marginTop: '14px' }}>
-                <button
-                  type="button"
-                  className="car-nav"
-                  onClick={() => carViewRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
-                  aria-label="Sugestões anteriores"
-                >
-                  <ChevronLeft size={16} strokeWidth={1.5} />
-                </button>
-                <div className="car-view" ref={carViewRef} role="list">
-                  {NICHOS.map((t) => (
-                    <button key={t} type="button" className="chip" onClick={() => pickNicho(t)}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="car-nav"
-                  onClick={() => carViewRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
-                  aria-label="Próximas sugestões"
-                >
-                  <ChevronRight size={16} strokeWidth={1.5} />
-                </button>
+              <div className="wz-nichos">
+                {[
+                  { pais: 'US', titulo: 'Nos EUA', dica: 'mais buscados para brasileiros', lista: ATALHOS_EUA },
+                  { pais: 'BR', titulo: 'No Brasil', dica: '', lista: ATALHOS_BR },
+                ].map((g) => (
+                  <section key={g.pais} className="wz-nichos-grupo" aria-label={`Nichos ${g.titulo.toLowerCase()}`}>
+                    <h3 className="wz-nichos-titulo">
+                      <Bandeira pais={g.pais} /> {g.titulo}
+                      {g.dica && <small>{g.dica}</small>}
+                    </h3>
+                    <div className="wz-nichos-chips" role="list">
+                      {g.lista.map((t) => (
+                        <button key={t} type="button" className={`chip${nicho === t ? ' on' : ''}`} onClick={() => pickNicho(t, g.pais)}>
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
               </div>
             </div>
           )}
@@ -603,7 +618,7 @@ export default function NewExtractionModal({
 
                 {!local && (
                   <div className="ex-chips" style={{ marginTop: '4px' }}>
-                    {POPULARES.map(([n, uf, p]) => (
+                    {[...POPULARES].sort((a, b) => (paisSugerido ? Number(b[2] === paisSugerido) - Number(a[2] === paisSugerido) : 0)).map(([n, uf, p]) => (
                       <button
                         key={`${n}-${uf}`}
                         type="button"
