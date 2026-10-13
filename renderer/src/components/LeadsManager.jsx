@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import AvatarLead from './AvatarLead';
 import { ChipOportunidade } from './IconeServico';
+import IconeIA from './IconeIA';
 import { useNotifications } from './NotificationCenter';
 import { analisaComIA, aplicaResultadosIA, textoProgressoIA, iaDisponivel } from '../iaLeads';
 import Bandeira from './Bandeira';
@@ -28,7 +29,6 @@ import {
   BarChart3,
   AlignLeft,
   List,
-  Brain,
   CircleHelp,
   Users,
   Trash2,
@@ -704,7 +704,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
               disabled={qualificando || !alvoIA.length}
               title="Lê o site de cada lead e usa a IA para dizer quem é, o que oferecer e um detalhe para a mensagem"
             >
-              <Brain size={15} strokeWidth={1.75} /> {qualificando ? textoProgressoIA(progressoIA) : `Analisar com IA (${alvoIA.length})`}
+              <IconeIA size={17} /> {qualificando ? textoProgressoIA(progressoIA) : `Analisar com IA (${alvoIA.length})`}
             </button>
           )}
           <button type="button" className="btn btn-primary" onClick={() => setIsExportOpen(true)}>
@@ -1131,7 +1131,7 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
             <div className="modal-foot">
               <button type="button" className="btn btn-ghost" onClick={() => setConfirmaIA(false)}>Cancelar</button>
               <button type="button" className="btn btn-primary" onClick={qualificarComIA} autoFocus>
-                <Brain size={15} strokeWidth={1.75} aria-hidden="true" /> Analisar
+                <IconeIA size={17} /> Analisar
               </button>
             </div>
           </div>

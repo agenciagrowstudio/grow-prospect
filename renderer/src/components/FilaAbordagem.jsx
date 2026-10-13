@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Repeat, BookOpen, Brain } from 'lucide-react';
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Repeat, BookOpen } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
@@ -11,6 +11,7 @@ import { publicoDoLead } from '../resultados';
 import { proximoFollowup, DIAS_FOLLOWUP, tempoAte } from '../followup';
 import FollowupsFila from './FollowupsFila';
 import CardLead from './CardLead';
+import IconeIA from './IconeIA';
 import SeloIA from './SeloIA';
 import { analisaComIA, aplicaResultadosIA, textoProgressoIA, iaDisponivel, insereGancho } from '../iaLeads';
 import DivisorFila, { larguraListaGuardada } from './DivisorFila';
@@ -364,7 +365,7 @@ export default function FilaAbordagem({
           <span className="fa-chip fa-chip-oferta">Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b></span>
           {servico?.motivo && (
             <span className={`fa-chip${servico.daIA ? ' fa-chip-ia' : ''}`} title={servico.daIA ? 'Sugerido pela IA depois de ler o site' : undefined}>
-              {servico.daIA && <Brain size={12} strokeWidth={2} aria-hidden="true" />}
+              {servico.daIA && <IconeIA size={14} />}
               {servico.motivo}
             </span>
           )}
@@ -450,7 +451,7 @@ export default function FilaAbordagem({
           const inserido = texto.includes(gancho);
           return (
             <div className="fa-gancho">
-              <Brain size={15} strokeWidth={1.9} aria-hidden="true" />
+              <IconeIA size={18} />
               <div className="fa-gancho-txt">
                 <b>Detalhe que a IA achou no site</b>
                 <span>{gancho}</span>
@@ -648,7 +649,7 @@ export default function FilaAbordagem({
                 const semIA = fila.filter((f) => !f.lead.ia);
                 return (
                   <li className="fa-ia-barra">
-                    <Brain size={14} strokeWidth={1.9} aria-hidden="true" />
+                    <IconeIA size={16} />
                     <span>
                       {analisandoIA
                         ? textoProgressoIA(progressoIA)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain } from 'lucide-react';
+import IconeIA from './IconeIA';
 
 /** Selo "IA": o lead foi analisado pela IA (leu o site, decidiu o público, sugeriu o serviço). */
 export default function SeloIA({ ia }) {
@@ -8,7 +8,7 @@ export default function SeloIA({ ia }) {
     : 'Analisado pela IA';
   return (
     <span className="selo-ia" title={dica} aria-label="Analisado pela IA">
-      <Brain size={11} strokeWidth={2.2} aria-hidden="true" /> IA
+      <IconeIA size={15} />
     </span>
   );
 }
