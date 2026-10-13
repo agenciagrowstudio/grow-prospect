@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Bot, Eye, EyeOff, Check, X, Loader } from 'lucide-react';
 import { PROVIDERS, readAiConfig, saveAiConfig } from '../configIA';
 import EmpresaNuvem from './EmpresaNuvem';
+import InstagramProspeccao from './InstagramProspeccao';
 import AtualizacaoApp from './UpdateBanner';
 
 /**
@@ -76,11 +77,13 @@ export default function Configuracoes({ versao, onNotificar }) {
       <div className="page-head">
         <div>
           <h1 style={{ fontSize: 20 }}>Configurações</h1>
-          <p className="cfg-tagline">Empresa e sincronização, chave de IA e informações da instalação.</p>
+          <p className="cfg-tagline">Empresa e sincronização, Instagram da prospecção, chave de IA e informações da instalação.</p>
         </div>
       </div>
 
       <EmpresaNuvem />
+
+      <InstagramProspeccao />
 
       <div className="cfg-card">
         <div className="cfg-card-head">

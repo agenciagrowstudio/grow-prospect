@@ -2544,3 +2544,9 @@ button.cl-google-link:focus-visible{box-shadow:var(--focus-ring);outline:0}
 .nav-auto-hora.ligada{color:var(--auto)}
 .nav-auto-hora.rodando{color:var(--auto-roda)}
 @media (max-width:640px){.ea-historico li{grid-template-columns:1fr auto}.ea-historico-txt{grid-column:1/-1}}
+
+/* Instagram da prospecção */
+.ig-linha{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.ig-conta{flex:1;min-width:200px;max-width:320px}
+.ig-estado{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:99px;background:var(--amber-bg);color:#92400e;font-size:13px;font-weight:600}
+.ig-estado.on{background:var(--auto-roda-bg);color:var(--success)}

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, powerSaveBlocker } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, powerSaveBlocker, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -55,6 +55,17 @@ const { normalizeAddress } = require("./utils/address-normalizer");
 const { geocodeAddress, isValidCoord } = require("./utils/geocode");
 const { resolvePais } = require("./utils/paises");
 const agendadorWindows = require("./utils/agendadorWindows");
+const { ehInstagram, criaJanelaInstagram } = require("./utils/janelaInstagram");
+
+// Perfis do Instagram abrem numa janela do app, logada na conta da prospecção.
+let janelaInstagram = null;
+function abreLink(url) {
+  if (ehInstagram(url)) {
+    instagramDaProspeccao().abre(url);
+    return;
+  }
+  if (isHttpUrl(url)) shell.openExternal(url).catch(() => {});
+}
 
 // Aberto pelo Agendador do Windows para a extração automática: começa minimizado.
 const ABERTO_PELO_AGENDADOR = process.argv.includes("--auto");
@@ -925,14 +936,14 @@ function createWindow() {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (isHttpUrl(url)) shell.openExternal(url).catch(() => {});
+    abreLink(url);
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {
     const currentUrl = mainWindow.webContents.getURL();
     if (url !== currentUrl) {
       event.preventDefault();
-      if (isHttpUrl(url)) shell.openExternal(url).catch(() => {});
+      abreLink(url);
     }
   });
   mainWindow.webContents.session.setPermissionRequestHandler(
@@ -1801,11 +1812,30 @@ ipcMain.handle("whatsapp-instalado", async () => {
 ipcMain.handle("open-external", async (_, { url } = {}) => {
   try {
     if (!isHttpUrl(url) && !isWhatsAppSendUrl(url)) return { success: false, error: "URL inválida" };
+    if (ehInstagram(url)) {
+      abreLink(String(url));
+      return { success: true };
+    }
     await shell.openExternal(String(url));
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
   }
+});
+
+// Instagram da prospecção: entrar (a pessoa digita a senha no próprio Instagram), ver se está logado, sair.
+function instagramDaProspeccao() {
+  if (!janelaInstagram) janelaInstagram = criaJanelaInstagram({ BrowserWindow, session, shell, icone: path.join(__dirname, "assets", "icon.ico") });
+  return janelaInstagram;
+}
+ipcMain.handle("instagram-entrar", async () => {
+  try { instagramDaProspeccao().abre(); return { success: true }; } catch (err) { return { success: false, error: err.message }; }
+});
+ipcMain.handle("instagram-status", async () => {
+  try { return { success: true, ...(await instagramDaProspeccao().status()) }; } catch (err) { return { success: false, logado: false, error: err.message }; }
+});
+ipcMain.handle("instagram-sair", async () => {
+  try { await instagramDaProspeccao().sair(); return { success: true }; } catch (err) { return { success: false, error: err.message }; }
 });
 
 // ─── WHATSAPP CONNECTION ───────────────────
