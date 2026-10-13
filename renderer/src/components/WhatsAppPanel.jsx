@@ -46,7 +46,9 @@ import {
   ShieldCheck,
   ClipboardList,
   Smartphone,
+  FilePen,
 } from 'lucide-react';
+import { lerRascunhos, rascunhoDoNumero, concluiRascunho, apagaRascunho, mesmoNumero, EVENTO_RASCUNHOS } from '../rascunhos';
 import TriggersManagerModal from './TriggersManagerModal';
 import { mascaraTelefone } from '../telefone';
 import MetaModelos from './MetaModelos';
@@ -288,7 +290,16 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [chatPresence, setChatPresence] = useState(null); // { online, lastSeen, statusText }
-  const [chatFilter, setChatFilter] = useState('all'); // all | unread | groups | archived
+  // all | unread | groups | archived | favorites | rascunhos (da Fila do dia)
+  const [chatFilter, setChatFilter] = useState(() => {
+    try {
+      const pedido = localStorage.getItem('sigma_wa_filtro');
+      if (pedido) { localStorage.removeItem('sigma_wa_filtro'); return pedido; }
+    } catch {}
+    return 'all';
+  });
+  const [rascunhos, setRascunhos] = useState(() => lerRascunhos());
+  const [rascunhoAtivo, setRascunhoAtivo] = useState(null);
   const [chatSearch, setChatSearch] = useState('');
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
@@ -1065,6 +1076,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     if (!inputText.trim() || !activeChatJid || !window.chatAPI) return;
     const msgText = inputText;
     const toJid = getSendJid();
+    const eraRascunho = rascunhoAtivo;
     const quoted = replyTo || null;
     setInputText('');
     setReplyTo(null);
@@ -1077,6 +1089,11 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
       await window.chatAPI.chatAction(toJid, "paused", activeConnectionId);
 
       if (res && res.success && res.messageId) {
+        // Era rascunho da Fila do dia: sai da lista e conta na meta.
+        if (eraRascunho) {
+          concluiRascunho(eraRascunho, msgText);
+          setRascunhoAtivo(null);
+        }
         loadChats();
         if (window.chatAPI.getMessages) {
           const msgRes = await window.chatAPI.getMessages(activeChatJid, activeConnectionId);
@@ -3519,6 +3536,29 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
     }
   };
 
+  // Rascunhos da Fila do dia: lista ao vivo e texto na caixa ao abrir a conversa.
+  useEffect(() => {
+    const atualiza = () => setRascunhos(lerRascunhos());
+    window.addEventListener(EVENTO_RASCUNHOS, atualiza);
+    window.addEventListener('storage', atualiza);
+    return () => { window.removeEventListener(EVENTO_RASCUNHOS, atualiza); window.removeEventListener('storage', atualiza); };
+  }, []);
+  useEffect(() => {
+    if (!activeChatMeta || activeChatMeta.isGroup) { setRascunhoAtivo(null); return; }
+    const alvo = activeChatMeta.sendJid || activeChatMeta.phoneJid || activeChatMeta.phone || activeChatMeta.jid;
+    const achado = rascunhoDoNumero(lerRascunhos(), alvo);
+    if (!achado) { setRascunhoAtivo(null); return; }
+    setRascunhoAtivo(achado[0]);
+    setInputText((atual) => (atual && atual.trim() ? atual : achado[1].texto));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChatMeta?.jid, activeChatMeta?.sendJid]);
+
+  const abreRascunho = (r) => {
+    const existente = chats.find((c) => !c.isGroup && (mesmoNumero(c.phoneJid || c.phone || c.jid, r.numero)));
+    if (existente) handleSelectChat(existente);
+    else handleStartNewChat({ phone: r.numero, name: r.nome || r.numero });
+  };
+
   // Conversa pedida pelo botão de WhatsApp do card do lead (tela do mapa).
   // Só abre com o WhatsApp conectado; se não der, mostra o erro na janela de
   // nova conversa em vez de falhar calado.
@@ -5228,6 +5268,7 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                 </div>
                 <div className="chat-filter-tabs">
                   {[
+                    ...(Object.keys(rascunhos).length ? [{ id: 'rascunhos', label: 'Rascunhos', count: Object.keys(rascunhos).length, Icone: FilePen }] : []),
                     { id: 'all', label: 'Todas', count: chatCounts.all },
                     { id: 'unread', label: 'Não lidas', count: chatCounts.unread },
                     { id: 'archived', label: 'Arquivadas', count: chatCounts.archived },
@@ -5247,7 +5288,35 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                 </div>
               </div>
               <div className="chat-threads" role="listbox" aria-label="Lista de conversas">
-                {filteredChats.length === 0 ? (
+                {chatFilter === 'rascunhos' ? (
+                  Object.keys(rascunhos).length === 0 ? (
+                    <div className="chat-empty-list">Nenhum rascunho. Crie na Fila do dia, na tela do mapa.</div>
+                  ) : (
+                    Object.values(rascunhos).sort((a, b) => (a.ts || 0) - (b.ts || 0)).map((r) => (
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={rascunhoAtivo === r.numero}
+                        key={r.numero}
+                        className={`chat-thread chat-thread-rascunho${rascunhoAtivo === r.numero ? ' active' : ''}`}
+                        onClick={() => abreRascunho(r)}
+                      >
+                        <div className="chat-avatar-wrap">
+                          <span className="chat-rascunho-icone" aria-hidden="true"><FilePen size={18} strokeWidth={1.9} /></span>
+                        </div>
+                        <div className="chat-thread-details">
+                          <div className="top-row">
+                            <strong>{r.nome || `+${r.numero}`}</strong>
+                            <span className="chat-time chat-rascunho-tag">Rascunho</span>
+                          </div>
+                          <div className="chat-thread-preview-row">
+                            <p>{String(r.texto || '').replace(/[*_]/g, '')}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )
+                ) : filteredChats.length === 0 ? (
                   <div className="chat-empty-list">
                     {chatFilter === 'unread' && 'Nenhuma conversa não lida.'}
                     {chatFilter === 'archived' && 'Nenhuma conversa arquivada.'}
@@ -5541,6 +5610,20 @@ function WhatsAppPanel({ waStatus, setWaStatus, addLog }) {
                       </div>
                       <button type="button" className="chat-reply-cancel" onClick={() => setReplyTo(null)} title="Cancelar resposta">
                         <X size={14} />
+                      </button>
+                    </div>
+                  )}
+
+                  {rascunhoAtivo && (
+                    <div className="chat-rascunho-aviso" role="status">
+                      <FilePen size={15} strokeWidth={2} aria-hidden="true" />
+                      <span><b>Rascunho da Fila do dia.</b> Confira o texto e aperte enviar. Ao enviar, o lead conta na meta.</span>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => { apagaRascunho(rascunhoAtivo); setRascunhoAtivo(null); setInputText(''); }}
+                      >
+                        Descartar
                       </button>
                     </div>
                   )}
