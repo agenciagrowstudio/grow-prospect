@@ -320,9 +320,18 @@ export function renderizaEmail(template, dados = {}) {
         // Foto (https) quando houver; sem foto, as iniciais num círculo da cor do template.
         const foto = /^https:\/\//i.test(String(b.foto || '')) ? b.foto : '';
         const avatar = foto
-          ? `<img src="${escapa(foto)}" alt="${escapa(preenche(primeira, dados))}" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:26px;border:0;object-fit:cover">`
-          : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="44" height="44" align="center" valign="middle" style="width:44px;height:44px;border-radius:22px;background:${cor};color:#ffffff;font-family:${FONTE};font-size:15px;font-weight:800;line-height:44px">${escapa(iniciais(preenche(primeira, dados)))}</td></tr></table>`;
-        h.push(`<tr><td style="padding:20px 0 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="66" valign="top">${avatar}</td><td valign="middle" style="font-family:${FONTE}"><div style="font-size:15px;font-weight:700;color:#12121a">${htmlDoTexto(primeira, dados)}</div>${resto.length ? `<div style="padding-top:2px;font-size:13.5px;line-height:1.5;color:#6b7280">${htmlDoTexto(resto.join('\n'), dados)}</div>` : ''}${linksHtml ? `<div style="padding-top:6px;font-size:13px">${linksHtml}</div>` : ''}</td></tr></table></td></tr>`);
+          ? `<img src="${escapa(foto)}" alt="${escapa(preenche(primeira, dados))}" width="48" height="48" style="display:block;width:48px;height:48px;border-radius:24px;border:0;object-fit:cover">`
+          : `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="48" height="48" align="center" valign="middle" style="width:48px;height:48px;border-radius:24px;background:${cor};color:#ffffff;font-family:${FONTE};font-size:16px;font-weight:800;line-height:48px">${escapa(iniciais(preenche(primeira, dados)))}</td></tr></table>`;
+        // Entrelinha em px (o Gmail põe a dele se for relativa): nome, cargo e
+        // links formam um bloco compacto, centrado na altura da foto.
+        const linha = (tam, alt, cor2, peso, extra = '') => `font-family:${FONTE};font-size:${tam}px;line-height:${alt}px;color:${cor2};font-weight:${peso};${extra}`;
+        h.push(`<tr><td style="padding:18px 0 0"><table role="presentation" cellpadding="0" cellspacing="0"><tr>`
+          + `<td width="48" valign="middle" style="padding-right:14px">${avatar}</td>`
+          + `<td valign="middle">`
+          + `<div style="${linha(15, 20, '#12121a', 700, 'letter-spacing:-0.2px')}">${htmlDoTexto(primeira, dados)}</div>`
+          + (resto.length ? `<div style="${linha(13, 18, '#6b7280', 500)}">${htmlDoTexto(resto.join('\n'), dados)}</div>` : '')
+          + (linksHtml ? `<div style="${linha(13, 18, cor, 600, 'padding-top:1px')}">${linksHtml}</div>` : '')
+          + `</td></tr></table></td></tr>`);
         t.push([preenche(linhas.join('\n'), dados), ...contatos.map(([u]) => u)].join('\n'));
         break;
       }
