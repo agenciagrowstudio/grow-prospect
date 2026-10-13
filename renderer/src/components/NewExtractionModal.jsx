@@ -7,6 +7,7 @@ import {
   lerLocalColado, paisDaCoordenada, paisDoTexto, buscaLocais, localDoPonto, ROTULO_TIPO, ROTULO_PAIS,
 } from '../localBusca';
 import { areasExtraidas, jaExtraida, chaveNicho, chaveLugar } from '../cobertura';
+import { ATALHOS_EUA, CIDADES_ATALHO, TRADUCAO_EUA } from '../atalhosExtracao';
 import { poligonoDoLugar } from '../poligonos';
 import { readLocalArray } from '../leadData';
 
@@ -114,32 +115,8 @@ const ESTADOS_US = [
 // Nichos dos dois públicos numa lista só: o país sai do local, não de um seletor.
 const NICHOS = [...new Set([...NICHOS_BR, ...NICHOS_US])];
 
-/**
- * Atalhos da etapa 1, à vista e sem carrossel. Primeiro os serviços mais
- * buscados para brasileiros nos EUA (em inglês, que é como o Google de lá
- * acha mais negócios), depois os do Brasil.
- */
-const ATALHOS_EUA = [
-  'House cleaning', 'Landscaping', 'Painting contractor', 'Handyman', 'Flooring',
-  'Remodeling', 'Moving company', 'Carpet cleaning', 'Pressure washing', 'Roofing',
-  'Nail salon', 'Hair salon', 'Auto repair', 'Restaurante brasileiro', 'Padaria brasileira',
-];
-// Tradução que aparece com o mouse em cima; o nicho buscado continua em inglês.
-const TRADUCAO_EUA = {
-  'House cleaning': 'Limpeza residencial',
-  'Landscaping': 'Paisagismo e jardinagem',
-  'Painting contractor': 'Pintura',
-  'Handyman': 'Pequenos reparos',
-  'Flooring': 'Instalação de pisos',
-  'Remodeling': 'Reformas',
-  'Moving company': 'Mudanças',
-  'Carpet cleaning': 'Limpeza de carpetes',
-  'Pressure washing': 'Lavagem a jato',
-  'Roofing': 'Telhados',
-  'Nail salon': 'Manicure',
-  'Hair salon': 'Salão de cabelo',
-  'Auto repair': 'Mecânica',
-};
+// Atalhos da etapa 1, à vista e sem carrossel: os dos EUA vêm de atalhosExtracao.js
+// (a extração automática usa a mesma lista), depois os do Brasil.
 
 const ATALHOS_BR = [
   'Dentistas', 'Clínicas de estética', 'Salão de beleza', 'Barbearias', 'Academias',
@@ -161,26 +138,6 @@ const CATALOGO_LOCAL = [
  * região de Framingham e Grande Boston, sul da Flórida, Orlando, Danbury e
  * norte de Nova Jersey. Vale confirmar com uma extração pequena: muda com o tempo.
  */
-// Com o centro de cada cidade: o mapa vai direto, sem depender do
-// OpenStreetMap responder (ele limita o número de consultas).
-const CIDADES_ATALHO = {
-  US: [
-    ['Framingham', 'MA', 42.2793, -71.4162], ['Marlborough', 'MA', 42.3459, -71.5523],
-    ['Milford', 'MA', 42.1398, -71.5163], ['Hudson', 'MA', 42.3918, -71.5662],
-    ['Everett', 'MA', 42.4084, -71.0537], ['Somerville', 'MA', 42.3876, -71.0995],
-    ['Pompano Beach', 'FL', 26.2379, -80.1248], ['Deerfield Beach', 'FL', 26.3184, -80.0998],
-    ['Boca Raton', 'FL', 26.3683, -80.1289], ['Orlando', 'FL', 28.5384, -81.3789],
-    ['Kissimmee', 'FL', 28.2920, -81.4076], ['Danbury', 'CT', 41.3948, -73.4540],
-    ['Newark', 'NJ', 40.7357, -74.1724], ['Long Branch', 'NJ', 40.3043, -73.9924],
-    ['Marietta', 'GA', 33.9526, -84.5499],
-  ],
-  BR: [
-    ['São Paulo', 'SP', -23.5505, -46.6333], ['Rio de Janeiro', 'RJ', -22.9068, -43.1729],
-    ['Belo Horizonte', 'MG', -19.9167, -43.9345], ['Vitória', 'ES', -20.3155, -40.3128],
-    ['Curitiba', 'PR', -25.4284, -49.2733], ['Florianópolis', 'SC', -27.5954, -48.5480],
-  ],
-};
-
 const RAIOS = [5, 10, 30, 50];
 
 function norm(s) {

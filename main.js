@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, powerSaveBlocker } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -54,6 +54,10 @@ const { KanbanStore } = require("./kanban/kanban-store");
 const { normalizeAddress } = require("./utils/address-normalizer");
 const { geocodeAddress, isValidCoord } = require("./utils/geocode");
 const { resolvePais } = require("./utils/paises");
+const agendadorWindows = require("./utils/agendadorWindows");
+
+// Aberto pelo Agendador do Windows para a extração automática: começa minimizado.
+const ABERTO_PELO_AGENDADOR = process.argv.includes("--auto");
 const { avaliaSinaisBrasileiros } = require("./lead-scoring/sinais-brasileiros");
 const { qualificaComIA } = require("./lead-scoring/sinais-brasileiros-ia");
 const { analisaLeadsComIA } = require("./lead-scoring/analise-ia-leads");
@@ -833,7 +837,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     frame: false,
-    show: true,
+    show: !ABERTO_PELO_AGENDADOR,
     icon: path.join(__dirname, "assets", "icon.ico"),
     backgroundColor: resolveWindowBgColor(),
     webPreferences: {
@@ -957,17 +961,25 @@ function createWindow() {
   );
 
   mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
-    mainWindow.focus();
+    mostraJanela();
   });
+}
+
+// Às 7h, aberto pelo agendador, a janela não pula na frente de quem está usando o PC.
+function mostraJanela() {
+  if (!mainWindow) return;
+  if (ABERTO_PELO_AGENDADOR) {
+    mainWindow.showInactive();
+    mainWindow.minimize();
+    return;
+  }
+  mainWindow.show();
+  mainWindow.focus();
 }
 
 app.whenReady().then(() => {
   createWindow();
-  if (mainWindow) {
-    mainWindow.show();
-    mainWindow.focus();
-  }
+  mostraJanela();
   loadAllowedMediaPaths();
   loadWhatsAppSettings();
   cleanOldTempFiles();
@@ -1732,6 +1744,50 @@ function isWhatsAppSendUrl(url) {
 // endereço whatsapp://. Com ele, a Fila abre direto no aplicativo.
 // Sem escolha feita, o Windows responde com o nome da janela "Selecionar um
 // aplicativo": o link abre essa pergunta em vez do WhatsApp.
+// ─── EXTRAÇÃO AUTOMÁTICA ───────────────────
+// Abre o app sozinho no horário (Agendador de Tarefas do Windows, só deste usuário).
+ipcMain.handle("agendamento-status", async () => {
+  try {
+    return { success: true, ...(await agendadorWindows.status()), abertoPeloAgendador: ABERTO_PELO_AGENDADOR };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("agendamento-salvar", async (_, { ativar, hora } = {}) => {
+  try {
+    if (!ativar) {
+      await agendadorWindows.remove();
+      return { success: true, existe: false };
+    }
+    if (!agendadorWindows.horaValida(hora)) return { success: false, error: "Horário inválido." };
+    const { proxima } = await agendadorWindows.agenda({
+      hora,
+      empacotado: app.isPackaged,
+      executavel: process.execPath,
+      scriptAbrir: path.join(app.getAppPath(), "scripts", "abrir-app.ps1"),
+    });
+    return { success: true, existe: true, hora, proxima };
+  } catch (err) {
+    return { success: false, error: `Não consegui criar o agendamento no Windows: ${err.message}` };
+  }
+});
+
+// Enquanto a extração automática roda, o computador não entra em suspensão.
+let bloqueioSono = null;
+ipcMain.handle("manter-acordado", (_, ligar) => {
+  try {
+    if (ligar && bloqueioSono === null) bloqueioSono = powerSaveBlocker.start("prevent-app-suspension");
+    if (!ligar && bloqueioSono !== null) {
+      powerSaveBlocker.stop(bloqueioSono);
+      bloqueioSono = null;
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle("whatsapp-instalado", async () => {
   try {
     const nome = app.getApplicationNameForProtocol("whatsapp://send") || "";

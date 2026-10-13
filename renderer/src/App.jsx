@@ -18,11 +18,13 @@ import {
   PanelLeftOpen,
   PanelLeftClose,
   LineChart,
-  ClipboardList
+  ClipboardList,
+  CalendarClock
 } from 'lucide-react';
 import { pedirMapa } from './pedidoMapa';
 import IndicadorArmazenamento from './components/IndicadorArmazenamento';
 import CotacaoDolar from './components/CotacaoDolar';
+import HorarioAutomatico from './components/HorarioAutomatico';
 import { chaveDoDia } from './abordagem';
 import Overview from './components/Overview';
 import MapScraperView from './components/MapScraperView';
@@ -38,6 +40,8 @@ import WhatsAppPanel from './components/WhatsAppPanel';
 import EmailPanel from './components/EmailPanel';
 import NewExtractionModal from './components/NewExtractionModal';
 import Configuracoes from './components/Configuracoes';
+import ExtracaoAutomatica from './components/ExtracaoAutomatica';
+import { useExtracaoAutomatica } from './useExtracaoAutomatica';
 import OnboardingTour from './components/OnboardingTour';
 import { NotificationProvider, useNotifications } from './components/NotificationCenter';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
@@ -135,6 +139,7 @@ function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
     { id: 'email', label: 'Ir para E-mail', desc: 'Campanhas pelo Gmail', icon: Mail, action: () => { onNavigate('email'); onClose(false); } },
     { id: 'dashboard', label: 'Ir para Resultados', desc: 'O que foi enviado e quem respondeu', icon: BarChart3, action: () => { onNavigate('dashboard'); onClose(false); } },
     { id: 'settings', label: 'Ir para Configurações', desc: 'Empresa e sincronização, chave de IA', icon: Settings, action: () => { onNavigate('settings'); onClose(false); } },
+    { id: 'automatica', label: 'Ir para Extração automática', desc: 'Roteiro diário pelas cidades com mais brasileiros', icon: CalendarClock, action: () => { onNavigate('automatica'); onClose(false); } },
     { id: 'new', label: 'Nova Extração…', desc: 'Criar busca no Google Maps', icon: Plus, action: () => { onClose(false); onNewExtraction(); } },
   ];
   const filtered = q.trim() ? items.filter(i => (`${i.label} ${i.desc}`.toLowerCase().includes(q.toLowerCase()))) : items;
@@ -167,7 +172,7 @@ function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
 
 function AppInner() {
   const [activeTab, setActiveTab] = useState(() => {
-    try { const h = location.hash.slice(1); if(['overview','scraper','base','scoring','kanban','whatsapp','email','dashboard','settings'].includes(h)) return h; } catch{}
+    try { const h = location.hash.slice(1); if(['overview','scraper','automatica','base','scoring','kanban','whatsapp','email','dashboard','settings'].includes(h)) return h; } catch{}
     return 'overview';
   });
   const [isNewExtractionOpen, setIsNewExtractionOpen] = useState(false);
@@ -293,7 +298,8 @@ function AppInner() {
   const handleMaximize = () => window.electronAPI?.winMaximize();
   const handleClose = () => window.electronAPI?.winClose();
 
-  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '', local: localEscolhido = null }) => {
+  // Devolve o resumo ({ ok, novos, ... }) para a extração automática saber como foi.
+  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '', local: localEscolhido = null, automatica = false }) => {
     if (ehWeb) {
       addNotification({
         type: 'info',
@@ -301,7 +307,7 @@ function AppInner() {
         title: 'Extração roda no computador',
         message: 'O robô do Google Maps fica no Prospector instalado no PC. Os leads extraídos lá aparecem aqui sozinhos.',
       });
-      return;
+      return { ok: false, erro: 'Extração roda no computador.' };
     }
     if (activeExtraction) {
       addNotification({
@@ -310,9 +316,10 @@ function AppInner() {
         title: 'Extração em andamento',
         message: 'Aguarde a busca atual terminar ou cancele-a antes de iniciar outra.',
       });
-      return;
+      return { ok: false, ocupado: true };
     }
-    setActiveTab('scraper');
+    // A automática roda em segundo plano: não tira a pessoa da tela em que está.
+    if (!automatica) setActiveTab('scraper');
     // Com muitos bairros o texto ficaria enorme na notificação e no histórico.
     const local = bairros.length > 2 ? `${bairros.length} bairros` : neigh;
     // Por raio, o Maps abre centrado no ponto: a busca leva só o nicho.
@@ -322,13 +329,13 @@ function AppInner() {
     addNotification({
       type: 'info',
       category: 'scraper',
-      title: 'Iniciando Extração',
+      title: automatica ? 'Extração automática' : 'Iniciando Extração',
       message: `Buscando ${niche} em ${ondeTexto}${pais === 'US' ? ' (EUA)' : ''}...`
     });
 
     if (!window.electronAPI || typeof window.electronAPI.startScrape !== 'function') {
       addNotification({ type: 'error', category: 'scraper', title: 'Extração indisponível', message: 'A ponte do desktop não está disponível. Reinicie o aplicativo.' });
-      return;
+      return { ok: false, erro: 'A ponte do desktop não está disponível.' };
     }
 
     setActiveExtraction({ id: searchId, query: qstr, rotulo: `${niche} · ${ondeTexto}`, pais, startedAt: Date.now() });
@@ -339,7 +346,7 @@ function AppInner() {
       if (!res?.success) {
         if (res?.cancelled) {
           addNotification({ type: 'info', category: 'scraper', title: 'Extração cancelada', message: 'Nenhum resultado parcial foi adicionado à base.' });
-          return;
+          return { ok: false, cancelada: true };
         }
         throw new Error(res?.error || 'O Google Maps não retornou resultados para esta busca.');
       }
@@ -436,13 +443,14 @@ function AppInner() {
       addNotification({
         type: res.partial ? 'info' : 'success',
         category: 'scraper',
-        title: res.partial ? 'Extração concluída parcialmente' : 'Extração concluída',
+        title: `${automatica ? 'Automática: ' : ''}${res.partial ? 'Extração concluída parcialmente' : 'Extração concluída'}`,
         message: [
           `${novos.length} lead${novos.length === 1 ? '' : 's'} novo${novos.length === 1 ? '' : 's'}`,
           repetidos ? `${repetidos} já estava${repetidos === 1 ? '' : 'm'} na base` : '',
           res.partial && res.warnings?.length ? res.warnings[0] : '',
         ].filter(Boolean).join('. ') + '.',
       });
+      return { ok: true, novos: novos.length, encontrados: resultLeads.length, repetidos };
     } catch (err) {
       addNotification({
         type: 'error',
@@ -450,10 +458,19 @@ function AppInner() {
         title: 'Erro na extração',
         message: err?.message || 'Não foi possível concluir a busca. Tente novamente.',
       });
+      return { ok: false, erro: err?.message || 'Não foi possível concluir a busca.' };
     } finally {
       setActiveExtraction(null);
     }
   };
+
+  const automatica = useExtracaoAutomatica({
+    iniciarExtracao: handleStartExtraction,
+    cancelarExtracao: () => { if (activeExtraction) window.electronAPI?.cancelScrape?.(activeExtraction.id); },
+    extracaoEmAndamento: Boolean(activeExtraction),
+    notificar: addNotification,
+    disponivel: !ehWeb && typeof window.electronAPI?.startScrape === 'function',
+  });
 
   const renderContent = () => {
     if (ehWeb && ['whatsapp', 'campaigns', 'email', 'kanban'].includes(activeTab)) {
@@ -473,6 +490,12 @@ function AppInner() {
               waStatus={waStatus}
               onNavigate={navigate}
             />
+          </ErrorBoundaryLite>
+        );
+      case 'automatica':
+        return (
+          <ErrorBoundaryLite label="Extração automática">
+            <ExtracaoAutomatica {...automatica} onNotificar={addNotification} />
           </ErrorBoundaryLite>
         );
       case 'scoring':
@@ -591,6 +614,20 @@ function AppInner() {
             <span className="nav-label-text">Scraper Maps</span><span className="nav-kbd">2</span>
           </button>
 
+          {!ehWeb && <button
+            className={`nav-item nav-auto ${activeTab === 'automatica' ? 'active' : ''}`}
+            onClick={() => navigate('automatica')}
+            title={automatica.estado.rodando
+              ? `Extração automática rodando: ${automatica.estado.novos} leads novos até agora`
+              : automatica.cfg.ativo ? `Extração automática todo dia às ${automatica.cfg.hora}` : 'Extração automática desligada'}
+          >
+            <CalendarClock className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Automática</span>
+            <span className={`nav-kbd nav-auto-hora${automatica.estado.rodando ? ' rodando' : automatica.cfg.ativo ? ' ligada' : ''}`}>
+              {automatica.estado.rodando ? 'rodando' : automatica.cfg.ativo ? automatica.cfg.hora : 'off'}
+            </span>
+          </button>}
+
           <button
             className="nav-item nav-fila"
             onClick={() => { pedirMapa({ abrirFila: true }); navigate('scraper'); }}
@@ -685,6 +722,14 @@ function AppInner() {
 
           {/* Right Header Actions */}
           <div className="header-right-actions">
+            {/* A extração automática e a configuração dela ficam no computador. */}
+            {!ehWeb && (
+              <HorarioAutomatico
+                {...automatica}
+                disponivel={typeof window.electronAPI?.startScrape === 'function'}
+                onAbrirTela={() => navigate('automatica')}
+              />
+            )}
             <CotacaoDolar />
             <IndicadorArmazenamento />
             <button type="button" className="hdr-perfil" onClick={() => navigate('whatsapp')} title="Gerenciar conexões do WhatsApp">

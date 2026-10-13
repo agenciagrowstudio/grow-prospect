@@ -8,6 +8,12 @@
 #   3. Abre o Electron sem janela de terminal.
 #
 # Erros aparecem numa caixa de mensagem, porque o atalho roda sem terminal.
+#
+# -Silencioso: usado pelo Agendador do Windows na extração automática. Não
+# mostra caixa de mensagem (às 7h não há ninguém para clicar em OK), só grava
+# no log, e abre o app minimizado.
+
+param([switch]$Silencioso)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
@@ -19,6 +25,10 @@ $log = Join-Path $env:TEMP 'grow-prospect-abrir.log'
 $titulo = 'Prospector 2.0'
 
 function Avisa($texto, $icone = 'Information') {
+    if ($Silencioso) {
+        Add-Content -Path $log -Value "[aviso] $texto" -Encoding UTF8
+        return
+    }
     [System.Windows.Forms.MessageBox]::Show($texto, $titulo, 'OK', $icone) | Out-Null
 }
 
@@ -36,7 +46,8 @@ try {
     $aberto = Get-CimInstance Win32_Process -Filter "Name='electron.exe'" |
         Where-Object { $_.CommandLine -and $_.CommandLine -like "*$raiz\node_modules\electron*" }
     if ($aberto) {
-        Avisa 'O Prospector 2.0 já está aberto. Procure a janela dele na barra de tarefas.'
+        # Aberto pelo agendador com o app já aberto: o próprio app cuida da extração.
+        if (-not $Silencioso) { Avisa 'O Prospector 2.0 já está aberto. Procure a janela dele na barra de tarefas.' }
         exit 0
     }
 
@@ -64,7 +75,8 @@ try {
     }
 
     # 3. Abre o app, sem terminal.
-    Start-Process -FilePath $electron -ArgumentList '.' -WorkingDirectory $raiz
+    $argumentos = if ($Silencioso) { @('.', '--auto') } else { @('.') }
+    Start-Process -FilePath $electron -ArgumentList $argumentos -WorkingDirectory $raiz
 }
 catch {
     Avisa "Não foi possível abrir.`n`n$($_.Exception.Message)" 'Error'
