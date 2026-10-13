@@ -107,16 +107,43 @@ export function areaDaBusca(busca, leadsDaBusca = []) {
   };
 }
 
+/**
+ * Quantos leads de cada extração já foram abordados na Fila do dia. Só conta
+ * quem tem telefone (os outros não entram na Fila). Qualquer marcação vale:
+ * enviada, respondeu, sem WhatsApp ou pulada.
+ * @returns {Record<string, {total: number, abordados: number}>}
+ */
+export function progressoPorBusca(leads = [], log = {}) {
+  const m = {};
+  leads.forEach((l) => {
+    const k = String(l?.searchId || '');
+    if (!k || !(l.whatsapp || l.phone || l.tel)) return;
+    if (!m[k]) m[k] = { total: 0, abordados: 0 };
+    m[k].total += 1;
+    if (log && log[String(l.id)]) m[k].abordados += 1;
+  });
+  return m;
+}
+
+/** Cidade concluída: todo lead com telefone já passou pela Fila. */
+export const estaConcluida = (p) => Boolean(p && p.total > 0 && p.abordados >= p.total);
+
 /** Todas as áreas extraídas, da mais nova para a mais antiga. */
-export function areasExtraidas(buscas = [], leads = []) {
+export function areasExtraidas(buscas = [], leads = [], log = null) {
   const porBusca = new Map();
   leads.forEach((l) => {
     const k = String(l?.searchId || '');
     if (!porBusca.has(k)) porBusca.set(k, []);
     porBusca.get(k).push(l);
   });
+  const progresso = log ? progressoPorBusca(leads, log) : {};
   return buscas
-    .map((b) => areaDaBusca(b, porBusca.get(String(b?.id)) || []))
+    .map((b) => {
+      const a = areaDaBusca(b, porBusca.get(String(b?.id)) || []);
+      if (!a) return null;
+      const p = progresso[a.id] || { total: 0, abordados: 0 };
+      return { ...a, progresso: p, concluida: estaConcluida(p) };
+    })
     .filter(Boolean)
     .sort((x, y) => y.ts - x.ts);
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Loader } from 'lucide-react';
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
@@ -24,7 +24,8 @@ import { publicoDoLead } from '../resultados';
 
 const CHAVE_CFG = 'sigma_abordagem_cfg';
 const CHAVE_LOG = 'sigma_abordagem_log';
-const LIMITES = [10, 15, 20, 25, 30];
+// 20 por dia é o ponto de partida seguro. Mais que 30 só com o número já aquecido.
+const LIMITES = [10, 15, 20, 25, 30, 40];
 const ICONE_TEMP = { quente: Flame, morno: Thermometer, frio: Snowflake };
 
 function lerJson(chave, padrao) {
@@ -86,7 +87,9 @@ async function abreLink(url) {
   return { success: true };
 }
 
-export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFechar }) {
+export default function FilaAbordagem({
+  leads, qualificacoes, tituloBusca, onFechar, extracoes = [], buscaAtiva = '', onTrocarBusca, onNovaExtracao,
+}) {
   const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web', numeroTeste: '' }));
   const [log, setLog] = useState(() => lerJson(CHAVE_LOG, {}));
   const [versoes, setVersoes] = useState({});
@@ -117,31 +120,6 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
   }, []);
   const modoLink = NO_CELULAR ? 'wame' : cfg.abrirEm;
 
-  // WhatsApp conectado aqui no Prospector: a mensagem sai por ele, sem abrir
-  // outro programa. Continua manual: um clique por mensagem, depois de conferir.
-  const [conexao, setConexao] = useState(null);
-  const [enviando, setEnviando] = useState(null);
-  useEffect(() => {
-    const api = window.whatsappAPI;
-    if (!api?.listConnections) return undefined;
-    let vivo = true;
-    const le = () => api.listConnections().then((r) => {
-      if (!vivo) return;
-      const lista = r?.connections || [];
-      const ativa = lista.find((c) => c.active && c.connected) || lista.find((c) => c.connected);
-      setConexao(ativa ? { id: ativa.id, fim: String(ativa.phoneNumber || '').replace(/\D/g, '').slice(-4) } : null);
-    }).catch(() => {});
-    le();
-    const off = api.onStatus?.(() => le());
-    const t = setInterval(le, 15000);
-    return () => { vivo = false; clearInterval(t); if (typeof off === 'function') off(); };
-  }, []);
-
-  const enviaPeloProspector = async (numero, texto) => {
-    const r = await window.chatAPI?.sendMessage?.(numero, texto, conexao?.id);
-    if (r?.success === false) throw new Error(r.error || 'O WhatsApp não aceitou o envio.');
-    return r;
-  };
   useEffect(() => gravaJson(CHAVE_LOG, log), [log]);
   useEffect(() => {
     const esc = (e) => { if (e.key === 'Escape') onFechar(); };
@@ -219,25 +197,6 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     if (status === 'enviada') setAviso(`${item.lead.name || 'Lead'} marcado como enviado.`);
   };
 
-  const envia = async (item) => {
-    if (enviando) return;
-    const numero = digitosWhatsApp(item.q.canais.whatsapp, item.lead.pais);
-    setEnviando(item.chave);
-    setAviso('');
-    try {
-      await enviaPeloProspector(numero, textoDe(item));
-      marca(item, 'enviada');
-      setAviso(`Enviada para ${item.lead.name || 'o lead'} pelo WhatsApp •••• ${conexao?.fim || ''}.`);
-    } catch (e) {
-      const semZap = /invalid|inválid|not.*whatsapp|não.*whatsapp|exists/i.test(e.message);
-      setAviso(semZap
-        ? 'Esse número não tem WhatsApp. Use "Sem WhatsApp" para tirar da fila.'
-        : `Não foi enviada: ${e.message}`);
-    } finally {
-      setEnviando(null);
-    }
-  };
-
   const desfaz = (chave) => setLog((atualLog) => {
     const { [chave]: _tirado, ...resto } = atualLog;
     return resto;
@@ -286,15 +245,6 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
     if (!numero) {
       setAjustesAbertos(true);
       setAviso('Coloque seu número nos ajustes para receber o teste.');
-      return;
-    }
-    if (conexao) {
-      try {
-        await enviaPeloProspector(numero, textoDe(item));
-        setAviso(`Teste enviado para ${cfg.numeroTeste} pelo WhatsApp •••• ${conexao.fim}. Confira no celular.`);
-      } catch (e) {
-        setAviso(`O teste não foi enviado: ${e.message}`);
-      }
       return;
     }
     const url = linkWhatsApp(numero, textoDe(item), modoLink);
@@ -420,34 +370,14 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
         </div>
 
         <div className="fa-passos">
-          {conexao ? (
-            <>
-              <button type="button" className="btn fa-abrir fa-enviar" onClick={() => envia(atual)} disabled={enviando === chave}>
-                {enviando === chave ? <Loader size={16} strokeWidth={2} className="cfg-girando" aria-hidden="true" /> : <Send size={16} strokeWidth={2} aria-hidden="true" />}
-                {enviando === chave ? 'Enviando…' : `Enviar pelo •••• ${conexao.fim}`}
-              </button>
-              {jaAbriu && (
-                <button type="button" className="btn fa-enviei pronto" onClick={() => marca(atual, 'enviada')}>
-                  <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
-                </button>
-              )}
-              <span className="fa-espaco" />
-              <button type="button" className="fa-mini" onClick={() => abre(atual)} title="Abrir a conversa no WhatsApp do computador, sem enviar">
-                <ExternalLink size={13} strokeWidth={2} aria-hidden="true" /> Abrir no app
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
-                <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
-                {jaAbriu ? 'Abrir de novo' : 'Abrir no WhatsApp'}
-              </button>
-              <button type="button" className={`btn fa-enviei${jaAbriu ? ' pronto' : ''}`} onClick={() => marca(atual, 'enviada')}>
-                <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
-              </button>
-              <span className="fa-espaco" />
-            </>
-          )}
+          <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
+            <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
+            {jaAbriu ? 'Abrir de novo' : 'Abrir no WhatsApp'}
+          </button>
+          <button type="button" className={`btn fa-enviei${jaAbriu ? ' pronto' : ''}`} onClick={() => marca(atual, 'enviada')}>
+            <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
+          </button>
+          <span className="fa-espaco" />
           <button type="button" className="fa-mini" onClick={() => testa(atual)} title={cfg.numeroTeste ? `Mandar esta mensagem para ${cfg.numeroTeste}` : 'Coloque seu número nos ajustes'}>
             <Smartphone size={13} strokeWidth={2} aria-hidden="true" /> Testar no meu número
           </button>
@@ -459,11 +389,9 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
           </button>
         </div>
         <p className="fa-dica">
-          {conexao
-            ? `Confira o texto e clique em Enviar: a mensagem sai pelo WhatsApp conectado aqui (•••• ${conexao.fim}), conta na meta e abre o próximo.`
-            : jaAbriu
-              ? 'Enviou no WhatsApp? Clique em Enviei para contar na meta e ir para o próximo.'
-              : 'O WhatsApp abre com o texto na caixa. Você confere e aperta enviar lá.'}
+          {jaAbriu
+            ? 'Enviou no WhatsApp? Clique em Enviei para contar na meta e ir para o próximo.'
+            : 'O WhatsApp abre com o texto já digitado na caixa, como rascunho. Você confere e aperta enviar lá.'}
         </p>
       </section>
     );
@@ -478,6 +406,23 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
             <div className="eyebrow">Abordagem manual</div>
             <h2 id="faTitulo">Fila do dia</h2>
             <p className="fa-sub">{tituloBusca ? `${tituloBusca} · ` : ''}Você abre, confere e envia no WhatsApp. O app só prepara.</p>
+            {extracoes.length > 0 && onTrocarBusca && (
+              <label className="fa-cidade">
+                <span>Cidade</span>
+                <select value={buscaAtiva} onChange={(e) => onTrocarBusca(e.target.value)}>
+                  <option value="">Todas as extrações</option>
+                  {extracoes.map((a) => {
+                    const p = a.progresso || { total: 0, abordados: 0 };
+                    const falta = Math.max(0, p.total - p.abordados);
+                    return (
+                      <option key={a.id} value={a.id}>
+                        {a.nicho} · {a.rotulo || 'sem local'} · {a.concluida ? 'concluída' : `${falta} para abordar`}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+            )}
           </div>
           <div className="fa-meta" role="status" aria-label={`${enviadasHoje} de ${cfg.limite} mensagens enviadas hoje`}>
             <div className="fa-meta-num"><b>{enviadasHoje}</b><span>/ {cfg.limite}</span></div>
@@ -507,7 +452,7 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
               <input value={cfg.empresa} onChange={muda('empresa')} placeholder="Grow+" autoComplete="off" />
             </label>
             <label>Meta por dia
-              <select value={cfg.limite} onChange={muda('limite')}>{LIMITES.map((n) => <option key={n} value={n}>{n} mensagens</option>)}</select>
+              <select value={cfg.limite} onChange={muda('limite')}>{LIMITES.map((n) => <option key={n} value={n}>{n} mensagens{n === 20 ? ' (recomendado)' : n > 30 ? ' (número aquecido)' : ''}</option>)}</select>
             </label>
             <label>Oferecer
               <select value={cfg.oferta} onChange={muda('oferta')}>
@@ -550,12 +495,32 @@ export default function FilaAbordagem({ leads, qualificacoes, tituloBusca, onFec
         {aba === 'fila' && (fila.length === 0 ? (
           <div className="fa-vazio">
             {restante === 0 ? <PartyPopper size={28} strokeWidth={1.5} aria-hidden="true" /> : <Inbox size={28} strokeWidth={1.5} aria-hidden="true" />}
-            <b>{restante === 0 ? `Meta de ${cfg.limite} cumprida hoje` : 'Ninguém na fila'}</b>
-            <span>
-              {restante === 0
-                ? 'Para continuar, aumente a meta nos ajustes ou volte amanhã.'
-                : 'Nenhum lead desta busca tem WhatsApp e algo para oferecer. Troque a busca ou o que oferecer.'}
-            </span>
+            {(() => {
+              const cidade = extracoes.find((a) => a.id === buscaAtiva);
+              if (restante === 0) {
+                return (
+                  <>
+                    <b>Meta de {cfg.limite} cumprida hoje</b>
+                    <span>Volte amanhã para os próximos. Manter o ritmo diário protege o seu número.</span>
+                  </>
+                );
+              }
+              if (cidade?.concluida) {
+                return (
+                  <>
+                    <b>{cidade.rotulo || 'Cidade'} concluída</b>
+                    <span>Todos os leads com WhatsApp desta extração já passaram pela Fila. Hora de extrair a próxima cidade.</span>
+                    {onNovaExtracao && <button type="button" className="btn btn-primary btn-sm" onClick={onNovaExtracao}>Extrair a próxima cidade</button>}
+                  </>
+                );
+              }
+              return (
+                <>
+                  <b>Ninguém na fila</b>
+                  <span>Nenhum lead desta extração tem WhatsApp e algo para oferecer. Escolha outra cidade acima ou troque o que oferecer.</span>
+                </>
+              );
+            })()}
           </div>
         ) : (
           <div className="fa-corpo">

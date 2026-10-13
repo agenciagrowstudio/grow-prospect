@@ -49,6 +49,21 @@ describe('cobertura das extrações', () => {
     assert.equal(C.areasExtraidas([{ id: 'x', label: 'y' }], []).length, 0, 'sem leads com coordenada não desenha nada');
   });
 
+  it('cidade concluída quando todo lead com telefone já passou pela Fila', async () => {
+    await carrega();
+    const leads = [
+      { id: 'a', searchId: 's1', phone: '+1 352 555 0101' },
+      { id: 'b', searchId: 's1', phone: '+1 352 555 0102' },
+      { id: 'c', searchId: 's1' }, // sem telefone: não entra na conta
+    ];
+    let [area] = C.areasExtraidas([buscaCidade], leads, { a: { status: 'enviada' } });
+    assert.deepEqual(area.progresso, { total: 2, abordados: 1 });
+    assert.equal(area.concluida, false);
+    [area] = C.areasExtraidas([buscaCidade], leads, { a: { status: 'enviada' }, b: { status: 'pulada' } });
+    assert.equal(area.concluida, true);
+    assert.equal(C.estaConcluida({ total: 0, abordados: 0 }), false, 'sem ninguém para abordar não conta como concluída');
+  });
+
   it('separa os leads novos dos que já estavam na base', async () => {
     await carrega();
     const base = [{ placeId: 'A', name: 'Onix' }, { name: 'Maria Clean', address: '1 Main St' }];

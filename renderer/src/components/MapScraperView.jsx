@@ -666,7 +666,14 @@ export default function MapScraperView({
   }, [userLocation]);
 
   // Áreas extraídas (cidades pintadas de azul). A da extração escolhida fica mais forte.
-  const areas = useMemo(() => areasExtraidas(searches, leads), [searches, leads]);
+  // O progresso (quantos já foram abordados) muda quando a Fila fecha.
+  const [versaoLog, setVersaoLog] = useState(0);
+  const areas = useMemo(() => {
+    let log = {};
+    try { log = JSON.parse(localStorage.getItem('sigma_abordagem_log') || '{}') || {}; } catch {}
+    return areasExtraidas(searches, leads, log);
+  }, [searches, leads, versaoLog]);
+  const progressoPorId = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
   useEffect(() => {
     const camada = areasLayerRef.current;
     if (!camada) return undefined;
@@ -1434,6 +1441,7 @@ export default function MapScraperView({
             valor={buscaAtiva}
             onEscolher={setBuscaAtiva}
             leadsPorBusca={leadsPorBusca}
+            progresso={progressoPorId}
             totalLeads={leads.length}
             emAndamento={activeExtraction?.id ? { id: String(activeExtraction.id), rotulo: activeExtraction.rotulo || activeExtraction.query } : null}
           />
@@ -1526,7 +1534,11 @@ export default function MapScraperView({
             leads={visibleLeads}
             qualificacoes={qualificacoes}
             tituloBusca={regiao.titulo}
-            onFechar={() => setFilaAberta(false)}
+            extracoes={areas}
+            buscaAtiva={buscaAtiva === MAPA_LIMPO ? '' : buscaAtiva}
+            onTrocarBusca={(id) => { setBuscaAtiva(id); setFiltroTemp(''); setFiltroPublico(''); }}
+            onNovaExtracao={() => { setFilaAberta(false); setVersaoLog((v) => v + 1); onOpenNewExtraction?.(); }}
+            onFechar={() => { setFilaAberta(false); setVersaoLog((v) => v + 1); }}
           />
         )}
 

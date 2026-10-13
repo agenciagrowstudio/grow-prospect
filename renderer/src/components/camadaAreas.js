@@ -7,6 +7,8 @@ import { poligonoDoLugar } from '../poligonos';
  * contorno real assim que ele chega do OpenStreetMap.
  */
 export const AZUL = '#0E6BEC';
+// Cidade concluída: todos os leads dela já foram abordados.
+export const VERDE = '#00A34D';
 
 const RAIO_PROVISORIO_KM = { cidade: 4, bairro: 1.2, estado: 120 };
 
@@ -20,7 +22,11 @@ function dataCurta(ts) {
 
 export function textoDaArea(a) {
   const partes = [a.rotulo, dataCurta(a.ts), `${a.leads} lead${a.leads === 1 ? '' : 's'}`].filter(Boolean);
-  return `<b>${esc(a.nicho || 'Extração')}</b><br>${esc(partes.join(' · '))}${a.aproximada ? '<br><i>área aproximada pelos leads</i>' : ''}`;
+  const p = a.progresso;
+  const andamento = p && p.total
+    ? `<br>${a.concluida ? '<b>Concluída:</b> ' : ''}${p.abordados} de ${p.total} abordados`
+    : '';
+  return `<b>${esc(a.nicho || 'Extração')}</b><br>${esc(partes.join(' · '))}${andamento}${a.aproximada ? '<br><i>área aproximada pelos leads</i>' : ''}`;
 }
 
 /**
@@ -32,11 +38,12 @@ export function desenhaAreas(camada, areas, op = {}) {
   camada.clearLayers();
   areas.forEach((a) => {
     const forte = op.destaque && a.id === op.destaque;
+    const cor = a.concluida ? VERDE : AZUL;
     const estilo = {
-      color: AZUL,
+      color: cor,
       weight: forte ? 2.5 : 1.5,
       opacity: forte ? 1 : 0.85,
-      fillColor: AZUL,
+      fillColor: cor,
       // Azul pouco transparente: a área feita salta aos olhos, os pinos continuam por cima.
       fillOpacity: forte ? 0.36 : 0.26,
     };

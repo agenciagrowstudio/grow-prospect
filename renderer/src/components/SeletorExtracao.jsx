@@ -29,7 +29,7 @@ function quando(ts) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export default function SeletorExtracao({ buscas, valor, onEscolher, leadsPorBusca, totalLeads, emAndamento }) {
+export default function SeletorExtracao({ buscas, valor, onEscolher, leadsPorBusca, progresso, totalLeads, emAndamento }) {
   const [aberto, setAberto] = useState(false);
   const [filtro, setFiltro] = useState('');
   const ref = useRef(null);
@@ -121,7 +121,13 @@ export default function SeletorExtracao({ buscas, valor, onEscolher, leadsPorBus
                       {[p.onde, quando(b.timestamp)].filter(Boolean).join(' · ')}
                     </small>
                   </span>
-                  <span className="sx-qtd">{leadsPorBusca.get(id) || 0}</span>
+                  {(() => {
+                    const a = progresso?.get(id);
+                    const p = a?.progresso;
+                    if (a?.concluida) return <span className="sx-qtd sx-concluida" title="Todos os leads com WhatsApp já foram abordados">Concluída</span>;
+                    if (p?.total) return <span className="sx-qtd" title={`${p.abordados} de ${p.total} abordados na Fila do dia`}>{p.abordados}/{p.total}</span>;
+                    return <span className="sx-qtd">{leadsPorBusca.get(id) || 0}</span>;
+                  })()}
                   {on && <Check size={15} strokeWidth={2.4} className="sx-check" aria-hidden="true" />}
                 </button>
               );

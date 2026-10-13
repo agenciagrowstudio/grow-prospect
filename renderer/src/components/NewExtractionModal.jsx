@@ -669,7 +669,7 @@ export default function NewExtractionModal({
                     {raioKm
                       ? `Busca em volta do ponto e descarta o que ficar a mais de ${raioKm} km. Prefira a cidade inteira: ela fica marcada em azul e não se repete.`
                       : dividePorBairro
-                        ? 'Recomendado: extrai a cidade inteira, que fica pintada de azul no mapa. Assim você vai mapeando cidade por cidade, sem repetir.'
+                        ? 'Recomendado: extrai a cidade inteira, que fica pintada de azul no mapa. Se passar do limite do Google (uns 120 por busca), o app divide em bairros sozinho até pegar todos.'
                         : 'Busca pelo nome do lugar inteiro, que fica pintado de azul depois.'}
                   </span>
                 </div>

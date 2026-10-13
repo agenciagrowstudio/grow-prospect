@@ -39,7 +39,11 @@ import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData
 import { mascaraTelefone } from './telefone';
 import IconePng from './components/IconePng';
 import { iniciarSincronizacao, lerSessao, lerEmpresa } from './nuvem';
-import { separaNovos, atualizaExistentes } from './cobertura';
+import { separaNovos, atualizaExistentes, identidadeLead } from './cobertura';
+
+// O Google Maps entrega no máximo uns 120 resultados por busca. Chegou perto
+// disso numa cidade inteira, quase certamente ficou gente de fora.
+const PERTO_DO_LIMITE_GOOGLE = 100;
 import { ehWeb } from './ambiente';
 import EntradaWeb from './components/EntradaWeb';
 import SoNoComputador from './components/SoNoComputador';
@@ -307,8 +311,51 @@ function AppInner() {
         }
         throw new Error(res?.error || 'O Google Maps não retornou resultados para esta busca.');
       }
-      const resultLeads = Array.isArray(res.data) ? res.data : [];
+      let resultLeads = Array.isArray(res.data) ? res.data : [];
       if (!resultLeads.length) throw new Error('A busca foi concluída, mas não retornou leads válidos.');
+
+      // "Extrair a cidade inteira": se a busca bateu no limite do Google, divide
+      // a cidade em bairros sozinho e continua até cobrir tudo.
+      let bairrosAutomaticos = [];
+      const cidadeInteira = !area && bairros.length <= 1 && localEscolhido?.tipo === 'cidade';
+      if (cidadeInteira && resultLeads.length >= PERTO_DO_LIMITE_GOOGLE && window.electronAPI.sugerirBairros) {
+        addNotification({
+          type: 'info',
+          category: 'scraper',
+          title: 'Cidade grande: dividindo por bairros',
+          message: `${resultLeads.length} resultados é o limite do Google por busca. Buscando bairro por bairro para pegar todos de ${city}.`,
+        });
+        try {
+          const sb = await window.electronAPI.sugerirBairros(city, pais);
+          bairrosAutomaticos = sb?.success && Array.isArray(sb.bairros) ? sb.bairros : [];
+          if (bairrosAutomaticos.length > 1) {
+            const res2 = await window.electronAPI.startScrape(qstr, limit, searchId, pais, { nicho: niche, cidade: city, areas: bairrosAutomaticos }, null);
+            if (res2?.success && Array.isArray(res2.data)) {
+              resultLeads = [...resultLeads, ...res2.data];
+            } else {
+              addNotification({
+                type: 'info',
+                category: 'scraper',
+                title: res2?.cancelled ? 'Divisão por bairros cancelada' : 'Divisão por bairros não terminou',
+                message: `Ficam os ${resultLeads.length} leads da primeira busca. Dá para extrair por bairros depois.`,
+              });
+              bairrosAutomaticos = [];
+            }
+          } else {
+            bairrosAutomaticos = [];
+          }
+        } catch {
+          bairrosAutomaticos = [];
+        }
+        // A busca da cidade e a dos bairros se repetem: fica um de cada.
+        const vistos = new Set();
+        resultLeads = resultLeads.filter((l) => {
+          const k = identidadeLead(l);
+          if (vistos.has(k)) return false;
+          vistos.add(k);
+          return true;
+        });
+      }
 
       // O que já está na base não entra de novo: fica na extração em que apareceu primeiro.
       // Quem reapareceu tem os dados do Google atualizados (nota, avaliações...).
@@ -342,7 +389,7 @@ function AppInner() {
             lng: area ? area.lng : Number(localEscolhido.lng),
             raioKm: area ? area.raioKm : null,
             chave: localEscolhido.chave || '',
-            bairros: bairros.length ? bairros : undefined,
+            bairros: bairros.length ? bairros : (bairrosAutomaticos.length ? bairrosAutomaticos : undefined),
             rotulo: ondeTexto,
           } : null,
         },
