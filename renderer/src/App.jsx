@@ -44,6 +44,15 @@ import { mascaraTelefone } from './telefone';
 import IconePng from './components/IconePng';
 import { iniciarSincronizacao, lerSessao, lerEmpresa } from './nuvem';
 import { separaNovos, atualizaExistentes, identidadeLead } from './cobertura';
+import { limpaRedesRepetidas } from './redesRepetidas';
+
+// Ao abrir: limpa Instagram/Facebook vazados (o mesmo perfil em vários leads
+// de nomes diferentes). A sincronização leva a correção para a nuvem.
+try {
+  const base = JSON.parse(localStorage.getItem('sigma_leads') || '[]');
+  const { leads: limpos, limpos: qtd } = limpaRedesRepetidas(Array.isArray(base) ? base : []);
+  if (qtd) localStorage.setItem('sigma_leads', JSON.stringify(limpos));
+} catch { /* base ilegível: segue como está */ }
 
 // O Google Maps entrega no máximo uns 120 resultados por busca. Chegou perto
 // disso numa cidade inteira, quase certamente ficou gente de fora.
@@ -383,10 +392,11 @@ function AppInner() {
       // Quem reapareceu tem os dados do Google atualizados (nota, avaliações...).
       const { base: current } = atualizaExistentes(readLocalArray('sigma_leads'), resultLeads);
       const { novos, repetidos } = separaNovos(resultLeads, current);
-      const combined = normalizeLeadCollection([
+      // Instagram/Facebook repetido em vários leads diferentes é vazamento: sai.
+      const { leads: combined } = limpaRedesRepetidas(normalizeLeadCollection([
         ...novos.map((lead) => ({ ...lead, searchId, pais, id: lead.id || Math.random().toString(36).slice(2) })),
         ...current,
-      ]);
+      ]));
       const currentSearches = readLocalArray('sigma_searches');
       const nextSearches = [
         ...currentSearches.filter((search) => String(search?.id) !== searchId),

@@ -161,19 +161,13 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
             place.instagram = place.website;
             place.website = '';
           }
-          if (!place.instagram) {
-            const ig = await page.locator('a[href*="instagram.com"]').first();
-            if (await ig.count() > 0) place.instagram = await ig.getAttribute('href');
-          }
+          if (!place.instagram) place.instagram = await linkDoPainel(page, 'instagram.com');
 
           if (place.website && place.website.includes('facebook.com')) {
             place.facebook = place.website;
             place.website = '';
           }
-          if (!place.facebook) {
-            const fb = await page.locator('a[href*="facebook.com"]').first();
-            if (await fb.count() > 0) place.facebook = await fb.getAttribute('href');
-          }
+          if (!place.facebook) place.facebook = await linkDoPainel(page, 'facebook.com');
 
           if (place.website && !place.website.includes('instagram.com') && !place.website.includes('facebook.com') && !place.website.includes('youtube.com')) {
             checkCancelled(cancelToken);
@@ -227,6 +221,28 @@ async function scrapeGoogleMaps(searchQuery, maxResults = 999, onProgress = cons
   onProgress(`\nDone! ${places.length} places.`);
   statistics.total = places.length;
   return { success: true, data: places, count: places.length, statistics };
+}
+
+/**
+ * Link de rede social do negócio aberto, procurado só dentro do painel dele.
+ * Antes a busca era na página inteira, e o primeiro link de Instagram ou
+ * Facebook de outro elemento (lista de resultados, anúncio) ia para quase
+ * todos os leads da extração. Sem achar no painel, fica vazio.
+ */
+async function linkDoPainel(page, dominio) {
+  try {
+    return await page.evaluate((dom) => {
+      const titulo = document.querySelector('h1.DUwDvf');
+      const painel = titulo && titulo.closest('div[role="main"]');
+      if (!painel) return '';
+      const link = [...painel.querySelectorAll(`a[href*="${dom}"]`)]
+        .map((a) => a.getAttribute('href') || '')
+        .find((href) => /^https?:\/\//i.test(href));
+      return link || '';
+    }, dominio);
+  } catch {
+    return '';
+  }
 }
 
 async function gotoWithRetry(page, url, onProgress) {
