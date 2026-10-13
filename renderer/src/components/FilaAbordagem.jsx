@@ -2,10 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Flame, Thermometer, Snowflake, Undo2, MessagesSquare,
-  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, FilePen } from 'lucide-react';
+  SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages } from 'lucide-react';
 import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
-import { lerRascunhos, criaRascunhos, rascunhoDoNumero, apagaRascunho, EVENTO_RASCUNHOS } from '../rascunhos';
 import { localDoEndereco } from '../leadData';
 import Bandeira from './Bandeira';
 import { publicoDoLead } from '../resultados';
@@ -90,7 +89,6 @@ async function abreLink(url) {
 
 export default function FilaAbordagem({
   leads, qualificacoes, tituloBusca, onFechar, extracoes = [], buscaAtiva = '', onTrocarBusca, onNovaExtracao,
-  onAbrirWhatsAppProspector,
 }) {
   const [cfg, setCfg] = useState(() => lerJson(CHAVE_CFG, { nome: '', empresa: 'Grow+', limite: 20, oferta: 'qualquer', abrirEm: 'web', numeroTeste: '' }));
   const [log, setLog] = useState(() => lerJson(CHAVE_LOG, {}));
@@ -121,33 +119,6 @@ export default function FilaAbordagem({
     }).catch(() => {});
   }, []);
   const modoLink = NO_CELULAR ? 'wame' : cfg.abrirEm;
-
-  // WhatsApp conectado no Prospector: a Fila deixa a mensagem como rascunho lá.
-  // Nada é enviado daqui; a pessoa abre a conversa, confere e aperta enviar.
-  const [conexao, setConexao] = useState(null);
-  const [rascunhos, setRascunhos] = useState(() => lerRascunhos());
-  useEffect(() => {
-    const api = window.whatsappAPI;
-    const atualiza = () => setRascunhos(lerRascunhos());
-    window.addEventListener(EVENTO_RASCUNHOS, atualiza);
-    if (!api?.listConnections) return () => window.removeEventListener(EVENTO_RASCUNHOS, atualiza);
-    let vivo = true;
-    const le = () => api.listConnections().then((r) => {
-      if (!vivo) return;
-      const lista = r?.connections || [];
-      const ativa = lista.find((c) => c.active && c.connected) || lista.find((c) => c.connected);
-      setConexao(ativa ? { id: ativa.id, fim: String(ativa.phoneNumber || '').replace(/\D/g, '').slice(-4) } : null);
-    }).catch(() => {});
-    le();
-    const off = api.onStatus?.(() => le());
-    const t = setInterval(le, 15000);
-    return () => {
-      vivo = false;
-      clearInterval(t);
-      if (typeof off === 'function') off();
-      window.removeEventListener(EVENTO_RASCUNHOS, atualiza);
-    };
-  }, []);
 
   useEffect(() => gravaJson(CHAVE_LOG, log), [log]);
   useEffect(() => {
@@ -208,7 +179,6 @@ export default function FilaAbordagem({
   const textoDe = (item) => (editados[chaveEdicao(item)] !== undefined ? editados[chaveEdicao(item)] : gerado(item).texto);
 
   const marca = (item, status) => {
-    if (status !== 'enviada') apagaRascunho(digitosWhatsApp(item.q.canais.whatsapp, item.lead.pais));
     const proximo = fila[posicao + 1] || fila[posicao - 1] || null;
     setLog((atualLog) => ({
       ...atualLog,
@@ -225,35 +195,6 @@ export default function FilaAbordagem({
     }));
     setSelecionado(proximo?.chave || null);
     if (status === 'enviada') setAviso(`${item.lead.name || 'Lead'} marcado como enviado.`);
-  };
-
-  const numeroDe = (item) => digitosWhatsApp(item.q.canais.whatsapp, item.lead.pais);
-  const rascunhoDe = (item) => rascunhoDoNumero(rascunhos, numeroDe(item))?.[1] || null;
-  const dadosDoRascunho = (item) => ({
-    numero: numeroDe(item),
-    texto: textoDe(item),
-    nome: item.lead.name || '',
-    chave: item.chave,
-    angulo: gerado(item).angulo,
-    publico: publicoDoLead(item.lead),
-    idioma: idiomaDe(item),
-  });
-  const LOTE = 20;
-  const semRascunho = fila.filter((item) => !rascunhoDe(item));
-  const emRascunho = fila.length - semRascunho.length;
-  const criaLote = () => {
-    const lote = semRascunho.slice(0, LOTE);
-    if (!lote.length) return;
-    setRascunhos(criaRascunhos(lote.map(dadosDoRascunho)));
-    setAviso(`${lote.length} rascunho${lote.length === 1 ? '' : 's'} pronto${lote.length === 1 ? '' : 's'} no WhatsApp do Prospector. Abra cada conversa, confira e aperte enviar.`);
-  };
-  const criaUm = (item) => {
-    setRascunhos(criaRascunhos([dadosDoRascunho(item)]));
-    setAviso(`Rascunho pronto para ${item.lead.name || 'o lead'}.`);
-  };
-  const abreNoProspector = (item) => {
-    if (!rascunhoDe(item)) criaRascunhos([dadosDoRascunho(item)]);
-    onAbrirWhatsAppProspector?.(numeroDe(item), item.lead.name || '');
   };
 
   const desfaz = (chave) => setLog((atualLog) => {
@@ -429,44 +370,14 @@ export default function FilaAbordagem({
         </div>
 
         <div className="fa-passos">
-          {conexao && onAbrirWhatsAppProspector ? (
-            <>
-              {rascunhoDe(atual) ? (
-                <button type="button" className="btn fa-abrir fa-rascunho" onClick={() => abreNoProspector(atual)}>
-                  <FilePen size={16} strokeWidth={2} aria-hidden="true" /> Abrir rascunho
-                </button>
-              ) : (
-                <button type="button" className="btn fa-abrir fa-rascunho" onClick={() => criaUm(atual)}>
-                  <FilePen size={16} strokeWidth={2} aria-hidden="true" /> Criar rascunho
-                </button>
-              )}
-              {rascunhoDe(atual) && rascunhoDe(atual).texto !== texto && (
-                <button type="button" className="fa-mini" onClick={() => criaUm(atual)} title="O texto mudou depois de criar o rascunho">
-                  <RefreshCw size={13} strokeWidth={2} aria-hidden="true" /> Atualizar rascunho
-                </button>
-              )}
-              <span className="fa-espaco" />
-              <button type="button" className="fa-mini" onClick={() => abre(atual)} title="Abrir no WhatsApp oficial do computador, com o texto na caixa">
-                <ExternalLink size={13} strokeWidth={2} aria-hidden="true" /> WhatsApp oficial
-              </button>
-              {jaAbriu && (
-                <button type="button" className="fa-mini" onClick={() => marca(atual, 'enviada')}>
-                  <Check size={13} strokeWidth={2.25} aria-hidden="true" /> Enviei pelo oficial
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
-                <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
-                {jaAbriu ? 'Abrir de novo' : 'Abrir no WhatsApp'}
-              </button>
-              <button type="button" className={`btn fa-enviei${jaAbriu ? ' pronto' : ''}`} onClick={() => marca(atual, 'enviada')}>
-                <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
-              </button>
-              <span className="fa-espaco" />
-            </>
-          )}
+          <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
+            <ExternalLink size={16} strokeWidth={2} aria-hidden="true" />
+            {jaAbriu ? 'Abrir de novo' : 'Abrir no WhatsApp'}
+          </button>
+          <button type="button" className={`btn fa-enviei${jaAbriu ? ' pronto' : ''}`} onClick={() => marca(atual, 'enviada')}>
+            <Check size={16} strokeWidth={2.25} aria-hidden="true" /> Enviei
+          </button>
+          <span className="fa-espaco" />
           <button type="button" className="fa-mini" onClick={() => testa(atual)} title={cfg.numeroTeste ? `Mandar esta mensagem para ${cfg.numeroTeste}` : 'Coloque seu número nos ajustes'}>
             <Smartphone size={13} strokeWidth={2} aria-hidden="true" /> Testar no meu número
           </button>
@@ -478,11 +389,7 @@ export default function FilaAbordagem({
           </button>
         </div>
         <p className="fa-dica">
-          {conexao && onAbrirWhatsAppProspector
-            ? (rascunhoDe(atual)
-              ? `Rascunho pronto no WhatsApp do Prospector (•••• ${conexao.fim}). Abra, confira e aperte enviar: o lead conta na meta sozinho.`
-              : 'Crie o rascunho: a mensagem fica na caixa da conversa no WhatsApp do Prospector, sem enviar.')
-            : jaAbriu
+          {jaAbriu
             ? 'Enviou no WhatsApp? Clique em Enviei para contar na meta e ir para o próximo.'
             : 'O WhatsApp abre com o texto já digitado na caixa, como rascunho. Você confere e aperta enviar lá.'}
         </p>
@@ -617,21 +524,6 @@ export default function FilaAbordagem({
           </div>
         ) : (
           <div className="fa-corpo">
-            <div className="fa-coluna-lista">
-            {conexao && onAbrirWhatsAppProspector && (
-              <div className="fa-lote">
-                <div className="fa-lote-txt">
-                  <b>{emRascunho} de {fila.length} em rascunho</b>
-                  <span>Faltam {restante} hoje · WhatsApp •••• {conexao.fim}</span>
-                </div>
-                <button type="button" className="btn btn-sm btn-primary" onClick={criaLote} disabled={!semRascunho.length}>
-                  <FilePen size={14} strokeWidth={2} aria-hidden="true" /> Criar {Math.min(LOTE, semRascunho.length) || ''} rascunhos
-                </button>
-                <button type="button" className="btn btn-sm" onClick={() => onAbrirWhatsAppProspector?.(null)} disabled={!emRascunho}>
-                  Ir para o WhatsApp
-                </button>
-              </div>
-            )}
             <ol className="fa-lista" aria-label="Leads da fila">
               {fila.map((item, i) => {
                 const { lead, q, chave } = item;
@@ -639,9 +531,7 @@ export default function FilaAbordagem({
                 return (
                   <li key={chave}>
                     <button type="button" className={`fa-linha${ativo ? ' on' : ''}`} onClick={() => setSelecionado(chave)} aria-current={ativo}>
-                      <span className={`fa-ordem${rascunhoDe(item) ? ' fa-ordem-rascunho' : ''}`} title={rascunhoDe(item) ? 'Rascunho pronto' : undefined}>
-                        {rascunhoDe(item) ? <FilePen size={11} strokeWidth={2.4} /> : abertos[chave] ? <Check size={12} strokeWidth={2.5} /> : i + 1}
-                      </span>
+                      <span className="fa-ordem">{abertos[chave] ? <Check size={12} strokeWidth={2.5} /> : i + 1}</span>
                       <span className="fa-linha-txt">
                         <b>{lead.name || 'Empresa'}</b>
                         <span>{[lead.city || localDoEndereco(lead.address).cidade, ANGULOS.find((a) => a.id === gerado(item).angulo)?.nome, idiomaDe(item) === 'en' ? 'em inglês' : ''].filter(Boolean).join(' · ')}</span>
@@ -652,7 +542,6 @@ export default function FilaAbordagem({
                 );
               })}
             </ol>
-            </div>
             {detalhe}
           </div>
         ))}

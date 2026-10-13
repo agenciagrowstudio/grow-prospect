@@ -1539,15 +1539,6 @@ export default function MapScraperView({
             onTrocarBusca={(id) => { setBuscaAtiva(id); setFiltroTemp(''); setFiltroPublico(''); }}
             onNovaExtracao={() => { setFilaAberta(false); setVersaoLog((v) => v + 1); onOpenNewExtraction?.(); }}
             onFechar={() => { setFilaAberta(false); setVersaoLog((v) => v + 1); }}
-            onAbrirWhatsAppProspector={(numero, nome) => {
-              try {
-                if (numero) localStorage.setItem('sigma_wa_pending', JSON.stringify({ tel: numero, name: nome || numero }));
-                else localStorage.setItem('sigma_wa_filtro', 'rascunhos');
-              } catch {}
-              setFilaAberta(false);
-              setVersaoLog((v) => v + 1);
-              onNavigate?.('whatsapp');
-            }}
           />
         )}
 
