@@ -20,10 +20,15 @@ export const PUBLICOS_RESULTADO = [
 ];
 
 export const OFERTAS_RESULTADO = [
+  { id: 'completo', nome: 'Site + Agendamento' },
   { id: 'site', nome: 'Site' },
+  { id: 'agendamento', nome: 'Sistema de agendamento' },
+  { id: 'bio', nome: 'Link na bio' },
+  { id: 'conteudo', nome: 'Conteúdo para redes' },
+  { id: 'midia', nome: 'Mídia indoor' },
+  // Ofertas antigas, para o histórico de antes da troca de catálogo.
   { id: 'google', nome: 'Google Negócio' },
   { id: 'redes', nome: 'Gestão de redes' },
-  { id: 'conteudo', nome: 'Conteúdo' },
   { id: 'sistema', nome: 'Sistema' },
   { id: 'geral', nome: 'Abordagem geral' },
 ];

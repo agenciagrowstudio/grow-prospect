@@ -346,7 +346,7 @@ function AppInner() {
       return { ok: false, erro: 'A ponte do desktop não está disponível.' };
     }
 
-    setActiveExtraction({ id: searchId, query: qstr, rotulo: `${niche} · ${ondeTexto}`, pais, startedAt: Date.now() });
+    setActiveExtraction({ id: searchId, query: qstr, rotulo: `${niche} · ${ondeTexto}`, pais, startedAt: Date.now(), automatica });
     try {
       // Dois ou mais bairros: uma busca por bairro, somadas no processo principal.
       const divisao = bairros.length > 1 ? { nicho: niche, cidade: city, areas: bairros } : null;
@@ -423,6 +423,7 @@ function AppInner() {
           source: 'maps',
           pais,
           timestamp: Date.now(),
+          automatica: automatica || undefined,
           // Onde foi, para pintar a área de azul e não extrair o mesmo lugar de novo.
           nicho: niche,
           encontrados: resultLeads.length,

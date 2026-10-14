@@ -143,56 +143,59 @@ describe('extração automática: quando rodar', () => {
   });
 });
 
-describe('extração automática: o laço do dia', () => {
+describe('extração automática: uma cidade por dia', () => {
   const semPausa = () => Promise.resolve();
-  const cfgPequena = (limite) => ({ ...E.configPadrao(), limite, nichos: ['Roofing', 'Handyman'], cidades: ['Orlando|FL', 'Newark|NJ', 'Danbury|CT'] });
+  const cfgPequena = () => ({ ...E.configPadrao(), nichos: ['Roofing', 'Handyman', 'House cleaning'], cidades: ['Orlando|FL', 'Newark|NJ', 'Danbury|CT'] });
 
-  it('para quando bate a meta de leads novos', async () => {
+  it('extrai todos os serviços de uma cidade só e para quando ela termina', async () => {
     await carrega();
     const feitas = [];
     const r = await E.executaDia({
-      cfg: cfgPequena(100),
+      cfg: cfgPequena(),
       lerAreas: () => feitas.map((f) => areaFeita(f.nicho, f.cidade, f.uf)),
-      iniciar: async (item) => { feitas.push(item); return { ok: true, novos: 60 }; },
+      iniciar: async (item) => { feitas.push(item); return { ok: true, novos: 30 }; },
       esperar: semPausa,
+      rng: () => 0.5,
     });
-    assert.equal(r.motivo, 'meta');
-    assert.equal(r.novos, 120);
-    assert.equal(r.buscas, 2);
+    assert.equal(r.motivo, 'cidade');
+    assert.equal(r.buscas, 3);
+    assert.equal(new Set(feitas.map((f) => f.cidade)).size, 1, 'uma cidade por dia');
+    assert.equal(r.cidade, 'Newark, NJ', 'a de maior prioridade sai primeiro');
+    assert.equal(feitas[0].nicho, 'House cleaning', 'dentro da cidade, o serviço mais promissor primeiro');
+    assert.equal(r.novos, 90);
   });
 
-  it('para quando tudo já foi extraído', async () => {
+  it('no dia seguinte vai para outra cidade; acabou tudo, avisa', async () => {
     await carrega();
     const feitas = [];
-    const r = await E.executaDia({
-      cfg: cfgPequena(5000),
+    const roda = () => E.executaDia({
+      cfg: cfgPequena(),
       lerAreas: () => feitas.map((f) => areaFeita(f.nicho, f.cidade, f.uf)),
       iniciar: async (item) => { feitas.push(item); return { ok: true, novos: 1 }; },
       esperar: semPausa,
+      rng: () => 0.5,
     });
-    assert.equal(r.motivo, 'tudo');
-    assert.equal(r.buscas, 6);
+    const dia1 = await roda();
+    const dia2 = await roda();
+    assert.notEqual(dia1.cidade, dia2.cidade);
+    await roda();
+    assert.equal((await roda()).motivo, 'tudo');
   });
 
   it('três falhas seguidas param o dia e nada fica marcado como vazio', async () => {
     await carrega();
-    const r = await E.executaDia({
-      cfg: cfgPequena(200),
-      lerAreas: () => [],
-      iniciar: async () => ({ ok: false, erro: 'timeout' }),
-      esperar: semPausa,
-    });
+    const r = await E.executaDia({ cfg: cfgPequena(), lerAreas: () => [], iniciar: async () => ({ ok: false, erro: 'timeout' }), esperar: semPausa });
     assert.equal(r.motivo, 'falhas');
     assert.equal(r.falhas, 3);
     assert.deepEqual(r.novasPuladas, []);
   });
 
-  it('busca sem resultado é anotada e o laço segue', async () => {
+  it('busca sem resultado é anotada e a cidade segue', async () => {
     await carrega();
     const feitas = [];
     let vez = 0;
     const r = await E.executaDia({
-      cfg: cfgPequena(30),
+      cfg: cfgPequena(),
       lerAreas: () => feitas.map((f) => areaFeita(f.nicho, f.cidade, f.uf)),
       iniciar: async (item) => {
         vez += 1;
@@ -201,41 +204,39 @@ describe('extração automática: o laço do dia', () => {
         return { ok: true, novos: 40 };
       },
       esperar: semPausa,
+      rng: () => 0.5,
     });
-    assert.equal(r.motivo, 'meta');
+    assert.equal(r.motivo, 'cidade');
     assert.equal(r.vazias, 1);
     assert.equal(r.novasPuladas.length, 1);
-    assert.equal(r.buscas, 1);
+    assert.equal(r.buscas, 2);
   });
 
   it('respeita o pedido de parar e a extração manual em andamento', async () => {
     await carrega();
     let parar = false;
     const r1 = await E.executaDia({
-      cfg: cfgPequena(5000),
-      lerAreas: () => [],
-      iniciar: async () => { parar = true; return { ok: true, novos: 3 }; },
-      esperar: semPausa,
-      deveParar: () => parar,
+      cfg: cfgPequena(), lerAreas: () => [], iniciar: async () => { parar = true; return { ok: true, novos: 3 }; }, esperar: semPausa, deveParar: () => parar,
     });
     assert.equal(r1.motivo, 'parada');
     assert.equal(r1.novos, 3);
-    const r2 = await E.executaDia({ cfg: cfgPequena(200), lerAreas: () => [], iniciar: async () => ({ ok: false, ocupado: true }), esperar: semPausa });
+    const r2 = await E.executaDia({ cfg: cfgPequena(), lerAreas: () => [], iniciar: async () => ({ ok: false, ocupado: true }), esperar: semPausa });
     assert.equal(r2.motivo, 'ocupado');
     assert.equal(r2.buscas, 0);
   });
 
-  it('espera entre as buscas, mas não depois de bater a meta', async () => {
+  it('espera entre as buscas da cidade, mas não depois da última', async () => {
     await carrega();
     const esperas = [];
+    const feitas = [];
     await E.executaDia({
-      cfg: cfgPequena(100),
-      lerAreas: () => [],
-      iniciar: async () => ({ ok: true, novos: 60 }),
+      cfg: cfgPequena(),
+      lerAreas: () => feitas.map((f) => areaFeita(f.nicho, f.cidade, f.uf)),
+      iniciar: async (item) => { feitas.push(item); return { ok: true, novos: 5 }; },
       esperar: async (ms) => { esperas.push(ms); },
       rng: () => 0.5,
     });
-    assert.equal(esperas.length, 1);
+    assert.equal(esperas.length, 2);
     assert.ok(esperas[0] >= E.PAUSA_MIN_MS && esperas[0] <= E.PAUSA_MAX_MS);
   });
 });
@@ -251,7 +252,7 @@ describe('extração automática: textos e histórico', () => {
   it('guarda o histórico do dia sem duplicar e só os últimos 30', async () => {
     await carrega();
     let c = E.configPadrao();
-    const r = { novos: 210, buscas: 4, motivo: 'meta', feitas: [{ nicho: 'Roofing', cidade: 'Orlando', uf: 'FL', novos: 80 }] };
+    const r = { novos: 210, buscas: 4, motivo: 'cidade', cidade: 'Orlando, FL', feitas: [{ nicho: 'Roofing', cidade: 'Orlando', uf: 'FL', novos: 80 }] };
     c = E.registraDia(c, r, new Date(2026, 9, 13, 7, 30));
     c = E.registraDia(c, { ...r, novos: 220 }, new Date(2026, 9, 13, 9, 0));
     assert.equal(c.historico.length, 1);
@@ -263,7 +264,7 @@ describe('extração automática: textos e histórico', () => {
 
   it('frase do resultado fala português', async () => {
     await carrega();
-    assert.match(E.textoResultado({ novos: 1, buscas: 1, motivo: 'meta' }, 200), /Meta de 200 atingida: 1 lead novo em 1 busca/);
-    assert.match(E.textoResultado({ novos: 0, buscas: 0, motivo: 'falhas' }, 200), /Tenta de novo amanhã/);
+    assert.match(E.textoResultado({ novos: 1, buscas: 1, motivo: 'cidade', cidade: 'Orlando, FL' }), /Orlando, FL: cidade concluída, 1 lead novo em 1 busca/);
+    assert.match(E.textoResultado({ novos: 0, buscas: 0, motivo: 'falhas' }), /Continua amanhã/);
   });
 });

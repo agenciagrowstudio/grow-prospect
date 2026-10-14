@@ -84,7 +84,7 @@ export default function HorarioAutomatico({
             </label>
           </div>
 
-          <p className="hz-linha">Meta de {cfg.limite} leads novos por dia, pelas cidades com mais brasileiros primeiro.</p>
+          <p className="hz-linha">Uma cidade por dia, com todos os serviços escolhidos, pelas cidades com mais brasileiros primeiro.</p>
           {windows.suportado && (
             <p className="hz-linha hz-windows">
               <Monitor size={13} strokeWidth={2} aria-hidden="true" />

@@ -24,7 +24,8 @@ describe('primeira mensagem de abordagem', () => {
     await carrega();
     const q = Q.qualificaLead(semSite);
     const r = A.gerarAbordagem(semSite, q, cfg);
-    assert.equal(r.angulo, 'site');
+    // Limpeza sem site vive de horário marcado: site e agendamento juntos.
+    assert.equal(r.angulo, 'completo');
     assert.equal(r.idioma, 'pt', 'brasileiro nos EUA recebe em português');
     assert.match(r.texto, /Clean Co/);
     assert.match(r.texto, /Alex aqui, da \*Grow\+\*/);
@@ -36,7 +37,7 @@ describe('primeira mensagem de abordagem', () => {
     const leads = [semSite, { id: 'b2', name: 'Barbearia Centro', category: 'Barbearia', city: 'Niterói', pais: 'BR', phone: '21999990000', rating: 4.2, reviews: 20, website: 'https://x.com.br' }];
     for (const lead of leads) {
       const q = Q.qualificaLead(lead);
-      for (const angulo of ['site', 'google', 'redes', 'conteudo', 'sistema', 'qualquer']) {
+      for (const angulo of ['completo', 'site', 'agendamento', 'bio', 'conteudo', 'midia', 'qualquer']) {
         for (let v = 0; v < 4; v++) {
           const { texto } = A.gerarAbordagem(lead, q, { ...cfg, oferta: angulo }, v);
           // O modelo da Grow+ para brasileiros nos EUA tem uns 350 caracteres.
@@ -72,7 +73,7 @@ describe('primeira mensagem de abordagem', () => {
     assert.equal(A.idiomaDoLead({ pais: 'US', sinalBr: { nivel: 'baixo', pontos: 0 } }), 'pt');
     assert.equal(A.gerarAbordagem(semSite, Q.qualificaLead(semSite), { ...cfg, oferta: 'conteudo' }).angulo, 'conteudo');
     // pediu um ângulo que o lead não tem: cai no principal
-    assert.equal(A.gerarAbordagem({ ...semSite, instagram: '' }, Q.qualificaLead({ ...semSite, instagram: '' }), { ...cfg, oferta: 'conteudo' }).angulo, 'site');
+    assert.equal(A.gerarAbordagem(semSite, Q.qualificaLead(semSite), { ...cfg, oferta: 'midia' }).angulo, 'completo');
   });
 
   it('nome muito longo é encurtado e a nota só aparece quando é boa', async () => {
@@ -176,5 +177,33 @@ describe('abordagem sem cidade', () => {
       const t = A.gerarAbordagem(lead, Q.qualificaLead(lead), { nome: 'Matheus', empresa: 'Grow+', oferta: 'qualquer', idioma: 'pt' }, v).texto;
       assert.doesNotMatch(t, /\bem a região\b|\bde a região\b/);
     }
+  });
+});
+
+describe('catálogo de serviços da Grow+', () => {
+  it('oferece os produtos reais, na ordem certa para cada tipo de negócio', async () => {
+    const Q = await import(require('url').pathToFileURL(require('path').join(__dirname, '..', 'renderer/src/qualificacaoLead.js')).href);
+    const ids = (lead) => Q.qualificaLead(lead).servicos.map((s) => s.id);
+    assert.deepEqual(ids({ category: 'House cleaning service', phone: '1' }), ['completo', 'conteudo']);
+    assert.deepEqual(ids({ category: 'House cleaning service', website: 'https://x.com', phone: '1' }), ['agendamento', 'conteudo']);
+    assert.deepEqual(ids({ category: 'Painting contractor', instagram: '@pinta', phone: '1' }), ['completo', 'bio', 'conteudo']);
+    assert.deepEqual(ids({ category: 'Brazilian restaurant', website: 'https://r.com', instagram: '@r', phone: '1' }), ['midia', 'conteudo']);
+    assert.deepEqual(ids({ category: 'Igreja', phone: '1' }), ['midia', 'site', 'conteudo']);
+    assert.deepEqual(ids({ category: 'Condomínio residencial', website: 'https://c.com', phone: '1' }), ['midia', 'conteudo']);
+  });
+
+  it('mídia indoor e link na bio têm mensagens próprias, em português e em inglês', async () => {
+    const A = await import(require('url').pathToFileURL(require('path').join(__dirname, '..', 'renderer/src/abordagem.js')).href);
+    const Q = await import(require('url').pathToFileURL(require('path').join(__dirname, '..', 'renderer/src/qualificacaoLead.js')).href);
+    const rest = { id: 'r1', name: 'Sabor de Minas', category: 'Brazilian restaurant', pais: 'US', city: 'Framingham', phone: '15085550101', sinalBr: { nivel: 'alto' } };
+    const m = A.gerarAbordagem(rest, Q.qualificaLead(rest), { nome: 'Matheus', empresa: 'Grow+' });
+    assert.equal(m.angulo, 'midia');
+    assert.match(m.texto, /tela/i);
+    const ig = { id: 'i1', name: 'Pinta Bem', category: 'Painting contractor', pais: 'US', city: 'Marlborough', phone: '15085550102', instagram: '@pintabem', sinalBr: { nivel: 'alto' } };
+    const b = A.gerarAbordagem(ig, Q.qualificaLead(ig), { nome: 'Matheus', empresa: 'Grow+', oferta: 'bio' });
+    assert.equal(b.angulo, 'bio');
+    assert.match(b.texto, /bio/i);
+    assert.equal(A.nomeDoAngulo('midia'), 'Mídia indoor');
+    assert.equal(A.nomeDoAngulo('google'), 'Google Negócio', 'oferta antiga continua com nome no histórico');
   });
 });

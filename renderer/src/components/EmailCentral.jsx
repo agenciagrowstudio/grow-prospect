@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Mail, Send, LayoutTemplate, History, Settings2, Megaphone, Plus, Trash2, Copy, ArrowUp, ArrowDown,
   Monitor, Smartphone, Cloud, Laptop, KeyRound, ExternalLink, Loader, Check, Search, X,
@@ -37,6 +37,25 @@ function abreFora(url) {
   else window.open(url, '_blank', 'noopener');
 }
 
+/**
+ * Prévia sem iframe: o e-mail é desenhado num shadow DOM, isolado do CSS do
+ * app. No Electron (página file://) o iframe com srcdoc ficava em branco.
+ * Clique em link da prévia não navega: é só para ver.
+ */
+function CorpoDaPrevia({ html }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const raiz = el.shadowRoot || el.attachShadow({ mode: 'open' });
+    raiz.innerHTML = html;
+    const bloqueia = (e) => { if (e.target.closest && e.target.closest('a')) e.preventDefault(); };
+    raiz.addEventListener('click', bloqueia);
+    return () => raiz.removeEventListener('click', bloqueia);
+  }, [html]);
+  return <div ref={ref} className="em2-corpo" />;
+}
+
 function Previa({ html }) {
   const [celular, setCelular] = useState(false);
   return (
@@ -49,7 +68,7 @@ function Previa({ html }) {
         </div>
       </div>
       <div className="em2-moldura">
-        <iframe title="Prévia do e-mail" sandbox="" srcDoc={html} style={{ width: celular ? 380 : '100%' }} />
+        <div className="em2-folha" style={{ width: celular ? 380 : '100%' }}><CorpoDaPrevia html={html} /></div>
       </div>
     </div>
   );

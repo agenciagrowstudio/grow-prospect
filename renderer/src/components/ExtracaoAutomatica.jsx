@@ -5,7 +5,7 @@ import {
 import Bandeira from './Bandeira';
 import { ATALHOS_EUA, CIDADES_ATALHO, TRADUCAO_EUA } from '../atalhosExtracao';
 import {
-  progresso, roteiro, desempenhoPorGrupo, fatorAprendido, proximaExecucao, textoResultado, LIMITE_MIN, LIMITE_MAX,
+  progresso, roteiro, desempenhoPorGrupo, fatorAprendido, proximaExecucao, textoResultado,
 } from '../extracaoAutomatica';
 import { areasExtraidas } from '../cobertura';
 import { readLocalArray } from '../leadData';
@@ -15,7 +15,6 @@ import { readLocalArray } from '../leadData';
  * que vem a seguir, as cidades e serviços que entram, e o histórico dos dias.
  */
 
-const METAS = [100, 200, 300];
 const ESTADOS = { MA: 'Massachusetts', FL: 'Flórida', CT: 'Connecticut', NJ: 'Nova Jersey', GA: 'Geórgia' };
 
 const leLog = () => {
@@ -81,7 +80,9 @@ export default function ExtracaoAutomatica({
   }, {});
 
   const rodando = estado.rodando;
-  const pctDia = Math.min(100, Math.round((estado.novos / cfg.limite) * 100));
+  // Progresso da cidade do dia: buscas feitas de um serviço por busca.
+  const totalDia = Math.max(1, cfg.nichos.length);
+  const pctDia = Math.min(100, Math.round((estado.buscas / totalDia) * 100));
 
   return (
     <section className="cfg-view ea-view">
@@ -89,8 +90,8 @@ export default function ExtracaoAutomatica({
         <div>
           <h1 style={{ fontSize: 20 }}>Extração automática</h1>
           <p className="cfg-tagline">
-            Todo dia no horário, o app extrai até {cfg.limite} leads novos de brasileiros que prestam serviço nos EUA,
-            começando pelas cidades com mais brasileiros.
+            Uma cidade por dia: no horário, o app extrai a cidade inteira com todos os serviços escolhidos,
+            começando pelas cidades com mais brasileiros prestando serviço.
           </p>
         </div>
       </div>
@@ -133,10 +134,10 @@ export default function ExtracaoAutomatica({
 
         {rodando && (
           <div className="ea-dia">
-            <div className="ea-dia-barra" role="progressbar" aria-valuemin={0} aria-valuemax={cfg.limite} aria-valuenow={estado.novos}>
+            <div className="ea-dia-barra" role="progressbar" aria-valuemin={0} aria-valuemax={totalDia} aria-valuenow={estado.buscas}>
               <span style={{ width: `${pctDia}%` }} />
             </div>
-            <span>{estado.novos} de {cfg.limite} leads novos hoje · {estado.buscas} busca{estado.buscas === 1 ? '' : 's'} feita{estado.buscas === 1 ? '' : 's'}</span>
+            <span>{estado.atual ? `${estado.atual.cidade}, ${estado.atual.uf} · ` : ''}{estado.buscas} de até {totalDia} serviço{totalDia === 1 ? '' : 's'} · {estado.novos} leads novos</span>
           </div>
         )}
 
@@ -146,21 +147,8 @@ export default function ExtracaoAutomatica({
             <input type="time" value={cfg.hora} onChange={(e) => mudaHora(e.target.value)} />
           </label>
           <div className="ea-campo">
-            <span>Meta de leads novos por dia</span>
-            <div className="ea-metas">
-              {METAS.map((m) => (
-                <button key={m} type="button" className={`ea-chip${cfg.limite === m ? ' on' : ''}`} onClick={() => setCfg((c) => ({ ...c, limite: m }))}>{m}</button>
-              ))}
-              <input
-                type="number"
-                min={LIMITE_MIN}
-                max={LIMITE_MAX}
-                step={10}
-                value={cfg.limite}
-                onChange={(e) => setCfg((c) => ({ ...c, limite: Number(e.target.value) || c.limite }))}
-                aria-label="Meta de leads por dia"
-              />
-            </div>
+            <span>Ritmo</span>
+            <p className="ea-ritmo">Uma cidade por dia, com {cfg.nichos.length} serviço{cfg.nichos.length === 1 ? '' : 's'}. A cidade que não termina (falha ou limite) continua no dia seguinte.</p>
           </div>
         </div>
 
@@ -289,7 +277,7 @@ export default function ExtracaoAutomatica({
               <li key={h.dia}>
                 <span className="ea-historico-dia">{new Date(`${h.dia}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
                 <b>{h.novos} novos</b>
-                <span className="ea-historico-txt" title={(h.cidades || []).join('\n')}>{textoResultado({ ...h, feitas: [] }, cfg.limite)}</span>
+                <span className="ea-historico-txt" title={(h.cidades || []).join('\n')}>{textoResultado({ ...h, feitas: [] })}</span>
               </li>
             ))}
           </ul>

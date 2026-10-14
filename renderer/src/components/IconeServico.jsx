@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarCheck, Store, Megaphone, Clapperboard, Lightbulb } from 'lucide-react';
+import { CalendarCheck, Store, Megaphone, Clapperboard, Lightbulb, AppWindow, Link2, MonitorPlay } from 'lucide-react';
 import IconePng from './IconePng';
 import { ICONES } from '../assets/icones';
 
@@ -10,7 +10,11 @@ import { ICONES } from '../assets/icones';
 const IconeSiteServico = ({ size }) => <IconePng src={ICONES.site} size={size + 3} />;
 
 export const ICONE_SERVICO = {
+  completo: AppWindow,
   site: IconeSiteServico,
+  agendamento: CalendarCheck,
+  bio: Link2,
+  midia: MonitorPlay,
   sistema: CalendarCheck,
   google: Store,
   redes: Megaphone,

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X, ExternalLink, Check, SkipForward, PhoneOff, RefreshCw, Undo2, MessagesSquare,
   SlidersHorizontal, Copy, RotateCcw, Inbox, PartyPopper, Send, Pencil, Smartphone, Languages, Repeat, BookOpen } from 'lucide-react';
-import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, idiomaDoLead, partesWhatsApp } from '../abordagem';
+import { gerarAbordagem, linkWhatsApp, chaveDoDia, ANGULOS, nomeDoAngulo, idiomaDoLead, partesWhatsApp } from '../abordagem';
 import { digitosWhatsApp } from '../telefone';
 import { localDoEndereco } from '../leadData';
 import Bandeira from './Bandeira';
@@ -11,9 +11,6 @@ import { publicoDoLead } from '../resultados';
 import { proximoFollowup, DIAS_FOLLOWUP, tempoAte } from '../followup';
 import FollowupsFila from './FollowupsFila';
 import CardLead from './CardLead';
-import IconeIA from './IconeIA';
-import SeloIA from './SeloIA';
-import { analisaComIA, aplicaResultadosIA, textoProgressoIA, iaDisponivel, insereGancho } from '../iaLeads';
 import DivisorFila, { larguraListaGuardada } from './DivisorFila';
 
 // Tamanho da janela da Fila, arrastado pelo canto e guardado para a próxima vez.
@@ -109,11 +106,7 @@ export default function FilaAbordagem({
   const [aba, setAba] = useState('fila');
   const janelaRef = useRef(null);
   const cliqueNoFundo = useRef(false);
-  const [analisandoIA, setAnalisandoIA] = useState(false);
-  const [progressoIA, setProgressoIA] = useState(null);
-  // Leads que já foram mandados para a IA nesta abertura (não repete se falhar).
-  const jaTentouIA = useRef(new Set());
-  const [iaParada, setIaParada] = useState('');
+
   const [tamanhoInicial] = useState(tamanhoGuardado);
   // Guarda o tamanho quando a pessoa arrasta o canto da janela.
   useEffect(() => {
@@ -170,7 +163,8 @@ export default function FilaAbordagem({
     .filter(({ lead, q, chave }) => {
       if (!q?.canais?.whatsapp || !digitosWhatsApp(q.canais.whatsapp, lead.pais)) return false;
       if (log[chave]) return false;
-      if (cfg.oferta !== 'qualquer' && !q.servicos.some((s) => s.id === cfg.oferta)) return false;
+      // Oferta escolhida que saiu do catálogo vale como "qualquer".
+      if (cfg.oferta !== 'qualquer' && ANGULOS.some((x) => x.id === cfg.oferta) && !q.servicos.some((s) => s.id === cfg.oferta)) return false;
       return true;
     })
     .sort((a, b) => b.q.nota - a.q.nota), [leads, qualificacoes, log, cfg.oferta]);
@@ -234,43 +228,6 @@ export default function FilaAbordagem({
     setSelecionado(proximo?.chave || null);
     if (status === 'enviada') setAviso(`${item.lead.name || 'Lead'} marcado como enviado.`);
   };
-
-  // Analisa com IA só os leads da fila de hoje que ainda não foram analisados.
-  const analisaFila = async (itens) => {
-    if (analisandoIA || !itens.length) return;
-    setAnalisandoIA(true);
-    setProgressoIA(null);
-    try {
-      const resultados = await analisaComIA(itens.map((f) => f.lead), setProgressoIA);
-      const todos = JSON.parse(localStorage.getItem('sigma_leads') || '[]');
-      localStorage.setItem('sigma_leads', JSON.stringify(aplicaResultadosIA(todos, resultados)));
-      window.dispatchEvent(new Event('sigma:leads-updated'));
-      const comIA = resultados.filter((r) => r.ia).length;
-      setAviso(comIA ? `Textos da IA prontos para ${comIA} lead${comIA === 1 ? '' : 's'}.` : 'A IA não respondeu agora. Tente de novo em alguns minutos.');
-    } catch (e) {
-      // Sem chave ou chave recusada: para de tentar sozinho até a pessoa pedir.
-      if (/chave/i.test(e.message)) setIaParada(e.message);
-      setAviso(e.message);
-    } finally {
-      setAnalisandoIA(false);
-      setProgressoIA(null);
-    }
-  };
-
-  // A fila do dia é analisada sozinha: quem entra sem IA (abriu a Fila, pulou
-  // alguém e entrou o próximo, virou o dia) vai para a análise. Espera um
-  // instante para juntar quem entrou junto numa chamada só.
-  useEffect(() => {
-    if (!iaDisponivel() || analisandoIA || iaParada) return undefined;
-    const novos = fila.filter((f) => !f.lead.ia && !jaTentouIA.current.has(f.chave));
-    if (!novos.length) return undefined;
-    const t = setTimeout(() => {
-      novos.forEach((f) => jaTentouIA.current.add(f.chave));
-      analisaFila(novos);
-    }, 1200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fila.map((f) => `${f.chave}:${f.lead.ia ? 1 : 0}`).join(','), analisandoIA, iaParada]);
 
   const desfaz = (chave) => setLog((atualLog) => {
     const { [chave]: _tirado, ...resto } = atualLog;
@@ -364,10 +321,9 @@ export default function FilaAbordagem({
         />
 
         <div className="fa-chips">
-          <span className="fa-chip fa-chip-oferta">Oferecer: <b>{ANGULOS.find((a) => a.id === g.angulo)?.nome || 'Abordagem geral'}</b></span>
+          <span className="fa-chip fa-chip-oferta">Oferecer: <b>{nomeDoAngulo(g.angulo)}</b></span>
           {servico?.motivo && (
-            <span className={`fa-chip${servico.daIA ? ' fa-chip-ia' : ''}`} title={servico.daIA ? 'Sugerido pela IA depois de ler o site' : undefined}>
-              {servico.daIA && <IconeIA size={14} />}
+            <span className="fa-chip">
               {servico.motivo}
             </span>
           )}
@@ -446,29 +402,6 @@ export default function FilaAbordagem({
             </span>
           </div>
         </div>
-
-        {(() => {
-          const gancho = idioma === 'en' ? lead.ia?.ganchoEn : lead.ia?.gancho;
-          if (!gancho) return null;
-          const inserido = texto.includes(gancho);
-          return (
-            <div className="fa-gancho">
-              <IconeIA size={18} />
-              <div className="fa-gancho-txt">
-                <b>Detalhe que a IA achou no site</b>
-                <span>{gancho}</span>
-              </div>
-              <button
-                type="button"
-                className={`fa-mini${inserido ? '' : ' fa-mini-forte'}`}
-                disabled={inserido}
-                onClick={() => setEditados((x) => ({ ...x, [chaveEdicao(atual)]: insereGancho(textoDe(atual), gancho) }))}
-              >
-                {inserido ? <><Check size={13} strokeWidth={2.2} aria-hidden="true" /> Inserido</> : 'Inserir na mensagem'}
-              </button>
-            </div>
-          );
-        })()}
 
         <div className="fa-passos">
           <button type="button" className={`btn fa-abrir${jaAbriu ? ' feito' : ''}`} onClick={() => abre(atual)}>
@@ -647,26 +580,6 @@ export default function FilaAbordagem({
         ) : (
           <div className="fa-corpo">
             <ol className="fa-lista" aria-label="Leads da fila">
-              {iaDisponivel() && (() => {
-                const semIA = fila.filter((f) => !f.lead.ia);
-                return (
-                  <li className="fa-ia-barra">
-                    <IconeIA size={16} />
-                    <span>
-                      {analisandoIA
-                        ? textoProgressoIA(progressoIA)
-                        : iaParada
-                          ? 'Textos automáticos parados: confira a chave de IA nas Configurações'
-                          : semIA.length ? `${fila.length - semIA.length} de ${fila.length} com texto da IA` : 'Textos da IA prontos para a fila'}
-                    </span>
-                    {!analisandoIA && semIA.length > 0 && (iaParada || semIA.every((f) => jaTentouIA.current.has(f.chave))) && (
-                      <button type="button" className="fa-mini fa-mini-forte" onClick={() => { setIaParada(''); analisaFila(semIA); }}>
-                        Tentar de novo
-                      </button>
-                    )}
-                  </li>
-                );
-              })()}
               {fila.map((item, i) => {
                 const { lead, q, chave } = item;
                 const ativo = atual?.chave === chave;
@@ -677,9 +590,8 @@ export default function FilaAbordagem({
                       <span className="fa-linha-txt">
                         <b>
                           {lead.name || 'Empresa'}
-                          {lead.ia && <SeloIA ia={lead.ia} />}
                         </b>
-                        <span>{[lead.city || localDoEndereco(lead.address).cidade, ANGULOS.find((a) => a.id === gerado(item).angulo)?.nome, idiomaDe(item) === 'en' ? 'em inglês' : ''].filter(Boolean).join(' · ')}</span>
+                        <span>{[lead.city || localDoEndereco(lead.address).cidade, nomeDoAngulo(gerado(item).angulo), idiomaDe(item) === 'en' ? 'em inglês' : ''].filter(Boolean).join(' · ')}</span>
                       </span>
                       <span className={`fa-ponto fa-ponto-${q.temperatura.id}`} title={`${q.temperatura.rotulo} ${q.nota}`} />
                     </button>
@@ -712,7 +624,7 @@ export default function FilaAbordagem({
                 <div className="fa-hist-topo">
                   <div className="fa-linha-txt">
                     <b>{e.nome || chave}</b>
-                    <span>{new Date(e.ts).toLocaleDateString('pt-BR')} · {ANGULOS.find((a) => a.id === e.angulo)?.nome || 'Abordagem geral'}</span>
+                    <span>{new Date(e.ts).toLocaleDateString('pt-BR')} · {nomeDoAngulo(e.angulo)}</span>
                   </div>
                   <span className={`mm-situacao ${e.status === 'respondeu' ? 'mm-aprovado' : e.status === 'enviada' ? 'mm-analise' : 'fa-sit-fora'}`}>
                     {{ respondeu: 'Respondeu', enviada: 'Aguardando', pulada: 'Pulado', sem_whatsapp: 'Sem WhatsApp', sem_interesse: 'Sem interesse' }[e.status]}

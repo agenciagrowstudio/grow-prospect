@@ -373,6 +373,8 @@ export default function MapScraperView({
     if (!activeExtraction?.id) return;
     setIsProcessing(true);
     setProgressPct(0);
+    // A automática roda em segundo plano: não tira a pessoa da extração que ela está vendo.
+    if (activeExtraction.automatica) return;
     setBuscaAtiva(String(activeExtraction.id));
     setFiltroTemp('');
     setFiltroPublico('');
@@ -400,7 +402,8 @@ export default function MapScraperView({
       const maisNova = lista[0]?.id || null;
       if (maisNova && maisNova !== buscaMaisNovaRef.current) {
         buscaMaisNovaRef.current = maisNova;
-        setBuscaAtiva(String(maisNova));
+        // Extração automática nova não muda a tela sozinha.
+        if (!lista[0]?.automatica) setBuscaAtiva(String(maisNova));
       }
     };
     refreshStoredData();
@@ -497,6 +500,7 @@ export default function MapScraperView({
   ]);
 
   // O recorte acima decide os números dos chips; o filtro do chip só esconde.
+  const buscaDaFila = buscaAtiva && buscaAtiva !== MAPA_LIMPO && searches.some((s) => String(s.id) === buscaAtiva) ? buscaAtiva : '';
   const visibleLeads = useMemo(() => {
     if (!filtroTemp && !filtroPublico) return leadsDoRecorte;
     return leadsDoRecorte.filter((lead) => {
@@ -1577,12 +1581,14 @@ export default function MapScraperView({
         </div>
         {filaAberta && (
           <FilaAbordagem
-            leads={visibleLeads}
+            // Extração escolhida que ainda não existe (ex.: a que está rodando agora):
+            // a Fila usa todos os leads, senão ficaria vazia.
+            leads={buscaDaFila ? visibleLeads : leads}
             leadsTodos={leads}
             qualificacoes={qualificacoes}
             tituloBusca={regiao.titulo}
             extracoes={areas}
-            buscaAtiva={buscaAtiva === MAPA_LIMPO ? '' : buscaAtiva}
+            buscaAtiva={buscaDaFila}
             onTrocarBusca={(id) => { setBuscaAtiva(id); setFiltroTemp(''); setFiltroPublico(''); }}
             onNovaExtracao={() => { setFilaAberta(false); setVersaoLog((v) => v + 1); onOpenNewExtraction?.(); }}
             onFechar={() => { setFilaAberta(false); setVersaoLog((v) => v + 1); }}

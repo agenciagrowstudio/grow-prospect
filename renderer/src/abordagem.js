@@ -80,6 +80,26 @@ const TEXTOS = {
       'Hello! {quem}. How does {empresa} manage appointments and orders today? I have a simple way to keep it organized. Can I show you?',
     ],
   },
+  bio: {
+    pt: [
+      'Oi, tudo bem? {quem}. Vi o Instagram da {empresa}{elogio}. Vocês já usam um mini site no link da bio, com os serviços e o botão de WhatsApp? Posso te mostrar um exemplo?',
+      'Olá! {quem}. Faço páginas para o link da bio: serviços, fotos e WhatsApp num lugar só. Pensei na {empresa}. Quer ver como fica?',
+    ],
+    en: [
+      'Hi! {quem}. I saw {empresa} on Instagram{elogio}. Do you have a simple page in your bio link with your services and a contact button? Can I show you an example?',
+      'Hello! {quem}. I build link-in-bio pages: services, photos and a contact button in one place. I thought of {empresa}. Want to see one?',
+    ],
+  },
+  midia: {
+    pt: [
+      'Oi, tudo bem? {quem}. Vi a {empresa} no Google{elogio}. Vocês já pensaram em ter uma tela no ambiente mostrando cardápio, promoções e avisos? Posso te mostrar como funciona?',
+      'Olá! {quem}. Trabalho com sinalização digital: telas com cardápio, avisos e anúncios que vocês atualizam pelo celular. Pensei na {empresa}. Posso te mandar um exemplo?',
+    ],
+    en: [
+      'Hi! {quem}. I found {empresa} on Google{elogio}. Have you thought about a screen on site showing your menu, specials and announcements? Can I show you how it works?',
+      'Hello! {quem}. I set up digital signage: screens with menus, notices and promos you update from your phone. I thought of {empresa}. Can I send you an example?',
+    ],
+  },
   geral: {
     pt: [
       'Oi, tudo bem? {quem}. Vi a {empresa} e queria te fazer uma pergunta rápida sobre como vocês atraem clientes novos. Posso?',
@@ -139,6 +159,14 @@ const TEXTOS_EUA = {
     'Olá, tudo bem? {quem}. 🇧🇷\n\nTrabalho com empresas brasileiras de {nicho} aqui nos EUA e achei a {empresa} em {local}. Muita empresa perde cliente porque esquece de responder ou de dar retorno do orçamento.\n\nVocês têm algo para organizar isso?',
     'Oi, tudo bem? {quem}.\n\nPesquisando {nicho} em {local} encontrei a {empresa}. O atendimento de vocês é todo pelo WhatsApp? Se for, dá para automatizar a parte repetitiva sem parecer robô.\n\nQuer ver como?',
   ],
+  bio: [
+    'Oi! Tudo bem? {quem}.\n\nVi o Instagram da {empresa} pesquisando {nicho} em {local}. {parabens}Reparei que o link da bio não leva para uma página com os serviços e o WhatsApp.\n\nPosso te mostrar um mini site simples para a bio, que ajuda a transformar visita em orçamento?',
+    'Oi, tudo bem? {quem}.\n\nFaço mini sites para o link da bio de empresas brasileiras aqui nos EUA: serviços, fotos e botão de WhatsApp numa página só. Pensei na {empresa}, em {local}.\n\nQuer ver um exemplo?',
+  ],
+  midia: [
+    'Oi! Tudo bem? {quem}.\n\nVi a {empresa} pesquisando {nicho} em {local}. {parabens}Trabalho com telas de sinalização digital para empresas brasileiras aqui nos EUA: cardápio, promoções e avisos que vocês atualizam pelo celular.\n\nPosso te mostrar um exemplo de como ficaria aí?',
+    'Oi, tudo bem? {quem}.\n\nEstou ajudando restaurantes, igrejas e condomínios brasileiros aqui nos EUA a usar telas para avisos e anúncios. Pensei na {empresa}, em {local}.\n\nFaz sentido eu te mandar um exemplo?',
+  ],
   geral: [
     '🇧🇷 🇺🇸 Oi! Tudo bem? {quem}.\n\nEstava pesquisando empresas brasileiras de {nicho} em {local} e encontrei a {empresa}. Queria te fazer uma pergunta rápida sobre como vocês conseguem clientes novos hoje.\n\nPosso?',
     'Oi! Tudo certo? {quem}.\n\nVi a {empresa} pesquisando {nicho} em {local}. {parabens}Tenho uma ideia para vocês atraírem mais clientes.\n\nPosso te contar?',
@@ -183,6 +211,14 @@ const TEXTOS_EUA_EN = {
     "Hello, how are you? {quem}. 🇺🇸\n\nI work with {nicho} companies here in the US and found {empresa} in {local}. Many businesses lose customers because they forget to reply or to follow up on a quote.\n\nDo you have something in place to handle that?",
     "Hi, how are you? {quem}.\n\nWhile searching for {nicho} in {local} I found {empresa}. Do you answer all your customer messages by hand? If so, the repetitive part can be automated without sounding like a robot.\n\nWant to see how?",
   ],
+  bio: [
+    'Hi! How are you? {quem}.\n\nI saw the Instagram of {empresa} while looking at {nicho} in {local}. {parabens}I noticed the bio link does not lead to a page with your services and a contact button.\n\nCan I show you a simple link-in-bio page that turns visits into quote requests?',
+    'Hi, how are you? {quem}.\n\nI build link-in-bio pages for local businesses: services, photos and a contact button on one page. I thought of {empresa} in {local}.\n\nWant to see an example?',
+  ],
+  midia: [
+    'Hi! How are you? {quem}.\n\nI came across {empresa} while looking at {nicho} in {local}. {parabens}I set up digital signage screens: menus, specials and announcements you update from your phone.\n\nCan I show you an example of how it would look there?',
+    'Hi, how are you? {quem}.\n\nI help restaurants, churches and residential buildings use screens for announcements and promotions. I thought of {empresa} in {local}.\n\nWould it make sense to send you an example?',
+  ],
   geral: [
     "🇺🇸 Hi! How are you? {quem}.\n\nI was looking for {nicho} companies in {local} and came across {empresa}. I wanted to ask you a quick question about how you get new customers today.\n\nMay I?",
     "Hi! All good? {quem}.\n\nI found {empresa} while searching for {nicho} in {local}. {parabens}I have an idea to help you attract more customers.\n\nCan I tell you about it?",
@@ -222,13 +258,26 @@ export function nichoDoLead(lead = {}, idioma = 'pt', eua = false) {
   return cat.toLowerCase() || (idioma === 'en' ? 'local services' : 'serviços locais');
 }
 
+// O que se oferece (os produtos da Grow+). Cada um usa um banco de mensagens.
 export const ANGULOS = [
+  { id: 'completo', nome: 'Site + Agendamento' },
   { id: 'site', nome: 'Site' },
-  { id: 'google', nome: 'Google Negócio' },
-  { id: 'redes', nome: 'Gestão de redes' },
-  { id: 'conteudo', nome: 'Conteúdo' },
-  { id: 'sistema', nome: 'Sistema' },
+  { id: 'agendamento', nome: 'Sistema de agendamento' },
+  { id: 'bio', nome: 'Link na bio' },
+  { id: 'conteudo', nome: 'Conteúdo para redes' },
+  { id: 'midia', nome: 'Mídia indoor' },
 ];
+// Nomes das ofertas antigas, para o histórico continuar legível.
+const ANGULOS_ANTIGOS = { google: 'Google Negócio', redes: 'Gestão de redes', sistema: 'Sistema' };
+export const nomeDoAngulo = (id) => ANGULOS.find((x) => x.id === id)?.nome || ANGULOS_ANTIGOS[id] || 'Abordagem geral';
+
+/** Banco de mensagens de cada oferta. Site + Agendamento abre pelo site; conteúdo sem Instagram, pela criação do perfil. */
+function bancoDoAngulo(angulo, q) {
+  if (angulo === 'completo') return 'site';
+  if (angulo === 'agendamento') return 'sistema';
+  if (angulo === 'conteudo' && !q?.canais?.instagram) return 'redes';
+  return angulo;
+}
 
 function hashTexto(texto) {
   let h = 0;
@@ -285,7 +334,9 @@ export function gerarAbordagem(lead = {}, q = {}, cfg = {}, versao = 0) {
   const eua = String(lead?.pais || 'BR').toUpperCase() === 'US';
   // Nos EUA, português e inglês têm as mesmas versões na mesma ordem: traduzir
   // mantém a versão da tela.
-  const lista = eua ? (idioma === 'pt' ? TEXTOS_EUA : TEXTOS_EUA_EN)[angulo] : TEXTOS[angulo][idioma];
+  const banco = bancoDoAngulo(angulo, q);
+  const bancos = eua ? (idioma === 'pt' ? TEXTOS_EUA : TEXTOS_EUA_EN) : null;
+  const lista = (eua ? bancos[banco] || bancos.geral : (TEXTOS[banco] || TEXTOS.geral)[idioma]);
   const indice = (hashTexto(lead.id || lead.name) + Math.max(0, versao)) % lista.length;
   const modelo = lista[indice];
 

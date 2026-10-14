@@ -57,7 +57,7 @@ export function useExtracaoAutomatica({ iniciarExtracao, cancelarExtracao, extra
       type: 'info',
       category: 'scraper',
       title: 'Extração automática começou',
-      message: `Meta de hoje: ${cfgRef.current.limite} leads novos, pelas cidades com mais brasileiros primeiro.`,
+      message: 'Hoje: uma cidade inteira, com todos os serviços escolhidos. O roteiro começa pelas cidades com mais brasileiros.',
     });
 
     // Espera que acorda a cada segundo para atender o "Parar" na hora.
@@ -120,7 +120,7 @@ export function useExtracaoAutomatica({ iniciarExtracao, cancelarExtracao, extra
       type: r.motivo === 'falhas' ? 'error' : 'success',
       category: 'scraper',
       title: 'Extração automática terminou',
-      message: textoResultado(r, cfgRef.current.limite) + (r.motivo === 'falhas' && r.ultimoErro ? ` Último erro: ${r.ultimoErro}` : ''),
+      message: textoResultado(r) + (r.motivo === 'falhas' && r.ultimoErro ? ` Último erro: ${r.ultimoErro}` : ''),
     });
   }, [disponivel, setCfg]);
 

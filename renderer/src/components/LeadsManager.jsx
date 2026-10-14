@@ -2,9 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import AvatarLead from './AvatarLead';
 import { ChipOportunidade } from './IconeServico';
-import IconeIA from './IconeIA';
 import { useNotifications } from './NotificationCenter';
-import { analisaComIA, aplicaResultadosIA, textoProgressoIA, iaDisponivel } from '../iaLeads';
 import Bandeira from './Bandeira';
 import { publicoDoLead, PUBLICOS_RESULTADO } from '../resultados';
 import IconeNicho from './IconeNicho';
@@ -145,9 +143,6 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   const [bChans, setBChans] = useState([]);
   // Filtro do sinal brasileiro. O nivel vem gravado no lead pela extracao.
   const [bSinalBr, setBSinalBr] = useState('');
-  const [qualificando, setQualificando] = useState(false);
-  const [progressoIA, setProgressoIA] = useState(null);
-  const [confirmaIA, setConfirmaIA] = useState(false);
   const { addNotification } = useNotifications();
   const [showFilters, setShowFilters] = useState(false);
 
@@ -357,46 +352,6 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
   }, [leads, bq, bCat, bUf, bCity, bHood, bRate, bGrupo, bChans, bSinalBr, groups]);
 
   // Stats calculation
-  /**
-   * Reavalia os leads da lista filtrada, agora com a camada de IA.
-   *
-   * O sinal ja vem calculado pelas regras no momento da extracao. Isto aqui
-   * serve para a faixa do meio, que as regras nao resolvem, e para bases
-   * antigas, extraidas antes de o qualificador existir.
-   */
-  // Textos da IA para os selecionados (ou a lista filtrada): lê o site e
-  // escreve um detalhe real para a mensagem.
-  const alvoIA = useMemo(() => {
-    const base = sel.size ? leads.filter((l, idx) => sel.has(getLeadId(l, idx))) : filteredLeads;
-    return base.slice(0, 500);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sel, leads, filteredLeads]);
-
-  const qualificarComIA = async () => {
-    setConfirmaIA(false);
-    if (qualificando || !alvoIA.length) return;
-    setQualificando(true);
-    setProgressoIA(null);
-    try {
-      const resultados = await analisaComIA(alvoIA, setProgressoIA);
-      setLeads((prev) => aplicaResultadosIA(prev, resultados));
-      const comGancho = resultados.filter((r) => r.ia?.gancho).length;
-      addNotification({
-        type: resultados.some((r) => r.ia) ? 'success' : 'warning',
-        category: 'system',
-        title: 'Textos da IA prontos',
-        message: resultados.some((r) => r.ia)
-          ? `${comGancho} de ${resultados.length} leads com detalhe para a mensagem. Já aparecem na Fila do dia.`
-          : 'A IA não respondeu (limite ou conexão). Os sinais dos sites foram aplicados; tente de novo mais tarde.',
-      });
-    } catch (e) {
-      addNotification({ type: 'error', category: 'system', title: 'Análise com IA', message: e.message });
-    } finally {
-      setQualificando(false);
-      setProgressoIA(null);
-    }
-  };
-
   const stats = useMemo(() => {
     let sent = 0;
     let replies = 0;
@@ -719,17 +674,6 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           </p>
         </div>
         <div className="bl-topo-acoes">
-          {iaDisponivel() && (
-            <button
-              type="button"
-              className={`btn btn-ghost${qualificando ? ' bl-ia-rodando' : ''}`}
-              onClick={() => setConfirmaIA(true)}
-              disabled={qualificando || !alvoIA.length}
-              title="Lê o site de cada lead e a IA escreve um detalhe real do negócio para a mensagem"
-            >
-              <IconeIA size={17} /> {qualificando ? textoProgressoIA(progressoIA) : `Escrever textos com IA (${alvoIA.length})`}
-            </button>
-          )}
           <button type="button" className="btn btn-primary" onClick={() => setIsExportOpen(true)}>
             <Download size={15} strokeWidth={2} /> Exportar
           </button>
@@ -1137,34 +1081,6 @@ export default function LeadsManager({ onUpdateLeadsCount, addLog }) {
           <button type="button" className="btn btn-sm bl-apagar" onClick={() => setConfirmaApagar(true)}>
             <Trash2 size={14} strokeWidth={2} aria-hidden="true" /> Apagar
           </button>
-        </div>
-      )}
-
-      {/* CONFIRMAR ANÁLISE COM IA */}
-      {confirmaIA && (
-        <div className="overlay on" onClick={() => setConfirmaIA(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="blIaTitulo" onClick={(e) => e.stopPropagation()} style={{ width: 'min(460px, 94vw)' }}>
-            <div className="modal-head">
-              <h2 id="blIaTitulo">Escrever textos para {alvoIA.length} lead{alvoIA.length === 1 ? '' : 's'} com IA?</h2>
-            </div>
-            <div className="modal-body" style={{ gridTemplateColumns: '1fr', gap: '10px' }}>
-              <p className="bl-apagar-txt">
-                O app lê o site e as avaliações de cada um, e a IA escreve um detalhe real do negócio
-                para a mensagem. Quem é brasileiro e o serviço a oferecer saem das regras, não da IA.
-                {sel.size ? ' Só os selecionados.' : ' A lista que está na tela (use a seleção para analisar menos).'}
-              </p>
-              <p className="bl-apagar-txt">
-                Leva cerca de {Math.max(1, Math.round((alvoIA.length * 1.2 + Math.ceil(alvoIA.length / 12) * 7) / 60))} min.
-                Usa a chave de IA das Configurações.
-              </p>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-ghost" onClick={() => setConfirmaIA(false)}>Cancelar</button>
-              <button type="button" className="btn btn-primary" onClick={qualificarComIA} autoFocus>
-                <IconeIA size={17} /> Analisar
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

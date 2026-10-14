@@ -1,8 +1,8 @@
 /**
- * Extração automática: todo dia, no horário escolhido, o app percorre as
- * cidades e os serviços de brasileiros nos EUA, até juntar a meta de leads
- * novos do dia (200 por padrão). Cada cidade extraída fica azul no mapa e
- * entra na Fila do dia como em qualquer extração.
+ * Extração automática: todo dia, no horário escolhido, o app extrai uma
+ * cidade inteira (todos os serviços escolhidos), escolhida pelo roteiro.
+ * Cada cidade extraída fica azul no mapa e entra na Fila do dia como em
+ * qualquer extração.
  *
  * O roteiro é inteligente: começa pelas cidades com mais brasileiros e pelos
  * serviços que eles mais prestam, sorteando entre elas para não ficar
@@ -234,11 +234,13 @@ export const pausaAleatoria = (rng = Math.random) => Math.round(PAUSA_MIN_MS + r
 export const ehSemResultado = (msg) => /nenhum neg[óo]cio|n[ãa]o retornou leads/i.test(String(msg || ''));
 
 /**
- * O laço de um dia: sorteia, extrai, soma, e para quando bate a meta, quando
- * acaba o que extrair, ou quando o Google começa a falhar.
+ * O laço de um dia: uma cidade por dia. O roteiro sorteia a cidade do dia pela
+ * prioridade (comunidade brasileira e o que já se aprendeu) e extrai todos os
+ * serviços escolhidos que faltam nela, do mais promissor para o menos. Para
+ * quando a cidade termina, quando o Google começa a falhar ou quando pedem.
  *
  * @param {object} p
- * @param {object} p.cfg configuração (limite, nichos, cidades, puladas)
+ * @param {object} p.cfg configuração (nichos, cidades, puladas)
  * @param {() => object[]} p.lerAreas áreas já extraídas, atualizadas a cada volta
  * @param {() => object|null} [p.lerDesempenho] o que as extrações já feitas ensinaram (veja `desempenhoPorGrupo`)
  * @param {(item: object) => Promise<{ok:boolean,novos?:number,erro?:string,ocupado?:boolean,cancelada?:boolean,semResultado?:boolean}>} p.iniciar
@@ -248,18 +250,28 @@ export async function executaDia({
   cfg, lerAreas, lerDesempenho = () => null, iniciar, esperar, rng = Math.random, deveParar = () => false, aoMudar = () => {},
 }) {
   const r = {
-    novos: 0, buscas: 0, falhas: 0, vazias: 0, motivo: '', feitas: [], novasPuladas: [], ultimoErro: '',
+    novos: 0, buscas: 0, falhas: 0, vazias: 0, motivo: '', cidade: '', feitas: [], novasPuladas: [], ultimoErro: '',
   };
   const ignoradas = new Set();
   let seguidas = 0;
+  let doDia = null;
   for (;;) {
     if (deveParar()) { r.motivo = 'parada'; break; }
-    if (r.novos >= cfg.limite) { r.motivo = 'meta'; break; }
     if (r.buscas + r.falhas + r.vazias >= MAX_BUSCAS_POR_DIA) { r.motivo = 'limite-buscas'; break; }
     const areas = lerAreas();
+    const desempenho = lerDesempenho();
     const sorteio = { ...cfg, puladas: [...(cfg.puladas || []), ...r.novasPuladas] };
-    const prox = escolheProxima(sorteio, areas, ignoradas, rng, lerDesempenho());
-    if (!prox) { r.motivo = pendentes(sorteio, areas).length ? 'falhas' : 'tudo'; break; }
+    if (!doDia) {
+      const sorteada = escolheProxima(sorteio, areas, ignoradas, rng, desempenho);
+      if (!sorteada) { r.motivo = pendentes(sorteio, areas).length ? 'falhas' : 'tudo'; break; }
+      doDia = { cidade: sorteada.cidade, uf: sorteada.uf };
+      r.cidade = `${sorteada.cidade}, ${sorteada.uf}`;
+    }
+    const daCidade = pendentes(sorteio, areas)
+      .filter((c) => c.cidade === doDia.cidade && c.uf === doDia.uf && !ignoradas.has(c.chave))
+      .sort((x, y) => pesoDaBusca(y, desempenho) - pesoDaBusca(x, desempenho));
+    if (!daCidade.length) { r.motivo = 'cidade'; break; }
+    const prox = daCidade[0];
     aoMudar({ atual: prox, novos: r.novos, buscas: r.buscas });
     const res = (await iniciar(prox)) || { ok: false };
     if (res.ocupado) { r.motivo = 'ocupado'; break; }
@@ -276,22 +288,24 @@ export async function executaDia({
       r.ultimoErro = res.erro || r.ultimoErro;
       if (seguidas >= FALHAS_SEGUIDAS) { r.motivo = 'falhas'; break; }
     }
-    if (r.novos < cfg.limite) await esperar(pausaAleatoria(rng));
+    // Pausa entre buscas, menos depois da última da cidade.
+    if (daCidade.length > 1) await esperar(pausaAleatoria(rng));
   }
   return r;
 }
 
 /** Frase do resultado do dia, para o aviso e para o histórico. */
-export function textoResultado(r, limite) {
+export function textoResultado(r) {
   const base = `${r.novos} lead${r.novos === 1 ? '' : 's'} novo${r.novos === 1 ? '' : 's'} em ${r.buscas} busca${r.buscas === 1 ? '' : 's'}`;
+  const onde = r.cidade ? `${r.cidade}: ` : '';
   switch (r.motivo) {
-    case 'meta': return `Meta de ${limite} atingida: ${base}.`;
-    case 'tudo': return `${base}. Tudo da lista já foi extraído.`;
-    case 'falhas': return `${base}. Parou depois de falhas seguidas (internet ou bloqueio do Google). Tenta de novo amanhã.`;
-    case 'ocupado': return `${base}. Parou porque outra extração foi iniciada.`;
-    case 'parada': return `${base}. Interrompida por você.`;
-    case 'limite-buscas': return `${base}. Chegou ao limite de buscas do dia.`;
-    default: return `${base}.`;
+    case 'cidade': return `${onde}cidade concluída, ${base}.`;
+    case 'tudo': return `${onde}${base}. Tudo da lista já foi extraído.`;
+    case 'falhas': return `${onde}${base}. Parou depois de falhas seguidas (internet ou bloqueio do Google). Continua amanhã.`;
+    case 'ocupado': return `${onde}${base}. Parou porque outra extração foi iniciada.`;
+    case 'parada': return `${onde}${base}. Interrompida por você.`;
+    case 'limite-buscas': return `${onde}${base}. Chegou ao limite de buscas do dia; o resto da cidade fica para amanhã.`;
+    default: return `${onde}${base}.`;
   }
 }
 
@@ -303,6 +317,7 @@ export function registraDia(cfg, r, agora = new Date()) {
     novos: r.novos,
     buscas: r.buscas,
     motivo: r.motivo,
+    cidade: r.cidade || '',
     cidades: r.feitas.map((f) => `${f.nicho} · ${f.cidade}`),
   };
   const sem = (cfg.historico || []).filter((h) => h.dia !== entrada.dia);
