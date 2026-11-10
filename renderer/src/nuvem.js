@@ -256,6 +256,12 @@ async function tokenValido() {
   return guardaSessao(r).access_token;
 }
 
+/** Chamada já com o login, para os outros módulos da nuvem (pedidos de extração). */
+export async function chamarNuvem(caminho, opcoes = {}) {
+  const token = await tokenValido();
+  return chamar(caminho, { ...opcoes, token });
+}
+
 export async function sair() {
   const s = lerSessao();
   try { if (s) await chamar('/auth/v1/logout', { metodo: 'POST', token: s.access_token }); } catch { /* sai mesmo sem rede */ }

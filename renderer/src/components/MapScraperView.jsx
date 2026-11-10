@@ -380,6 +380,18 @@ export default function MapScraperView({
     setFiltroPublico('');
   }, [activeExtraction?.id, setBuscaAtiva]);
 
+  // Pedido feito na web e rodando no computador: a barra segue o progresso que o PC manda.
+  const progressoRemoto = activeExtraction?.remota ? activeExtraction.progresso : undefined;
+  useEffect(() => {
+    if (progressoRemoto === undefined) return;
+    setIsProcessing(true);
+    setProgressPct(Number.isFinite(progressoRemoto) ? progressoRemoto : 0);
+  }, [progressoRemoto]);
+  useEffect(() => {
+    if (!activeExtraction?.remota) return undefined;
+    return () => { setIsProcessing(false); setProgressPct(0); };
+  }, [activeExtraction?.remota, activeExtraction?.id]);
+
   // Cancelou ou falhou: a busca escolhida não existe, volta para a mais nova.
   useEffect(() => {
     if (activeExtraction?.id || !buscaAtiva || buscaAtiva === MAPA_LIMPO) return;
@@ -1094,6 +1106,8 @@ export default function MapScraperView({
   };
 
   const handleCancelExtraction = async () => {
+    // Pedido da web: quem cancela é o computador que está rodando.
+    if (activeExtraction?.remota) { activeExtraction.cancelar?.(); return; }
     if (!activeExtraction?.id || !window.electronAPI?.cancelScrape) return;
     try {
       const result = await window.electronAPI.cancelScrape(activeExtraction.id);
@@ -1618,8 +1632,11 @@ export default function MapScraperView({
           {visibleLeads.length === 0 && activeExtraction?.id && buscaAtiva === String(activeExtraction.id) ? (
             <div className="empty">
               <div className="e-icon"><Loader2 size={20} strokeWidth={2} className="cfg-girando" /></div>
-              <b style={{ color: 'var(--fg)' }}>Extraindo {activeExtraction.rotulo || activeExtraction.query}</b>
-              <span>Os leads novos aparecem aqui quando a extração terminar. As áreas em azul no mapa já foram extraídas antes.</span>
+              <b style={{ color: 'var(--fg)' }}>{activeExtraction.espera?.titulo || `Extraindo ${activeExtraction.rotulo || activeExtraction.query}`}</b>
+              <span>{activeExtraction.espera?.detalhe || 'Os leads novos aparecem aqui quando a extração terminar. As áreas em azul no mapa já foram extraídas antes.'}</span>
+              {activeExtraction.naFila > 0 && (
+                <span>{activeExtraction.naFila === 1 ? 'Mais 1 pedido esperando na fila.' : `Mais ${activeExtraction.naFila} pedidos esperando na fila.`}</span>
+              )}
             </div>
           ) : visibleLeads.length === 0 && buscaAtiva === MAPA_LIMPO ? (
             <div className="empty">

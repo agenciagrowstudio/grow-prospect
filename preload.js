@@ -49,9 +49,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
   agendamentoStatus: () => ipcRenderer.invoke("agendamento-status"),
   agendamentoSalvar: (opcoes) => ipcRenderer.invoke("agendamento-salvar", opcoes),
   manterAcordado: (ligar) => ipcRenderer.invoke("manter-acordado", Boolean(ligar)),
+  nomeComputador: () => ipcRenderer.invoke("nome-computador"),
   instagramEntrar: () => ipcRenderer.invoke("instagram-entrar"),
   instagramStatus: () => ipcRenderer.invoke("instagram-status"),
   instagramSair: () => ipcRenderer.invoke("instagram-sair"),
+  apifyStatus: () => ipcRenderer.invoke("apify-status"),
+  apifySalvar: (token) => ipcRenderer.invoke("apify-salvar", { token }),
+  apifyRemover: () => ipcRenderer.invoke("apify-remover"),
+  instagramExtrair: (opcoes) => ipcRenderer.invoke("instagram-extrair", opcoes),
+  instagramExtrairCancelar: () => ipcRenderer.invoke("instagram-extrair-cancelar"),
+  instagramBuscar: (opcoes) => ipcRenderer.invoke("instagram-buscar", opcoes),
+  onInstagramProgresso: (callback) => {
+    const listener = (_, data) => callback(data);
+    ipcRenderer.on("instagram-extracao-progresso", listener);
+    return () => ipcRenderer.removeListener("instagram-extracao-progresso", listener);
+  },
   checkUpdate: () => ipcRenderer.invoke("update-check"),
   downloadUpdate: () => ipcRenderer.invoke("update-download"),
   installUpdate: () => ipcRenderer.invoke("update-install"),

@@ -56,6 +56,7 @@ const { geocodeAddress, isValidCoord } = require("./utils/geocode");
 const { resolvePais } = require("./utils/paises");
 const agendadorWindows = require("./utils/agendadorWindows");
 const { ehInstagram, criaJanelaInstagram } = require("./utils/janelaInstagram");
+const { ApifyConta, confereToken, extraiComentarios, busca: buscaApify } = require("./utils/apify");
 
 // Perfis do Instagram abrem numa janela do app, logada na conta da prospecção.
 let janelaInstagram = null;
@@ -460,6 +461,12 @@ function sanitizeCampaignRecipient(raw) {
     totalReviews: raw.totalReviews || "",
     score: raw.score || "",
     prioridade: limitString(raw.prioridade, 40, ""),
+    ...(typeof raw.mensagemPronta === "string" && raw.mensagemPronta.trim()
+      ? {
+          mensagemPronta: raw.mensagemPronta.slice(0, 4096),
+          etapa: Math.max(0, Math.min(3, Math.round(Number(raw.etapa)) || 0)),
+        }
+      : {}),
     kanbanStage,
     kanbanOrder,
   };
@@ -541,6 +548,8 @@ function sanitizeCampaignData(data) {
     connectionIds,
     template: sanitizeTemplate(input.template),
     leadIds: leadsWithConn,
+    limiteDiario: clampInteger(input.limiteDiario, 1, 100, 0) || null,
+    origem: input.origem === "disparo-automatico" ? "disparo-automatico" : null,
     schedule: {
       mode: ["immediate", "interval", "scheduled"].includes(input.schedule?.mode)
         ? input.schedule.mode
@@ -1784,6 +1793,11 @@ ipcMain.handle("agendamento-salvar", async (_, { ativar, hora } = {}) => {
   }
 });
 
+// Nome do computador, para a web mostrar qual PC está atendendo os pedidos de extração.
+ipcMain.handle("nome-computador", () => {
+  try { return String(os.hostname() || "").slice(0, 80); } catch { return ""; }
+});
+
 // Enquanto a extração automática roda, o computador não entra em suspensão.
 let bloqueioSono = null;
 ipcMain.handle("manter-acordado", (_, ligar) => {
@@ -1828,6 +1842,81 @@ function instagramDaProspeccao() {
   if (!janelaInstagram) janelaInstagram = criaJanelaInstagram({ BrowserWindow, session, shell, icone: path.join(__dirname, "assets", "icon.ico") });
   return janelaInstagram;
 }
+// ─── LEADS DO INSTAGRAM (Apify) ───────────────────
+// Quem comentou num post ou anúncio vira lead. O token do Apify fica cifrado neste PC.
+let apifyConta = null;
+const contaApify = () => {
+  if (!apifyConta) apifyConta = new ApifyConta(app.getPath("userData"));
+  return apifyConta;
+};
+const RE_POST_INSTAGRAM = /^https:\/\/(www\.)?instagram\.com\/(?:[\w.]+\/)?(p|reel|reels|tv)\/[\w-]{5,}\/?$/i;
+let extracaoInstagram = null;
+
+ipcMain.handle("apify-status", async () => {
+  try { return { success: true, ...contaApify().publico() }; } catch (err) { return { success: false, error: err.message }; }
+});
+ipcMain.handle("apify-salvar", async (_, { token } = {}) => {
+  try {
+    const limpo = String(token || "").trim();
+    if (!/^apify_api_[A-Za-z0-9]{20,}$/.test(limpo)) throw new Error("Esse não parece um token do Apify. Ele começa com apify_api_.");
+    const { usuario } = await confereToken(limpo);
+    contaApify().salvar(limpo, usuario);
+    return { success: true, ...contaApify().publico() };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+ipcMain.handle("apify-remover", async () => {
+  try { contaApify().remover(); return { success: true }; } catch (err) { return { success: false, error: err.message }; }
+});
+ipcMain.handle("instagram-extrair", async (event, { url, limite, comPerfis } = {}) => {
+  if (extracaoInstagram) return { success: false, error: "Já tem uma extração do Instagram rodando." };
+  const token = contaApify().token();
+  if (!token) return { success: false, error: "Cole o token do Apify em Configurações primeiro." };
+  const endereco = String(url || "").trim();
+  if (!RE_POST_INSTAGRAM.test(endereco)) return { success: false, error: "Link de post inválido. Use o link que começa com instagram.com/p/ ou /reel/." };
+  const n = Math.max(10, Math.min(1000, Math.round(Number(limite)) || 200));
+  const controle = { cancelado: false };
+  extracaoInstagram = controle;
+  const avisa = (texto) => { try { event.sender.send("instagram-extracao-progresso", { texto }); } catch { /* janela fechada */ } };
+  try {
+    const r = await extraiComentarios({ url: endereco, limite: n, comPerfis: comPerfis !== false }, token, {
+      cancelado: () => controle.cancelado,
+      aoMudar: avisa,
+    });
+    return { success: true, ...r };
+  } catch (err) {
+    return { success: false, cancelada: Boolean(err.cancelada), error: err.message };
+  } finally {
+    extracaoInstagram = null;
+  }
+});
+ipcMain.handle("instagram-buscar", async (event, { palavra, tipo, pais, limite } = {}) => {
+  if (extracaoInstagram) return { success: false, error: "Espere a extração ou busca atual terminar." };
+  const token = contaApify().token();
+  if (!token) return { success: false, error: "Cole o token do Apify em Configurações primeiro." };
+  const termo = String(palavra || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (termo.length < 3) return { success: false, error: "Digite pelo menos 3 letras para buscar." };
+  const controle = { cancelado: false };
+  extracaoInstagram = controle;
+  const avisa = (texto) => { try { event.sender.send("instagram-extracao-progresso", { texto }); } catch { /* janela fechada */ } };
+  try {
+    const itens = await buscaApify({ palavra: termo, tipo: tipo === "anuncios" ? "anuncios" : "posts", pais, limite }, token, {
+      cancelado: () => controle.cancelado,
+      aoMudar: avisa,
+    });
+    return { success: true, itens };
+  } catch (err) {
+    return { success: false, cancelada: Boolean(err.cancelada), error: err.message };
+  } finally {
+    extracaoInstagram = null;
+  }
+});
+ipcMain.handle("instagram-extrair-cancelar", async () => {
+  if (extracaoInstagram) extracaoInstagram.cancelado = true;
+  return { success: true };
+});
+
 ipcMain.handle("instagram-entrar", async () => {
   try { instagramDaProspeccao().abre(); return { success: true }; } catch (err) { return { success: false, error: err.message }; }
 });

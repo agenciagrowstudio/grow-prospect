@@ -19,7 +19,8 @@ import {
   PanelLeftClose,
   LineChart,
   ClipboardList,
-  CalendarClock
+  CalendarClock,
+  Instagram
 } from 'lucide-react';
 import { pedirMapa } from './pedidoMapa';
 import IndicadorArmazenamento from './components/IndicadorArmazenamento';
@@ -42,6 +43,11 @@ import NewExtractionModal from './components/NewExtractionModal';
 import Configuracoes from './components/Configuracoes';
 import ExtracaoAutomatica from './components/ExtracaoAutomatica';
 import { useExtracaoAutomatica } from './useExtracaoAutomatica';
+import { useExecutorRemoto, usePedidosRemotos } from './useComandosRemotos';
+import { useDisparoAutomatico } from './useDisparoAutomatico';
+import DisparoAutomatico from './components/DisparoAutomatico';
+import InstagramLeads from './components/InstagramLeads';
+import { textoDeEspera } from './comandosRemotos';
 import OnboardingTour from './components/OnboardingTour';
 import { NotificationProvider, useNotifications } from './components/NotificationCenter';
 import { dedupeLeads, normalizeLeadCollection, readLocalArray } from './leadData';
@@ -137,6 +143,7 @@ function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
     { id: 'kanban', label: 'Ir para Kanban', desc: 'Funil comercial de todos os leads', icon: Columns3, action: () => { onNavigate('kanban'); onClose(false); } },
     { id: 'whatsapp', label: 'Ir para WhatsApp', desc: 'Chats e campanhas', icon: MessageCircle, action: () => { onNavigate('whatsapp'); onClose(false); } },
     { id: 'email', label: 'Ir para E-mail', desc: 'Campanhas pelo Gmail', icon: Mail, action: () => { onNavigate('email'); onClose(false); } },
+    { id: 'instagram', label: 'Ir para Leads do Instagram', desc: 'Buscar posts e anúncios, extrair quem comentou, Fila do Direct', icon: Instagram, action: () => { onNavigate('instagram'); onClose(false); } },
     { id: 'dashboard', label: 'Ir para Resultados', desc: 'O que foi enviado e quem respondeu', icon: BarChart3, action: () => { onNavigate('dashboard'); onClose(false); } },
     { id: 'settings', label: 'Ir para Configurações', desc: 'Empresa e sincronização, chave de IA', icon: Settings, action: () => { onNavigate('settings'); onClose(false); } },
     { id: 'automatica', label: 'Ir para Extração automática', desc: 'Roteiro diário pelas cidades com mais brasileiros', icon: CalendarClock, action: () => { onNavigate('automatica'); onClose(false); } },
@@ -172,7 +179,7 @@ function CommandPalette({ open, onClose, onNavigate, onNewExtraction }) {
 
 function AppInner() {
   const [activeTab, setActiveTab] = useState(() => {
-    try { const h = location.hash.slice(1); if(['overview','scraper','automatica','base','scoring','kanban','whatsapp','email','dashboard','settings'].includes(h)) return h; } catch{}
+    try { const h = location.hash.slice(1); if(['overview','scraper','automatica','base','scoring','kanban','whatsapp','email','instagram','dashboard','settings'].includes(h)) return h; } catch{}
     return 'overview';
   });
   const [isNewExtractionOpen, setIsNewExtractionOpen] = useState(false);
@@ -188,7 +195,7 @@ function AppInner() {
       const log = JSON.parse(localStorage.getItem('sigma_abordagem_log') || '{}') || {};
       const cfg = JSON.parse(localStorage.getItem('sigma_abordagem_cfg') || '{}') || {};
       const hoje = chaveDoDia();
-      const feitas = Object.values(log).filter((e) => e?.status === 'enviada' && e.dia === hoje).length;
+      const feitas = Object.values(log).filter((e) => e?.status === 'enviada' && e.dia === hoje && e.canal !== 'instagram').length;
       return { feitas, meta: Number(cfg.limite) || 20 };
     } catch { return { feitas: 0, meta: 20 }; }
   };
@@ -307,16 +314,19 @@ function AppInner() {
   const handleClose = () => window.electronAPI?.winClose();
 
   // Devolve o resumo ({ ok, novos, ... }) para a extração automática saber como foi.
-  const handleStartExtraction = async ({ niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '', local: localEscolhido = null, automatica = false }) => {
+  // Na web, a extração vira um pedido para o Prospector do computador, onde o robô mora.
+  const remoto = usePedidosRemotos({
+    notificar: addNotification,
+    ativo: ehWeb,
+    aoTerminar: () => window.dispatchEvent(new Event('prospector:nuvem-agora')),
+  });
+
+  const handleStartExtraction = async (dados) => {
     if (ehWeb) {
-      addNotification({
-        type: 'info',
-        category: 'scraper',
-        title: 'Extração roda no computador',
-        message: 'O robô do Google Maps fica no Prospector instalado no PC. Os leads extraídos lá aparecem aqui sozinhos.',
-      });
-      return { ok: false, erro: 'Extração roda no computador.' };
+      setActiveTab('scraper');
+      return remoto.pedir(dados);
     }
+    const { niche, neigh, bairros = [], city, pais = 'BR', limit, area = null, localLabel = '', local: localEscolhido = null, automatica = false, remota = false, searchId: idPedido = '' } = dados;
     if (activeExtraction) {
       addNotification({
         type: 'info',
@@ -326,18 +336,19 @@ function AppInner() {
       });
       return { ok: false, ocupado: true };
     }
-    // A automática roda em segundo plano: não tira a pessoa da tela em que está.
-    if (!automatica) setActiveTab('scraper');
+    // A automática e a pedida pela web rodam em segundo plano: não tiram a pessoa da tela em que está.
+    if (!automatica && !remota) setActiveTab('scraper');
     // Com muitos bairros o texto ficaria enorme na notificação e no histórico.
     const local = bairros.length > 2 ? `${bairros.length} bairros` : neigh;
     // Por raio, o Maps abre centrado no ponto: a busca leva só o nicho.
     const qstr = area ? niche : [niche, bairros.length > 1 ? '' : neigh, city].filter(Boolean).join(' ').trim();
     const ondeTexto = area ? `${area.raioKm} km de ${localLabel}` : [local, city].filter(Boolean).join(', ');
-    const searchId = `scrape_${Date.now()}`;
+    // Pedido da web chega com o id que a web já está mostrando.
+    const searchId = /^scrape_\d+$/.test(idPedido) ? idPedido : `scrape_${Date.now()}`;
     addNotification({
       type: 'info',
       category: 'scraper',
-      title: automatica ? 'Extração automática' : 'Iniciando Extração',
+      title: automatica ? 'Extração automática' : remota ? 'Extração pedida pela web' : 'Iniciando Extração',
       message: `Buscando ${niche} em ${ondeTexto}${pais === 'US' ? ' (EUA)' : ''}...`
     });
 
@@ -346,7 +357,7 @@ function AppInner() {
       return { ok: false, erro: 'A ponte do desktop não está disponível.' };
     }
 
-    setActiveExtraction({ id: searchId, query: qstr, rotulo: `${niche} · ${ondeTexto}`, pais, startedAt: Date.now(), automatica });
+    setActiveExtraction({ id: searchId, query: qstr, rotulo: `${niche} · ${ondeTexto}`, pais, startedAt: Date.now(), automatica: automatica || remota });
     try {
       // Dois ou mais bairros: uma busca por bairro, somadas no processo principal.
       const divisao = bairros.length > 1 ? { nicho: niche, cidade: city, areas: bairros } : null;
@@ -424,6 +435,7 @@ function AppInner() {
           pais,
           timestamp: Date.now(),
           automatica: automatica || undefined,
+          remota: remota || undefined,
           // Onde foi, para pintar a área de azul e não extrair o mesmo lugar de novo.
           nicho: niche,
           encontrados: resultLeads.length,
@@ -452,14 +464,14 @@ function AppInner() {
       addNotification({
         type: res.partial ? 'info' : 'success',
         category: 'scraper',
-        title: `${automatica ? 'Automática: ' : ''}${res.partial ? 'Extração concluída parcialmente' : 'Extração concluída'}`,
+        title: `${automatica ? 'Automática: ' : remota ? 'Pedido da web: ' : ''}${res.partial ? 'Extração concluída parcialmente' : 'Extração concluída'}`,
         message: [
           `${novos.length} lead${novos.length === 1 ? '' : 's'} novo${novos.length === 1 ? '' : 's'}`,
           repetidos ? `${repetidos} já estava${repetidos === 1 ? '' : 'm'} na base` : '',
           res.partial && res.warnings?.length ? res.warnings[0] : '',
         ].filter(Boolean).join('. ') + '.',
       });
-      return { ok: true, novos: novos.length, encontrados: resultLeads.length, repetidos };
+      return { ok: true, novos: novos.length, encontrados: resultLeads.length, repetidos, searchId };
     } catch (err) {
       addNotification({
         type: 'error',
@@ -481,6 +493,36 @@ function AppInner() {
     disponivel: !ehWeb && typeof window.electronAPI?.startScrape === 'function',
   });
 
+  // No computador: manda a Fila do dia sozinho pelo WhatsApp do Prospector.
+  const disparo = useDisparoAutomatico({
+    notificar: addNotification,
+    disponivel: !ehWeb && typeof window.campaignAPI?.create === 'function',
+    whatsappConectado: waStatus === 'connected',
+  });
+
+  // No computador: atende os pedidos de extração feitos pela web.
+  useExecutorRemoto({
+    iniciarExtracao: handleStartExtraction,
+    cancelarExtracao: () => { if (activeExtraction) window.electronAPI?.cancelScrape?.(activeExtraction.id); },
+    extracaoEmAndamento: Boolean(activeExtraction) || automatica.estado.rodando,
+    notificar: addNotification,
+    disponivel: !ehWeb && typeof window.electronAPI?.startScrape === 'function',
+  });
+
+  // Na web, o pedido mais antigo ainda aberto aparece no mapa como a extração em andamento.
+  const pedidoAberto = ehWeb ? remoto.pedidos[remoto.pedidos.length - 1] : null;
+  const resumoAberto = pedidoAberto ? remoto.resumos[pedidoAberto.id] : null;
+  const extracaoNaTela = pedidoAberto ? {
+    id: pedidoAberto.searchId,
+    query: pedidoAberto.rotulo,
+    rotulo: pedidoAberto.rotulo,
+    remota: true,
+    progresso: resumoAberto?.status === 'rodando' ? resumoAberto.progresso : null,
+    espera: textoDeEspera(resumoAberto || { status: 'pendente', pcLigado: true }, pedidoAberto.rotulo),
+    naFila: remoto.pedidos.length - 1,
+    cancelar: () => remoto.cancelar(pedidoAberto.id),
+  } : activeExtraction;
+
   const renderContent = () => {
     if (ehWeb && ['whatsapp', 'campaigns'].includes(activeTab)) {
       return <SoNoComputador recurso={activeTab === 'campaigns' ? 'whatsapp' : activeTab} onNavigate={navigate} />;
@@ -495,7 +537,7 @@ function AppInner() {
               onUpdateLeadsCount={setLeadsCount}
               addLog={(msg) => console.log(msg)}
               onOpenNewExtraction={() => setIsNewExtractionOpen(true)}
-              activeExtraction={activeExtraction}
+              activeExtraction={extracaoNaTela}
               waStatus={waStatus}
               onNavigate={navigate}
             />
@@ -537,6 +579,12 @@ function AppInner() {
             <EmailCentral />
           </ErrorBoundaryLite>
         );
+      case 'instagram':
+        return (
+          <ErrorBoundaryLite label="Instagram">
+            <InstagramLeads onNavigate={navigate} onNotificar={addNotification} />
+          </ErrorBoundaryLite>
+        );
       case 'campaigns': // compat: alias → whatsapp/campanhas tab
         return (
           <ErrorBoundaryLite label="Campanhas">
@@ -561,7 +609,7 @@ function AppInner() {
             onUpdateLeadsCount={setLeadsCount}
             addLog={(msg) => console.log(msg)}
             onOpenNewExtraction={() => setIsNewExtractionOpen(true)}
-            activeExtraction={activeExtraction}
+            activeExtraction={extracaoNaTela}
             waStatus={waStatus}
             onNavigate={navigate}
           />
@@ -688,6 +736,14 @@ function AppInner() {
           </button>
 
           <button
+            className={`nav-item ${activeTab === 'instagram' ? 'active' : ''}`}
+            onClick={() => navigate('instagram')}
+          >
+            <Instagram className="ico" size={18} aria-hidden="true" />
+            <span className="nav-label-text">Instagram</span>
+          </button>
+
+          <button
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => navigate('dashboard')}
           >
@@ -739,6 +795,13 @@ function AppInner() {
                 onAbrirTela={() => navigate('automatica')}
               />
             )}
+            {!ehWeb && (
+              <DisparoAutomatico
+                {...disparo}
+                whatsappConectado={waStatus === 'connected'}
+                onAbrirWhatsApp={() => navigate('whatsapp')}
+              />
+            )}
             <CotacaoDolar />
             <IndicadorArmazenamento />
             <button type="button" className="hdr-perfil" onClick={() => navigate('whatsapp')} title="Gerenciar conexões do WhatsApp">
@@ -783,7 +846,7 @@ function AppInner() {
             message: `${niche} em ${neigh || city}${pais === 'US' ? ' (EUA)' : ''}`
           });
         }}
-        isProcessing={Boolean(activeExtraction)}
+        isProcessing={!ehWeb && Boolean(activeExtraction)}
       />
     </div>
   );

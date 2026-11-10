@@ -101,6 +101,17 @@ class CampaignManager {
     }
   }
 
+  /** Esse telefone respondeu a alguma campanha (para não mandar follow-up a quem já respondeu). */
+  respondeu(phone) {
+    for (const d of this._phoneKeys(phone)) {
+      for (const entry of this._phoneIndex.get(d) || []) {
+        const lead = this.store.get(entry.campaignId)?.leads?.[entry.leadIndex];
+        if (lead?.repliedAt) return true;
+      }
+    }
+    return false;
+  }
+
   registerMessageId(campaignId, leadIndex, messageId) {
     if (messageId) {
       this._messageIndex.set(messageId, { campaignId, leadIndex });

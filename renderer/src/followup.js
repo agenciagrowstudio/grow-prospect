@@ -16,15 +16,21 @@ export const INTERVALO_MINIMO = 24 * HORA;
 
 /**
  * Próximo follow-up de um registro da Fila (sigma_abordagem_log).
+ * Quem foi abordado pelo disparo automático (registro.auto) tem os follow-ups
+ * feitos pelo robô, com outros prazos: fica fora da lista manual.
+ * @param {{dias?: number[], robo?: boolean}} [opcoes]
  * @returns {null | {n: number, liberaEm: number, liberado: boolean}}
  */
-export function proximoFollowup(registro, agora = Date.now()) {
+export function proximoFollowup(registro, agora = Date.now(), { dias = DIAS_FOLLOWUP, robo = false } = {}) {
   if (!registro || registro.status !== 'enviada' || !registro.ts) return null;
+  if (Boolean(registro.auto) !== robo) return null;
+  // Direct do Instagram não tem follow-up pelo WhatsApp.
+  if (registro.canal === 'instagram') return null;
   const feitos = Array.isArray(registro.followups) ? registro.followups : [];
-  if (feitos.length >= DIAS_FOLLOWUP.length) return null;
+  if (feitos.length >= dias.length) return null;
   const n = feitos.length + 1;
   const ultimo = feitos.length ? Number(feitos[feitos.length - 1].ts) || registro.ts : registro.ts;
-  const liberaEm = Math.max(registro.ts + DIAS_FOLLOWUP[n - 1] * DIA, ultimo + INTERVALO_MINIMO);
+  const liberaEm = Math.max(registro.ts + dias[n - 1] * DIA, ultimo + INTERVALO_MINIMO);
   return { n, liberaEm, liberado: agora >= liberaEm };
 }
 

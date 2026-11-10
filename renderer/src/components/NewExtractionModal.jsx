@@ -10,6 +10,7 @@ import { areasExtraidas, jaExtraida, chaveNicho, chaveLugar } from '../cobertura
 import { ATALHOS_EUA, CIDADES_ATALHO, TRADUCAO_EUA } from '../atalhosExtracao';
 import { poligonoDoLugar } from '../poligonos';
 import { readLocalArray } from '../leadData';
+import { ehWeb } from '../ambiente';
 
 function dataCurta(ts) {
   if (!ts) return '';
@@ -854,7 +855,7 @@ export default function NewExtractionModal({
             </button>
           )}
           <button type="button" className="btn btn-primary" disabled={isProcessing || (step === 2 && (localizando || bloqueadaPorRepeticao))} onClick={handleNext}>
-            {isProcessing ? 'Extração em andamento…' : (step === 3 ? 'Iniciar extração' : 'Continuar')}
+            {isProcessing ? 'Extração em andamento…' : (step === 3 ? (ehWeb ? 'Extrair no computador' : 'Iniciar extração') : 'Continuar')}
           </button>
         </div>
       </div>

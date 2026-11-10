@@ -14,7 +14,8 @@ function ehInstagram(url) {
     const u = new URL(String(url || ""));
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     const h = u.hostname.toLowerCase();
-    return h === "instagram.com" || h.endsWith(".instagram.com") || h === "instagr.am";
+    // ig.me/m/usuario abre o Direct com a pessoa (redireciona para o instagram.com).
+    return h === "instagram.com" || h.endsWith(".instagram.com") || h === "instagr.am" || h === "ig.me";
   } catch {
     return false;
   }

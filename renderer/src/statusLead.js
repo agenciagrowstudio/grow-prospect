@@ -14,11 +14,15 @@ export const STATUS_LEAD = [
   { id: 'pulada', nome: 'Pulado', dica: 'Fica fora da Fila por enquanto.' },
 ];
 
-const IDS = new Set(STATUS_LEAD.map((s) => s.id));
+// Estado que só o disparo automático põe (não aparece no menu de mudar estado).
+const STATUS_DO_ROBO = [
+  { id: 'agendada', nome: 'Agendado no automático', dica: 'O disparo automático manda a mensagem hoje.' },
+];
+const IDS = new Set([...STATUS_LEAD, ...STATUS_DO_ROBO].map((s) => s.id));
 // Ordem para ordenar a coluna: do que pede ação ao que já foi resolvido.
-const ORDEM = { respondeu: 5, enviada: 4, novo: 3, pulada: 2, sem_whatsapp: 1, sem_interesse: 0 };
+const ORDEM = { respondeu: 5, enviada: 4, agendada: 4, novo: 3, pulada: 2, sem_whatsapp: 1, sem_interesse: 0 };
 
-export const nomeDoStatus = (id) => STATUS_LEAD.find((s) => s.id === id)?.nome || 'Para abordar';
+export const nomeDoStatus = (id) => [...STATUS_LEAD, ...STATUS_DO_ROBO].find((s) => s.id === id)?.nome || 'Para abordar';
 export const ordemDoStatus = (id) => ORDEM[id] ?? 3;
 
 /**

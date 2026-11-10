@@ -3,6 +3,7 @@ import { Bot, Eye, EyeOff, Check, X, Loader } from 'lucide-react';
 import { PROVIDERS, readAiConfig, saveAiConfig } from '../configIA';
 import EmpresaNuvem from './EmpresaNuvem';
 import InstagramProspeccao from './InstagramProspeccao';
+import ApifyConta from './ApifyConta';
 import AtualizacaoApp from './UpdateBanner';
 
 /**
@@ -84,6 +85,7 @@ export default function Configuracoes({ versao, onNotificar }) {
       <EmpresaNuvem />
 
       <InstagramProspeccao />
+      <ApifyConta />
 
       <div className="cfg-card">
         <div className="cfg-card-head">

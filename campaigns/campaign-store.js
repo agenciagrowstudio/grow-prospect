@@ -139,6 +139,9 @@ class CampaignStore {
           mensagem_whatsapp_ia: lid.mensagem_whatsapp_ia || '',
           ticket_estimado: lid.ticket_estimado || '',
           chance_resposta: lid.chance_resposta || '',
+          // Disparo automático: texto já escrito para este lead (abordagem ou
+          // follow-up). Quando existe, vale no lugar do modelo da campanha.
+          ...(lid.mensagemPronta ? { mensagemPronta: lid.mensagemPronta, etapa: Number(lid.etapa) || 0 } : {}),
           kanbanStage: resolveKanbanStage(lid),
           kanbanOrder: resolveKanbanOrder(lid, idx),
           ...defaultLeadTrackingFields(),
@@ -151,6 +154,9 @@ class CampaignStore {
         workingHours: data.schedule?.workingHours || null,
       },
       followUp: normalizeFollowUp(data.followUp),
+      // Limite de mensagens do número em 24h só para esta campanha (disparo automático).
+      limiteDiario: Number(data.limiteDiario) > 0 ? Number(data.limiteDiario) : null,
+      origem: data.origem || null,
       // Na API oficial a abordagem precisa ser um modelo aprovado pela Meta.
       metaTemplate: data.metaTemplate || null,
       status: 'ready',

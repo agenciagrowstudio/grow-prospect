@@ -102,7 +102,15 @@ class CampaignScheduler {
     const leads = campaign.leads || [];
     let pendingIdxs = [];
     for (let i = 0; i < leads.length; i++) {
-      if (leads[i].status === 'pending') pendingIdxs.push(i);
+      if (leads[i].status !== 'pending') continue;
+      // Follow-up do disparo automático: quem respondeu nesse meio-tempo não recebe.
+      if (Number(leads[i].etapa) > 0 && this.campaignManager?.respondeu?.(leads[i].phone)) {
+        leads[i].status = 'cancelled';
+        leads[i].errorMessage = 'Respondeu antes do follow-up.';
+        this.store.update(campaign.id, { leads }, true);
+        continue;
+      }
+      pendingIdxs.push(i);
     }
     // Abordagem primeiro. Follow-up só entra quando não resta ninguém a abordar.
     let followUp = false;
@@ -115,7 +123,11 @@ class CampaignScheduler {
 
     const campIds = this._campaignConnectionIds(campaign);
     const quota = this._getDailyQuota();
-    const limitCfg = DailyQuota.resolveLimitConfig(this._getSettingsCampaigns());
+    // O disparo automático traz o próprio teto (a meta do dia): conta tudo o
+    // que o número mandou em 24h, abordagem e follow-up juntos.
+    const limitCfg = Number(campaign.limiteDiario) > 0
+      ? { manualUnlimited: false, dailyLimit: Number(campaign.limiteDiario) }
+      : DailyQuota.resolveLimitConfig(this._getSettingsCampaigns());
     const map = this.providersMap;
 
     const tryConn = (connectionId, leadIndex) => {
@@ -323,7 +335,10 @@ class CampaignScheduler {
       const followStep = pick.followUp
         ? normalizeFollowUp(campaign.followUp).steps[Number(lead.followUpCount || 0)]
         : null;
-      const content = interpolate(followStep ? { text: followStep.text } : campaign.template, lead);
+      // Mensagem já escrita para o lead (disparo automático) vai como está.
+      const content = !followStep && lead.mensagemPronta
+        ? String(lead.mensagemPronta)
+        : interpolate(followStep ? { text: followStep.text } : campaign.template, lead);
       const media = followStep ? null : ((campaign.media) || (content && content.media) || null);
       const textPreview = typeof content === 'string'
         ? content

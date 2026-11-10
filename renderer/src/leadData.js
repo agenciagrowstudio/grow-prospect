@@ -107,7 +107,7 @@ export function getExtractionSearches(searches = []) {
   const seen = new Set();
   return (Array.isArray(searches) ? searches : [])
     .map((search, index) => ({ search, index }))
-    .filter(({ search }) => search && typeof search === 'object' && search.id != null && !isImportedSearch(search))
+    .filter(({ search }) => search && typeof search === 'object' && search.id != null && !isImportedSearch(search) && search.source !== 'instagram')
     .filter(({ search }) => {
       const key = String(search.id);
       if (seen.has(key)) return false;

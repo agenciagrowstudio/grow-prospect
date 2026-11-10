@@ -146,6 +146,12 @@ export default function FilaAbordagem({
   const modoLink = NO_CELULAR ? 'wame' : cfg.abrirEm;
 
   useEffect(() => gravaJson(CHAVE_LOG, log), [log]);
+  // O disparo automático grava no mesmo registro: relê para não sobrescrever o que ele fez.
+  useEffect(() => {
+    const releLog = () => setLog(lerJson(CHAVE_LOG, {}));
+    window.addEventListener('sigma:abordagem-log', releLog);
+    return () => window.removeEventListener('sigma:abordagem-log', releLog);
+  }, []);
   useEffect(() => {
     const esc = (e) => { if (e.key === 'Escape') onFechar(); };
     document.addEventListener('keydown', esc);
@@ -186,7 +192,8 @@ export default function FilaAbordagem({
     return () => { vivo = false; };
   }, [candidatos]);
 
-  const enviadasHoje = Object.values(log).filter((e) => e.status === 'enviada' && e.dia === hoje).length;
+  // Direct do Instagram tem a meta dele: não ocupa a do WhatsApp.
+  const enviadasHoje = Object.values(log).filter((e) => e.status === 'enviada' && e.dia === hoje && e.canal !== 'instagram').length;
   const restante = Math.max(0, cfg.limite - enviadasHoje);
   const fila = candidatos.filter(({ chave }) => !jaAbordados[chave]).slice(0, restante);
   // Já abordados: todo mundo que saiu da Fila, inclusive pulado e sem WhatsApp
